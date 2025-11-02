@@ -6,6 +6,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import CadastroParceiros from "./pages/CadastroParceiros";
 import ListaParceiros from "./pages/ListaParceiros";
+import CadastroClientes from "./pages/CadastroClientes";
+import ListaClientes from "./pages/ListaClientes";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -21,6 +23,9 @@ const App = () => (
           <Route path="/cadastro-parceiros" element={<CadastroParceiros />} />
           <Route path="/cadastro-parceiros/:id" element={<CadastroParceiros />} />
           <Route path="/parceiros" element={<ListaParceiros />} />
+          <Route path="/cadastro-clientes" element={<CadastroClientes />} />
+          <Route path="/cadastro-clientes/:id" element={<CadastroClientes />} />
+          <Route path="/clientes" element={<ListaClientes />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
