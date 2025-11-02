@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { Lock, Mail, Users } from "lucide-react";
+import { Lock, Mail, Users, List } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const Index = () => {
@@ -91,7 +91,7 @@ const Index = () => {
           </form>
 
           {/* Navigation */}
-          <div className="pt-4 border-t border-border">
+          <div className="pt-4 border-t border-border space-y-3">
             <Button
               type="button"
               variant="outline"
@@ -100,6 +100,16 @@ const Index = () => {
             >
               <Users className="mr-2 h-4 w-4" />
               Cadastrar Parceiros
+            </Button>
+            
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={() => navigate("/parceiros")}
+            >
+              <List className="mr-2 h-4 w-4" />
+              Listar Parceiros
             </Button>
           </div>
 

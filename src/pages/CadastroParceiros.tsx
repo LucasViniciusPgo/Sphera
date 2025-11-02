@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -9,7 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
+import type { Parceiro } from "./ListaParceiros";
 
 const parceiroSchema = z.object({
   nomeFantasia: z.string().min(1, "Nome Fantasia é obrigatório").max(100),
@@ -30,7 +31,9 @@ type ParceiroFormData = z.infer<typeof parceiroSchema>;
 export default function CadastroParceiros() {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { id } = useParams();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isEditing = !!id;
 
   const form = useForm<ParceiroFormData>({
     resolver: zodResolver(parceiroSchema),
@@ -49,22 +52,52 @@ export default function CadastroParceiros() {
     },
   });
 
+  useEffect(() => {
+    if (id) {
+      const stored = localStorage.getItem("parceiros");
+      if (stored) {
+        const parceiros: Parceiro[] = JSON.parse(stored);
+        const parceiro = parceiros.find((p) => p.id === id);
+        if (parceiro) {
+          form.reset(parceiro);
+        }
+      }
+    }
+  }, [id, form]);
+
   const onSubmit = async (data: ParceiroFormData) => {
     setIsSubmitting(true);
     try {
-      // TODO: Implementar salvamento no backend
-      console.log("Dados do parceiro:", data);
-      
-      toast({
-        title: "Parceiro cadastrado!",
-        description: "O parceiro foi cadastrado com sucesso.",
-      });
-      
-      form.reset();
+      const stored = localStorage.getItem("parceiros");
+      const parceiros: Parceiro[] = stored ? JSON.parse(stored) : [];
+
+      if (isEditing && id) {
+        const index = parceiros.findIndex((p) => p.id === id);
+        if (index !== -1) {
+          parceiros[index] = { ...data, id } as Parceiro;
+        }
+        toast({
+          title: "Parceiro atualizado!",
+          description: "O parceiro foi atualizado com sucesso.",
+        });
+      } else {
+        const newParceiro: Parceiro = {
+          ...data,
+          id: crypto.randomUUID(),
+        } as Parceiro;
+        parceiros.push(newParceiro);
+        toast({
+          title: "Parceiro cadastrado!",
+          description: "O parceiro foi cadastrado com sucesso.",
+        });
+      }
+
+      localStorage.setItem("parceiros", JSON.stringify(parceiros));
+      navigate("/parceiros");
     } catch (error) {
       toast({
-        title: "Erro ao cadastrar",
-        description: "Ocorreu um erro ao cadastrar o parceiro. Tente novamente.",
+        title: "Erro ao salvar",
+        description: "Ocorreu um erro ao salvar o parceiro. Tente novamente.",
         variant: "destructive",
       });
     } finally {
@@ -86,9 +119,14 @@ export default function CadastroParceiros() {
 
         <Card className="border-border">
           <CardHeader>
-            <CardTitle className="text-3xl">Cadastro de Parceiros</CardTitle>
+            <CardTitle className="text-3xl">
+              {isEditing ? "Editar Parceiro" : "Cadastro de Parceiros"}
+            </CardTitle>
             <CardDescription>
-              Preencha os dados do parceiro para realizar o cadastro
+              {isEditing 
+                ? "Atualize os dados do parceiro" 
+                : "Preencha os dados do parceiro para realizar o cadastro"
+              }
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -292,15 +330,18 @@ export default function CadastroParceiros() {
                     disabled={isSubmitting}
                     className="flex-1"
                   >
-                    {isSubmitting ? "Cadastrando..." : "Cadastrar Parceiro"}
+                    {isSubmitting 
+                      ? (isEditing ? "Atualizando..." : "Cadastrando...") 
+                      : (isEditing ? "Atualizar Parceiro" : "Cadastrar Parceiro")
+                    }
                   </Button>
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => form.reset()}
+                    onClick={() => navigate("/parceiros")}
                     disabled={isSubmitting}
                   >
-                    Limpar
+                    Cancelar
                   </Button>
                 </div>
               </form>
