@@ -3,9 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { Lock, Mail } from "lucide-react";
+import { Lock, Mail, Users } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const Index = () => {
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -87,6 +89,19 @@ const Index = () => {
               Entrar
             </Button>
           </form>
+
+          {/* Navigation */}
+          <div className="pt-4 border-t border-border">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={() => navigate("/cadastro-parceiros")}
+            >
+              <Users className="mr-2 h-4 w-4" />
+              Cadastrar Parceiros
+            </Button>
+          </div>
 
           {/* Footer */}
           <div className="text-center">
