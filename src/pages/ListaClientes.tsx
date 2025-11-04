@@ -31,8 +31,9 @@ const ListaClientes = () => {
   };
 
   const filteredClientes = clientes.filter((cliente) =>
-    cliente.nomeCliente.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    cliente.cpfCliente.includes(searchTerm) ||
+    cliente.nomeFantasia.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    cliente.razaoSocial.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    cliente.cnpj.includes(searchTerm) ||
     getParceiro(cliente.parceiroId)?.nomeFantasia.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -56,7 +57,7 @@ const ListaClientes = () => {
             <div className="relative">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Pesquisar por nome, CPF ou parceiro..."
+                placeholder="Pesquisar por nome fantasia, razão social, CNPJ ou parceiro..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -68,8 +69,9 @@ const ListaClientes = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nome do Cliente</TableHead>
-                  <TableHead>CPF</TableHead>
+                  <TableHead>Nome Fantasia</TableHead>
+                  <TableHead>Razão Social</TableHead>
+                  <TableHead>CNPJ</TableHead>
                   <TableHead>Parceiro Vinculado</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
@@ -77,7 +79,7 @@ const ListaClientes = () => {
               <TableBody>
                 {filteredClientes.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center text-muted-foreground">
+                    <TableCell colSpan={5} className="text-center text-muted-foreground">
                       Nenhum cliente encontrado
                     </TableCell>
                   </TableRow>
@@ -86,8 +88,9 @@ const ListaClientes = () => {
                     const parceiro = getParceiro(cliente.parceiroId);
                     return (
                       <TableRow key={cliente.id}>
-                        <TableCell className="font-medium">{cliente.nomeCliente}</TableCell>
-                        <TableCell>{cliente.cpfCliente}</TableCell>
+                        <TableCell className="font-medium">{cliente.nomeFantasia}</TableCell>
+                        <TableCell>{cliente.razaoSocial}</TableCell>
+                        <TableCell>{cliente.cnpj}</TableCell>
                         <TableCell>{parceiro?.nomeFantasia || "Parceiro não encontrado"}</TableCell>
                         <TableCell className="text-right">
                           <Button
