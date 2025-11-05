@@ -4,6 +4,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
+import Home from "./pages/Home";
+import Dashboard from "./pages/Dashboard";
 import CadastroParceiros from "./pages/CadastroParceiros";
 import ListaParceiros from "./pages/ListaParceiros";
 import CadastroClientes from "./pages/CadastroClientes";
@@ -20,6 +22,16 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/home" element={<Home />}>
+            <Route index element={<Dashboard />} />
+            <Route path="cadastro-parceiros" element={<CadastroParceiros />} />
+            <Route path="cadastro-parceiros/:id" element={<CadastroParceiros />} />
+            <Route path="parceiros" element={<ListaParceiros />} />
+            <Route path="cadastro-clientes" element={<CadastroClientes />} />
+            <Route path="cadastro-clientes/:id" element={<CadastroClientes />} />
+            <Route path="clientes" element={<ListaClientes />} />
+          </Route>
+          {/* Redirects for backwards compatibility */}
           <Route path="/cadastro-parceiros" element={<CadastroParceiros />} />
           <Route path="/cadastro-parceiros/:id" element={<CadastroParceiros />} />
           <Route path="/parceiros" element={<ListaParceiros />} />

@@ -112,7 +112,7 @@ const CadastroClientes = () => {
       }
 
       localStorage.setItem("clientes", JSON.stringify(clientes));
-      navigate("/clientes");
+      navigate("/home/clientes");
     } catch (error) {
       toast({
         title: "Erro ao salvar",
@@ -125,11 +125,10 @@ const CadastroClientes = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-8">
-      <div className="max-w-4xl mx-auto">
-        <Button
+    <div className="max-w-4xl mx-auto">
+      <Button
           variant="ghost"
-          onClick={() => navigate("/")}
+          onClick={() => navigate("/home")}
           className="mb-6"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
@@ -389,7 +388,7 @@ const CadastroClientes = () => {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => navigate("/clientes")}
+                    onClick={() => navigate("/home/clientes")}
                     disabled={isSubmitting}
                   >
                     Cancelar
@@ -398,8 +397,7 @@ const CadastroClientes = () => {
               </form>
             </Form>
           </CardContent>
-        </Card>
-      </div>
+      </Card>
     </div>
   );
 };

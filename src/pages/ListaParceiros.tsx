@@ -45,18 +45,17 @@ export default function ListaParceiros() {
   );
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
+    <div className="max-w-7xl mx-auto">
+      <div className="flex items-center justify-between mb-6">
           <Button
             variant="ghost"
-            onClick={() => navigate("/")}
+            onClick={() => navigate("/home")}
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Voltar
           </Button>
           
-          <Button onClick={() => navigate("/cadastro-parceiros")}>
+          <Button onClick={() => navigate("/home/cadastro-parceiros")}>
             <Plus className="mr-2 h-4 w-4" />
             Novo Parceiro
           </Button>
@@ -117,7 +116,7 @@ export default function ListaParceiros() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => navigate(`/cadastro-parceiros/${parceiro.id}`)}
+                            onClick={() => navigate(`/home/cadastro-parceiros/${parceiro.id}`)}
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
@@ -129,8 +128,7 @@ export default function ListaParceiros() {
               </div>
             )}
           </CardContent>
-        </Card>
-      </div>
+      </Card>
     </div>
   );
 }

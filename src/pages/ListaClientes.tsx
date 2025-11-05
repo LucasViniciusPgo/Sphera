@@ -38,15 +38,14 @@ const ListaClientes = () => {
   );
 
   return (
-    <div className="min-h-screen bg-background p-8">
-      <Card className="max-w-6xl mx-auto">
-        <CardHeader>
+    <Card className="max-w-6xl mx-auto">
+      <CardHeader>
           <div className="flex justify-between items-center">
             <div>
               <CardTitle>Lista de Clientes</CardTitle>
               <CardDescription>Gerencie os clientes cadastrados</CardDescription>
             </div>
-            <Button onClick={() => navigate("/cadastro-clientes")}>
+            <Button onClick={() => navigate("/home/cadastro-clientes")}>
               <UserPlus className="mr-2 h-4 w-4" />
               Novo Cliente
             </Button>
@@ -96,7 +95,7 @@ const ListaClientes = () => {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => navigate(`/cadastro-clientes/${cliente.id}`)}
+                            onClick={() => navigate(`/home/cadastro-clientes/${cliente.id}`)}
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
@@ -110,7 +109,6 @@ const ListaClientes = () => {
           </div>
         </CardContent>
       </Card>
-    </div>
   );
 };
 

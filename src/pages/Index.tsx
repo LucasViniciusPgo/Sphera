@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { Lock, Mail, Users, List, UserPlus } from "lucide-react";
+import { Lock, Mail } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const Index = () => {
@@ -14,6 +14,7 @@ const Index = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     console.log("Login attempt:", { email, password });
+    navigate("/home");
   };
 
   return (
@@ -90,58 +91,6 @@ const Index = () => {
             </Button>
           </form>
 
-          {/* Navigation */}
-          <div className="pt-4 border-t border-border space-y-4">
-            <div className="space-y-2">
-              <h3 className="text-sm font-semibold text-foreground">Parceiros</h3>
-              <div className="space-y-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => navigate("/cadastro-parceiros")}
-                >
-                  <Users className="mr-2 h-4 w-4" />
-                  Cadastrar Parceiros
-                </Button>
-                
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => navigate("/parceiros")}
-                >
-                  <List className="mr-2 h-4 w-4" />
-                  Listar Parceiros
-                </Button>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <h3 className="text-sm font-semibold text-foreground">Clientes</h3>
-              <div className="space-y-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => navigate("/cadastro-clientes")}
-                >
-                  <UserPlus className="mr-2 h-4 w-4" />
-                  Cadastrar Clientes
-                </Button>
-                
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => navigate("/clientes")}
-                >
-                  <List className="mr-2 h-4 w-4" />
-                  Listar Clientes
-                </Button>
-              </div>
-            </div>
-          </div>
 
           {/* Footer */}
           <div className="text-center">
