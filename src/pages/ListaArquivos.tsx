@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -20,15 +20,17 @@ interface ArquivoComDetalhes extends Arquivo {
 
 export default function ListaArquivos() {
   const navigate = useNavigate();
+  const { servicoId } = useParams<{ servicoId: string }>();
   const [searchTerm, setSearchTerm] = useState("");
   const [filtroCliente, setFiltroCliente] = useState<string>("todos");
   const [filtroParceiro, setFiltroParceiro] = useState<string>("todos");
-  const [filtroServico, setFiltroServico] = useState<string>("todos");
+  const [filtroServico, setFiltroServico] = useState<string>(servicoId || "todos");
   const [filtroStatus, setFiltroStatus] = useState<string>("todos");
   const [arquivos, setArquivos] = useState<ArquivoComDetalhes[]>([]);
   const [clientes, setClientes] = useState<any[]>([]);
   const [parceiros, setParceiros] = useState<any[]>([]);
   const [servicos, setServicos] = useState<any[]>([]);
+  const [nomeServico, setNomeServico] = useState<string>("");
 
   const calcularStatus = (dataVencimento: string): StatusType => {
     const hoje = new Date();
@@ -67,6 +69,11 @@ export default function ListaArquivos() {
     setParceiros(parceirosData);
     setServicos(servicosData);
 
+    if (servicoId) {
+      const servico = servicosData.find((s: any) => s.id === servicoId);
+      setNomeServico(servico?.nomeServico || "");
+    }
+
     if (storedArquivos) {
       const arquivosData: Arquivo[] = JSON.parse(storedArquivos);
       const arquivosComDetalhes: ArquivoComDetalhes[] = arquivosData.map((arquivo) => {
@@ -85,7 +92,7 @@ export default function ListaArquivos() {
       });
       setArquivos(arquivosComDetalhes);
     }
-  }, []);
+  }, [servicoId]);
 
   const arquivosFiltrados = useMemo(() => {
     return arquivos.filter((arquivo) => {
@@ -115,8 +122,28 @@ export default function ListaArquivos() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Arquivos</h1>
-          <p className="text-muted-foreground">Gerencie todos os arquivos cadastrados</p>
+          <div className="flex items-center gap-2">
+            {servicoId && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => navigate("/home/arquivos")}
+                title="Voltar para pastas"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+            )}
+            <div>
+              <h1 className="text-3xl font-bold">
+                {servicoId ? `Arquivos - ${nomeServico}` : "Arquivos"}
+              </h1>
+              <p className="text-muted-foreground">
+                {servicoId 
+                  ? `Arquivos do serviço ${nomeServico}` 
+                  : "Gerencie todos os arquivos cadastrados"}
+              </p>
+            </div>
+          </div>
         </div>
         <Button onClick={() => navigate("/home/cadastro-arquivos")}>
           <FileText className="mr-2 h-4 w-4" />

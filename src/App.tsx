@@ -15,6 +15,7 @@ import ListaServico from "./pages/ListaServico";
 import NotFound from "./pages/NotFound";
 import CadastroArquivos from "./pages/CadastroArquivo";
 import ListaArquivos from "./pages/ListaArquivos";
+import PastasArquivos from "./pages/PastasArquivos";
 
 const queryClient = new QueryClient();
 
@@ -39,7 +40,8 @@ const App = () => (
             <Route path="servicos" element={<ListaServico />} />
             <Route path="cadastro-arquivos" element={<CadastroArquivos />} />
             <Route path="cadastro-arquivos/:id" element={<CadastroArquivos />} />
-            <Route path="arquivos" element={<ListaArquivos />} />
+            <Route path="arquivos" element={<PastasArquivos />} />
+            <Route path="arquivos/:servicoId" element={<ListaArquivos />} />
           </Route>
           {/* Redirects for backwards compatibility */}
           <Route path="/cadastro-parceiros" element={<CadastroParceiros />} />
