@@ -1,5 +1,6 @@
-import { Users, List, UserPlus, Briefcase } from "lucide-react";
+import { Users, List, UserPlus, Briefcase, ArchiveX, Archive, TrendingUp } from "lucide-react";
 import { NavLink } from "react-router-dom";
+import Dashboard from '../pages/Dashboard';
 
 import {
   Sidebar,
@@ -28,6 +29,14 @@ const serviceItems = [
   { title: "Listar Serviços", url: "/home/servicos", icon: Briefcase },
 ];
 
+const cadastroArquivosItems = [
+  { title: "Cadastrar Arquivos", url: "/home/cadastro-arquivos", icon: Archive },
+];
+
+const DashboardItem = [
+  { title: "Dashboard", url: "/home", icon: TrendingUp },
+];
+
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
@@ -37,6 +46,25 @@ export function AppSidebar() {
 
   return (
     <Sidebar className={collapsed ? "w-14" : "w-64"} collapsible="icon">
+
+      <SidebarGroup>
+        <SidebarGroupLabel>Dashboard</SidebarGroupLabel>
+        <SidebarGroupContent>
+          <SidebarMenu>
+            {DashboardItem.map((item) => (
+              <SidebarMenuItem key={item.title}>
+                <SidebarMenuButton asChild>
+                  <NavLink to={item.url} end className={getNavCls}>
+                    <item.icon className="h-4 w-4" />
+                    {!collapsed && <span>{item.title}</span>}
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            ))}
+          </SidebarMenu>
+        </SidebarGroupContent>
+      </SidebarGroup>
+
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>Parceiros</SidebarGroupLabel>
@@ -91,6 +119,25 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Arquivos</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {cadastroArquivosItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild>
+                    <NavLink to={item.url} end className={getNavCls}>
+                      <item.icon className="h-4 w-4" />
+                      {!collapsed && <span>{item.title}</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
       </SidebarContent>
     </Sidebar>
   );

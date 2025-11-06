@@ -13,6 +13,7 @@ import ListaClientes from "./pages/ListaClientes";
 import CadastroServico from "./pages/CadastroServico";
 import ListaServico from "./pages/ListaServico";
 import NotFound from "./pages/NotFound";
+import CadastroArquivos from "./pages/CadastroArquivo";
 
 const queryClient = new QueryClient();
 
@@ -35,6 +36,8 @@ const App = () => (
             <Route path="cadastro-servicos" element={<CadastroServico />} />
             <Route path="cadastro-servicos/:id" element={<CadastroServico />} />
             <Route path="servicos" element={<ListaServico />} />
+            <Route path="cadastro-arquivos" element={<CadastroArquivos />} />
+            <Route path="cadastro-arquivos/:id" element={<CadastroArquivos />} />
           </Route>
           {/* Redirects for backwards compatibility */}
           <Route path="/cadastro-parceiros" element={<CadastroParceiros />} />
@@ -46,8 +49,8 @@ const App = () => (
           <Route path="/cadastro-servicos" element={<CadastroServico />} />
           <Route path="/cadastro-servicos/:id" element={<CadastroServico />} />
           <Route path="/servicos" element={<ListaServico />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
+          <Route path="/cadastro-arquivos" element={<CadastroArquivos />} />
+          <Route path="/cadastro-arquivos/:id" element={<CadastroArquivos />} />
         </Routes>
       </BrowserRouter>
     </TooltipProvider>
