@@ -1,6 +1,5 @@
 import { Users, List, UserPlus, Briefcase, ArchiveX, Archive, TrendingUp } from "lucide-react";
 import { NavLink } from "react-router-dom";
-import Dashboard from '../pages/Dashboard';
 
 import {
   Sidebar,
