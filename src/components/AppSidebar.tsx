@@ -31,6 +31,7 @@ const serviceItems = [
 
 const cadastroArquivosItems = [
   { title: "Cadastrar Arquivos", url: "/home/cadastro-arquivos", icon: Archive },
+  { title: "Listar Arquivos", url: "/home/arquivos", icon: ArchiveX },
 ];
 
 const DashboardItem = [

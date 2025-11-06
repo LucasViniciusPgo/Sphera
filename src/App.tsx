@@ -14,6 +14,7 @@ import CadastroServico from "./pages/CadastroServico";
 import ListaServico from "./pages/ListaServico";
 import NotFound from "./pages/NotFound";
 import CadastroArquivos from "./pages/CadastroArquivo";
+import ListaArquivos from "./pages/ListaArquivos";
 
 const queryClient = new QueryClient();
 
@@ -38,6 +39,7 @@ const App = () => (
             <Route path="servicos" element={<ListaServico />} />
             <Route path="cadastro-arquivos" element={<CadastroArquivos />} />
             <Route path="cadastro-arquivos/:id" element={<CadastroArquivos />} />
+            <Route path="arquivos" element={<ListaArquivos />} />
           </Route>
           {/* Redirects for backwards compatibility */}
           <Route path="/cadastro-parceiros" element={<CadastroParceiros />} />
@@ -51,6 +53,7 @@ const App = () => (
           <Route path="/servicos" element={<ListaServico />} />
           <Route path="/cadastro-arquivos" element={<CadastroArquivos />} />
           <Route path="/cadastro-arquivos/:id" element={<CadastroArquivos />} />
+          <Route path="/arquivos" element={<ListaArquivos />} />
         </Routes>
       </BrowserRouter>
     </TooltipProvider>
