@@ -1,0 +1,226 @@
+import { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+import { ArrowLeft } from "lucide-react";
+import { useNavigate, useParams } from "react-router-dom";
+
+export interface Servico {
+  id: string;
+  nomeServico: string;
+  codigo: string;
+  vencimentoDoc: string;
+  status: "ativo" | "inativo";
+}
+
+const servicoSchema = z.object({
+  nomeServico: z.string().min(1, "Nome do Serviço é obrigatório").max(100),
+  codigo: z.string().min(1, "Código do Serviço é obrigatório").max(100),
+  vencimentoDoc: z.string().min(1, "Data de Vencimento do documento é obrigatória"),
+  status: z.enum(["ativo", "inativo"])
+});
+
+type ServicoFormData = z.infer<typeof servicoSchema>;
+
+export default function CadastroServico() {
+  const { toast } = useToast();
+  const navigate = useNavigate();
+  const { id } = useParams();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const isEditing = !!id;
+
+  const form = useForm<ServicoFormData>({
+    resolver: zodResolver(servicoSchema),
+    defaultValues: {
+      nomeServico: "",
+      codigo: "",
+      vencimentoDoc: "",
+      status: "ativo",
+    },
+  });
+
+  useEffect(() => {
+    if (id) {
+      const stored = localStorage.getItem("servicos");
+      if (stored) {
+        const servicos: Servico[] = JSON.parse(stored);
+        const servico = servicos.find((p) => p.id === id);
+        if (servico) {
+          form.reset(servico);
+        }
+      }
+    }
+  }, [id, form]);
+
+  const onSubmit = async (data: ServicoFormData) => {
+    setIsSubmitting(true);
+    try {
+      const stored = localStorage.getItem("servicos");
+      const servicos: Servico[] = stored ? JSON.parse(stored) : [];
+
+      if (isEditing && id) {
+        const index = servicos.findIndex((p) => p.id === id);
+        if (index !== -1) {
+          servicos[index] = { ...data, id } as Servico;
+        }
+        toast({
+          title: "Serviço atualizado!",
+          description: "O serviço foi atualizado com sucesso.",
+        });
+      } else {
+        const newServico: Servico = {
+          ...data,
+          id: crypto.randomUUID(),
+        } as Servico;
+        servicos.push(newServico);
+        toast({
+          title: "Serviço cadastrado!",
+          description: "O serviço foi cadastrado com sucesso.",
+        });
+      }
+
+      localStorage.setItem("servicos", JSON.stringify(servicos));
+      navigate("/home/servicos");
+    } catch (error) {
+      toast({
+        title: "Erro ao salvar",
+        description: "Ocorreu um erro ao salvar o serviço. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="max-w-4xl mx-auto">
+      <Button
+        variant="ghost"
+        onClick={() => navigate("/home")}
+        className="mb-6"
+      >
+        <ArrowLeft className="mr-2 h-4 w-4" />
+        Voltar
+      </Button>
+
+      <Card className="border-border">
+        <CardHeader>
+          <CardTitle className="text-3xl">
+            {isEditing ? "Editar Serviço" : "Cadastro de Serviços"}
+          </CardTitle>
+          <CardDescription>
+            {isEditing
+              ? "Atualize os dados do serviço"
+              : "Preencha os dados do serviço para realizar o cadastro"
+            }
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              {/* Dados da Empresa */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Dados da Empresa</h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="nomeServico"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nome do Serviço *</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Nome do serviço" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="codigo"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Código do Serviço *</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Código do serviço" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="vencimentoDoc"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Vencimento do Documento *</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="status"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Status *</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione o status" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="ativo">Ativo</SelectItem>
+                            <SelectItem value="inativo">Inativo</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                </div>
+              </div>
+              <div className="flex gap-4 pt-4">
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="flex-1"
+                >
+                  {isSubmitting
+                    ? (isEditing ? "Atualizando..." : "Cadastrando...")
+                    : (isEditing ? "Atualizar Serviço" : "Cadastrar Serviço")
+                  }
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => navigate("/home/servicos")}
+                  disabled={isSubmitting}
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

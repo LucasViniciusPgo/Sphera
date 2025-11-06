@@ -10,6 +10,8 @@ import CadastroParceiros from "./pages/CadastroParceiros";
 import ListaParceiros from "./pages/ListaParceiros";
 import CadastroClientes from "./pages/CadastroClientes";
 import ListaClientes from "./pages/ListaClientes";
+import CadastroServico from "./pages/CadastroServico";
+import ListaServico from "./pages/ListaServico";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +32,9 @@ const App = () => (
             <Route path="cadastro-clientes" element={<CadastroClientes />} />
             <Route path="cadastro-clientes/:id" element={<CadastroClientes />} />
             <Route path="clientes" element={<ListaClientes />} />
+            <Route path="cadastro-servicos" element={<CadastroServico />} />
+            <Route path="cadastro-servicos/:id" element={<CadastroServico />} />
+            <Route path="servicos" element={<ListaServico />} />
           </Route>
           {/* Redirects for backwards compatibility */}
           <Route path="/cadastro-parceiros" element={<CadastroParceiros />} />
@@ -38,6 +43,9 @@ const App = () => (
           <Route path="/cadastro-clientes" element={<CadastroClientes />} />
           <Route path="/cadastro-clientes/:id" element={<CadastroClientes />} />
           <Route path="/clientes" element={<ListaClientes />} />
+          <Route path="/cadastro-servicos" element={<CadastroServico />} />
+          <Route path="/cadastro-servicos/:id" element={<CadastroServico />} />
+          <Route path="/servicos" element={<ListaServico />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

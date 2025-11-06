@@ -1,4 +1,4 @@
-import { Users, List, UserPlus } from "lucide-react";
+import { Users, List, UserPlus, Briefcase } from "lucide-react";
 import { NavLink } from "react-router-dom";
 
 import {
@@ -21,6 +21,11 @@ const parceirosItems = [
 const clientesItems = [
   { title: "Cadastrar Clientes", url: "/home/cadastro-clientes", icon: UserPlus },
   { title: "Listar Clientes", url: "/home/clientes", icon: List },
+];
+
+const serviceItems = [
+  { title: "Cadastrar Serviços", url: "/home/cadastro-servicos", icon: Briefcase },
+  { title: "Listar Serviços", url: "/home/servicos", icon: Briefcase },
 ];
 
 export function AppSidebar() {
@@ -56,6 +61,24 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {clientesItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild>
+                    <NavLink to={item.url} end className={getNavCls}>
+                      <item.icon className="h-4 w-4" />
+                      {!collapsed && <span>{item.title}</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Serviços</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {serviceItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
                     <NavLink to={item.url} end className={getNavCls}>
