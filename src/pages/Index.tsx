@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { Lock, Mail } from "lucide-react";
+import { Lock, Mail, UserPlus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const Index = () => {
@@ -94,12 +94,15 @@ const Index = () => {
 
           {/* Footer */}
           <div className="text-center">
-            <p className="text-sm text-muted-foreground">
-              Não tem uma conta?{" "}
-              <a href="#" className="text-primary hover:text-primary/80 font-medium transition-colors">
-                Cadastre-se
-              </a>
-            </p>
+            <p className="text-sm text-muted-foreground mb-3">Não tem uma conta?</p>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => navigate("/novo-usuario")}
+              className="w-full flex items-center gap-2"
+            >
+              <UserPlus className="w-4 h-4" /> Cadastrar novo usuário
+            </Button>
           </div>
         </div>
       </Card>

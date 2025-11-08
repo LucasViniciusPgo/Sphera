@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Folder, FileText } from "lucide-react";
+import { Folder, FileText, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
 
 interface Parceiro {
   id: string;
@@ -12,36 +13,40 @@ export default function PastasArquivos() {
   const navigate = useNavigate();
   const [parceiros, setParceiros] = useState<Parceiro[]>([]);
   const [arquivosPorParceiro, setArquivosPorParceiro] = useState<Record<string, number>>({});
+  const [searchTerm, setSearchTerm] = useState<string>("");
 
   useEffect(() => {
     const storedParceiros = localStorage.getItem("parceiros");
     const storedClientes = localStorage.getItem("clientes");
     const storedArquivos = localStorage.getItem("arquivos");
 
-    if (storedParceiros) {
-      const parceirosData = JSON.parse(storedParceiros);
-      setParceiros(parceirosData);
+    if (!storedParceiros) return;
+    const parceirosData: Parceiro[] = JSON.parse(storedParceiros);
+    setParceiros(parceirosData);
 
-      if (storedArquivos && storedClientes) {
-        const arquivosData = JSON.parse(storedArquivos);
-        const clientesData = JSON.parse(storedClientes);
-        const contagem: Record<string, number> = {};
-        
-        parceirosData.forEach((parceiro: Parceiro) => {
-          const clientesDoParceiro = clientesData.filter(
-            (cliente: any) => cliente.parceiroId === parceiro.id
-          );
-          const clienteIds = clientesDoParceiro.map((c: any) => c.id);
-          
-          contagem[parceiro.id] = arquivosData.filter(
-            (arquivo: any) => clienteIds.includes(arquivo.Cliente)
-          ).length;
-        });
-        
-        setArquivosPorParceiro(contagem);
-      }
+    if (storedArquivos && storedClientes) {
+      const arquivosData = JSON.parse(storedArquivos);
+      const clientesData = JSON.parse(storedClientes);
+      const contagem: Record<string, number> = {};
+
+      parceirosData.forEach((parceiro: Parceiro) => {
+        const clientesDoParceiro = clientesData.filter(
+          (cliente: any) => cliente.parceiroId === parceiro.id
+        );
+        const clienteIds = clientesDoParceiro.map((c: any) => c.id);
+        contagem[parceiro.id] = arquivosData.filter(
+          (arquivo: any) => clienteIds.includes(arquivo.Cliente)
+        ).length;
+      });
+      setArquivosPorParceiro(contagem);
     }
   }, []);
+
+  const parceirosFiltrados = useMemo(() => {
+    return parceiros.filter((p) =>
+      searchTerm === "" || p.nomeFantasia.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [parceiros, searchTerm]);
 
   const handlePastaClick = (parceiroId: string) => {
     navigate(`/home/arquivos/${parceiroId}`);
@@ -49,10 +54,30 @@ export default function PastasArquivos() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="space-y-2">
         <h1 className="text-3xl font-bold">Arquivos</h1>
         <p className="text-muted-foreground">Arquivos organizados por parceiro</p>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Busca</CardTitle>
+          <CardDescription>Localize parceiros pelo nome</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar parceiro..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {parceiros.length === 0 ? (
         <Card>
@@ -68,7 +93,7 @@ export default function PastasArquivos() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {parceiros.map((parceiro) => {
+          {parceirosFiltrados.map((parceiro) => {
             const totalArquivos = arquivosPorParceiro[parceiro.id] || 0;
             
             return (

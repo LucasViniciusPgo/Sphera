@@ -24,11 +24,12 @@ export default function ListaArquivos() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { parceiroId, clienteId } = useParams<{ parceiroId: string; clienteId: string }>();
+
+  // Filtros solicitados pelo usuário: apenas busca, serviço e status
   const [searchTerm, setSearchTerm] = useState("");
-  const [filtroCliente, setFiltroCliente] = useState<string>(clienteId || "todos");
-  const [filtroParceiro, setFiltroParceiro] = useState<string>("todos");
   const [filtroServico, setFiltroServico] = useState<string>("todos");
   const [filtroStatus, setFiltroStatus] = useState<string>("todos");
+
   const [arquivos, setArquivos] = useState<ArquivoComDetalhes[]>([]);
   const [clientes, setClientes] = useState<any[]>([]);
   const [parceiros, setParceiros] = useState<any[]>([]);
@@ -42,7 +43,6 @@ export default function ListaArquivos() {
     const vencimento = new Date(dataVencimento);
     vencimento.setHours(0, 0, 0, 0);
     const diffDays = Math.ceil((vencimento.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
-
     if (diffDays < 0) return "vencido";
     if (diffDays <= 7) return "a-vencer";
     return "dentro-prazo";
@@ -68,6 +68,7 @@ export default function ListaArquivos() {
     const clientesData = storedClientes ? JSON.parse(storedClientes) : [];
     const parceirosData = storedParceiros ? JSON.parse(storedParceiros) : [];
     const servicosData = storedServicos ? JSON.parse(storedServicos) : [];
+    const arquivosData: Arquivo[] = storedArquivos ? JSON.parse(storedArquivos) : [];
 
     setClientes(clientesData);
     setParceiros(parceirosData);
@@ -76,31 +77,26 @@ export default function ListaArquivos() {
     if (clienteId) {
       const cliente = clientesData.find((c: any) => c.id === clienteId);
       setNomeCliente(cliente?.nomeFantasia || "");
-      
       if (cliente && parceiroId) {
         const parceiro = parceirosData.find((p: any) => p.id === parceiroId);
         setNomeParceiro(parceiro?.nomeFantasia || "");
       }
     }
 
-    if (storedArquivos) {
-      const arquivosData: Arquivo[] = JSON.parse(storedArquivos);
-      const arquivosComDetalhes: ArquivoComDetalhes[] = arquivosData.map((arquivo) => {
-        const cliente = clientesData.find((c: any) => c.id === arquivo.Cliente);
-        const parceiro = cliente ? parceirosData.find((p: any) => p.id === cliente.parceiroId) : null;
-        const servico = servicosData.find((s: any) => s.id === arquivo.Servico);
-        const status = calcularStatus(arquivo.DataVencimento);
-
-        return {
-          ...arquivo,
-          nomeCliente: cliente?.nomeFantasia || "Cliente não encontrado",
-          nomeParceiro: parceiro?.nomeFantasia || "Parceiro não encontrado",
-          nomeServico: servico?.nomeServico || "Serviço não encontrado",
-          status,
-        };
-      });
-      setArquivos(arquivosComDetalhes);
-    }
+    const arquivosComDetalhes: ArquivoComDetalhes[] = arquivosData.map((arquivo) => {
+      const cliente = clientesData.find((c: any) => c.id === arquivo.Cliente);
+      const parceiro = cliente ? parceirosData.find((p: any) => p.id === cliente.parceiroId) : null;
+      const servico = servicosData.find((s: any) => s.id === arquivo.Servico);
+      const status = calcularStatus(arquivo.DataVencimento);
+      return {
+        ...arquivo,
+        nomeCliente: cliente?.nomeFantasia || "Cliente não encontrado",
+        nomeParceiro: parceiro?.nomeFantasia || "Parceiro não encontrado",
+        nomeServico: servico?.nomeServico || "Serviço não encontrado",
+        status,
+      };
+    });
+    setArquivos(arquivosComDetalhes);
   }, [clienteId, parceiroId]);
 
   const arquivosFiltrados = useMemo(() => {
@@ -112,23 +108,18 @@ export default function ListaArquivos() {
         arquivo.nomeParceiro.toLowerCase().includes(searchTerm.toLowerCase()) ||
         arquivo.nomeServico.toLowerCase().includes(searchTerm.toLowerCase()) ||
         arquivo.Resposavel.toLowerCase().includes(searchTerm.toLowerCase());
-
-      const matchCliente = filtroCliente === "todos" || arquivo.Cliente === filtroCliente;
-      const matchParceiro = filtroParceiro === "todos" || 
-        clientes.find(c => c.id === arquivo.Cliente)?.parceiroId === filtroParceiro;
       const matchServico = filtroServico === "todos" || arquivo.Servico === filtroServico;
       const matchStatus = filtroStatus === "todos" || arquivo.status === filtroStatus;
-
-      return matchSearch && matchCliente && matchParceiro && matchServico && matchStatus;
+      return matchSearch && matchServico && matchStatus;
     });
-  }, [arquivos, searchTerm, filtroCliente, filtroParceiro, filtroServico, filtroStatus, clientes]);
+  }, [arquivos, searchTerm, filtroServico, filtroStatus]);
 
   const handleEdit = (id: string) => {
     navigate(`/home/cadastro-arquivos/${id}`);
   };
 
   const handleDelete = (arquivoId: string) => {
-    const updatedArquivos = arquivos.filter(a => a.id !== arquivoId);
+    const updatedArquivos = arquivos.filter((a) => a.id !== arquivoId);
     const storedArquivos = JSON.parse(localStorage.getItem("arquivos") || "[]");
     const filteredStored = storedArquivos.filter((a: any) => a.id !== arquivoId);
     localStorage.setItem("arquivos", JSON.stringify(filteredStored));
@@ -142,31 +133,27 @@ export default function ListaArquivos() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            {clienteId && parceiroId && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => navigate(`/home/arquivos/${parceiroId}`)}
-                title="Voltar para clientes"
-              >
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-            )}
-            <div>
-              <h1 className="text-3xl font-bold">
-                {clienteId ? `Arquivos - ${nomeCliente}` : "Arquivos"}
-              </h1>
-              <p className="text-muted-foreground">
-                {clienteId 
-                  ? `Arquivos do cliente ${nomeCliente} (${nomeParceiro})` 
-                  : "Gerencie todos os arquivos cadastrados"}
-              </p>
-            </div>
+        <div className="flex items-center gap-2">
+          {clienteId && parceiroId && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate(`/home/arquivos/${parceiroId}`)}
+              title="Voltar para clientes"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          )}
+          <div>
+            <h1 className="text-3xl font-bold">
+              {clienteId ? `Arquivos - ${nomeCliente}` : "Arquivos"}
+            </h1>
+            <p className="text-muted-foreground">
+              {clienteId && nomeParceiro ? `Parceiro: ${nomeParceiro}` : "Lista completa de arquivos"}
+            </p>
           </div>
         </div>
-        <Button onClick={() => navigate("/home/cadastro-arquivos")}>
+        <Button onClick={() => navigate("/home/cadastro-arquivos")}> 
           <FileText className="mr-2 h-4 w-4" />
           Novo Arquivo
         </Button>
@@ -175,48 +162,19 @@ export default function ListaArquivos() {
       <Card>
         <CardHeader>
           <CardTitle>Filtros</CardTitle>
-          <CardDescription>Filtre os arquivos por diferentes critérios</CardDescription>
+          <CardDescription>Busque e filtre por serviço ou status</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="relative">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar arquivos..."
+                placeholder="Buscar..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-9"
               />
             </div>
-
-            <Select value={filtroParceiro} onValueChange={setFiltroParceiro}>
-              <SelectTrigger>
-                <SelectValue placeholder="Todos os Parceiros" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todos os Parceiros</SelectItem>
-                {parceiros.map((parceiro) => (
-                  <SelectItem key={parceiro.id} value={parceiro.id}>
-                    {parceiro.nomeFantasia}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={filtroCliente} onValueChange={setFiltroCliente}>
-              <SelectTrigger>
-                <SelectValue placeholder="Todos os Clientes" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todos os Clientes</SelectItem>
-                {clientes.map((cliente) => (
-                  <SelectItem key={cliente.id} value={cliente.id}>
-                    {cliente.nomeFantasia}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
             <Select value={filtroServico} onValueChange={setFiltroServico}>
               <SelectTrigger>
                 <SelectValue placeholder="Todos os Serviços" />
@@ -230,7 +188,6 @@ export default function ListaArquivos() {
                 ))}
               </SelectContent>
             </Select>
-
             <Select value={filtroStatus} onValueChange={setFiltroStatus}>
               <SelectTrigger>
                 <SelectValue placeholder="Todos os Status" />
@@ -248,97 +205,77 @@ export default function ListaArquivos() {
 
       <Card>
         <CardHeader>
-          <CardTitle>
-            Lista de Arquivos
-            <span className="ml-2 text-muted-foreground font-normal text-base">
-              ({arquivosFiltrados.length} {arquivosFiltrados.length === 1 ? "arquivo" : "arquivos"})
-            </span>
-          </CardTitle>
+          <CardTitle>Arquivos Cadastrados</CardTitle>
+          <CardDescription>Lista de arquivos armazenados</CardDescription>
         </CardHeader>
         <CardContent>
-          {arquivosFiltrados.length === 0 ? (
-            <div className="text-center py-12">
-              <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
-              <h3 className="mt-4 text-lg font-semibold">Nenhum arquivo encontrado</h3>
-              <p className="text-muted-foreground mt-2">
-                {arquivos.length === 0
-                  ? "Comece cadastrando seu primeiro arquivo."
-                  : "Tente ajustar os filtros de busca."}
-              </p>
-            </div>
-          ) : (
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nome do Arquivo</TableHead>
-                    <TableHead>Parceiro</TableHead>
-                    <TableHead>Cliente</TableHead>
-                    <TableHead>Serviço</TableHead>
-                    <TableHead>Responsável</TableHead>
-                    <TableHead>Data Vencimento</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {arquivosFiltrados.map((arquivo) => {
-                    const statusConfig = getStatusConfig(arquivo.status);
-                    return (
-                      <TableRow key={arquivo.id}>
-                        <TableCell className="font-medium">{arquivo.NomeArquivo}</TableCell>
-                        <TableCell>{arquivo.nomeParceiro}</TableCell>
-                        <TableCell>{arquivo.nomeCliente}</TableCell>
-                        <TableCell>{arquivo.nomeServico}</TableCell>
-                        <TableCell>{arquivo.Resposavel}</TableCell>
-                        <TableCell>
-                          {new Date(arquivo.DataVencimento).toLocaleDateString("pt-BR")}
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={statusConfig.className}>
-                            {statusConfig.label}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex gap-2 justify-end">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleEdit(arquivo.id)}
-                              title="Editar arquivo"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button variant="ghost" size="icon" title="Excluir arquivo">
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Tem certeza que deseja excluir o arquivo "{arquivo.NomeArquivo}"? Esta ação não pode ser desfeita.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                  <AlertDialogAction onClick={() => handleDelete(arquivo.id)}>
-                                    Excluir
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          )}
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nome</TableHead>
+                  <TableHead>Parceiro</TableHead>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>Serviço</TableHead>
+                  <TableHead>Responsável</TableHead>
+                  <TableHead>Data Vencimento</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {arquivosFiltrados.map((arquivo) => {
+                  const statusConfig = getStatusConfig(arquivo.status);
+                  return (
+                    <TableRow key={arquivo.id}>
+                      <TableCell className="font-medium">{arquivo.NomeArquivo}</TableCell>
+                      <TableCell>{arquivo.nomeParceiro}</TableCell>
+                      <TableCell>{arquivo.nomeCliente}</TableCell>
+                      <TableCell>{arquivo.nomeServico}</TableCell>
+                      <TableCell>{arquivo.Resposavel}</TableCell>
+                      <TableCell>{new Date(arquivo.DataVencimento).toLocaleDateString("pt-BR")}</TableCell>
+                      <TableCell>
+                        <Badge className={statusConfig.className}>{statusConfig.label}</Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex gap-2 justify-end">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEdit(arquivo.id)}
+                            title="Editar arquivo"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="icon" title="Excluir arquivo">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Tem certeza que deseja excluir o arquivo "{arquivo.NomeArquivo}"? Esta ação não pode ser desfeita.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDelete(arquivo.id)}>
+                                  Excluir
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </div>

@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Folder, FileText, ArrowLeft } from "lucide-react";
+import { Folder, FileText, ArrowLeft, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 interface Cliente {
   id: string;
@@ -16,6 +17,7 @@ export default function PastasClientes() {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [arquivosPorCliente, setArquivosPorCliente] = useState<Record<string, number>>({});
   const [nomeParceiro, setNomeParceiro] = useState<string>("");
+  const [searchTerm, setSearchTerm] = useState<string>("");
 
   useEffect(() => {
     const storedClientes = localStorage.getItem("clientes");
@@ -38,17 +40,23 @@ export default function PastasClientes() {
       if (storedArquivos) {
         const arquivosData = JSON.parse(storedArquivos);
         const contagem: Record<string, number> = {};
-        
+
         clientesDoParceiro.forEach((cliente: Cliente) => {
           contagem[cliente.id] = arquivosData.filter(
             (arquivo: any) => arquivo.Cliente === cliente.id
           ).length;
         });
-        
+
         setArquivosPorCliente(contagem);
       }
     }
   }, [parceiroId]);
+
+  const clientesFiltrados = useMemo(() => {
+    return clientes.filter((c) =>
+      searchTerm === "" || c.nomeFantasia.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [clientes, searchTerm]);
 
   const handlePastaClick = (clienteId: string) => {
     navigate(`/home/arquivos/${parceiroId}/${clienteId}`);
@@ -71,6 +79,26 @@ export default function PastasClientes() {
         </div>
       </div>
 
+      <Card>
+        <CardHeader>
+          <CardTitle>Busca</CardTitle>
+          <CardDescription>Localize parceiros pelo nome</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar cliente..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {clientes.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
@@ -84,7 +112,7 @@ export default function PastasClientes() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {clientes.map((cliente) => (
-            <Card 
+            <Card
               key={cliente.id}
               className="cursor-pointer hover:bg-accent transition-colors"
               onClick={() => handlePastaClick(cliente.id)}

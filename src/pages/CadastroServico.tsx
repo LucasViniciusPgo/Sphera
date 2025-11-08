@@ -15,14 +15,16 @@ export interface Servico {
   id: string;
   nomeServico: string;
   codigo: string;
-  vencimentoDoc: string;
+  // Agora armazenamos número de dias de validade do documento
+  vencimentoDoc: number; // dias
   status: "ativo" | "inativo";
 }
 
 const servicoSchema = z.object({
   nomeServico: z.string().min(1, "Nome do Serviço é obrigatório").max(100),
   codigo: z.string().min(1, "Código do Serviço é obrigatório").max(100),
-  vencimentoDoc: z.string().min(1, "Data de Vencimento do documento é obrigatória"),
+  // número de dias para o documento vencer após a emissão
+  vencimentoDoc: z.coerce.number().int().positive("Informe dias > 0"),
   status: z.enum(["ativo", "inativo"])
 });
 
@@ -40,7 +42,7 @@ export default function CadastroServico() {
     defaultValues: {
       nomeServico: "",
       codigo: "",
-      vencimentoDoc: "",
+      vencimentoDoc: 0,
       status: "ativo",
     },
   });
@@ -49,7 +51,8 @@ export default function CadastroServico() {
     if (id) {
       const stored = localStorage.getItem("servicos");
       if (stored) {
-        const servicos: Servico[] = JSON.parse(stored);
+        const servicosRaw = JSON.parse(stored);
+        const servicos: Servico[] = servicosRaw.map((s: any) => ({ ...s, vencimentoDoc: Number(s.vencimentoDoc) }));
         const servico = servicos.find((p) => p.id === id);
         if (servico) {
           form.reset(servico);
@@ -76,6 +79,7 @@ export default function CadastroServico() {
       } else {
         const newServico: Servico = {
           ...data,
+          vencimentoDoc: Number(data.vencimentoDoc),
           id: crypto.randomUUID(),
         } as Servico;
         servicos.push(newServico);
@@ -159,14 +163,23 @@ export default function CadastroServico() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 
+              
                   <FormField
                     control={form.control}
                     name="vencimentoDoc"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Vencimento do Documento *</FormLabel>
+                        <FormLabel>Prazo de Vencimento (dias) *</FormLabel>
                         <FormControl>
-                          <Input type="date" {...field} />
+                          <Input
+                            type="number"
+                            placeholder="Ex: 30"
+                            min={1}
+                            {...field}
+                            value={field.value ?? ''}
+                            onChange={(e) => field.onChange(e.target.value === '' ? '' : Number(e.target.value))}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

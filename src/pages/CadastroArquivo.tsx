@@ -44,6 +44,8 @@ export default function CadastroArquivo() {
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [clientes, setClientes] = useState<any[]>([]);
     const [servicos, setServicos] = useState<any[]>([]);
+    const [editingArquivo, setEditingArquivo] = useState<Arquivo | null>(null);
+    // Removido vínculo automático entre serviço e data de vencimento
     const isEditing = !!id;
 
     const form = useForm<ArquivoFormData>({
@@ -59,31 +61,31 @@ export default function CadastroArquivo() {
         },
     });
 
+    // Primeiro efeito: carrega listas e guarda arquivo bruto
     useEffect(() => {
-        // Carregar clientes e serviços
         const clientesData = localStorage.getItem("clientes");
         const servicosData = localStorage.getItem("servicos");
-
-        if (clientesData) {
-            setClientes(JSON.parse(clientesData));
-        }
-
+        if (clientesData) setClientes(JSON.parse(clientesData));
         if (servicosData) {
-            setServicos(JSON.parse(servicosData));
+            const parsed = JSON.parse(servicosData).map((s: any) => ({ ...s, vencimentoDoc: Number(s.vencimentoDoc) }));
+            setServicos(parsed);
         }
-
-        // Carregar dados para edição
         if (id) {
             const stored = localStorage.getItem("arquivos");
             if (stored) {
                 const arquivos: Arquivo[] = JSON.parse(stored);
-                const arquivo = arquivos.find((a) => a.id === id);
-                if (arquivo) {
-                    form.reset(arquivo);
-                }
+                const arquivo = arquivos.find((a) => a.id === id) || null;
+                setEditingArquivo(arquivo);
             }
         }
-    }, [id, form]);
+    }, [id]);
+
+    // Segundo efeito: somente reseta quando listas já carregadas para garantir selects preenchidos
+    useEffect(() => {
+        if (editingArquivo && clientes.length > 0 && servicos.length > 0) {
+            form.reset(editingArquivo);
+        }
+    }, [editingArquivo, clientes, servicos, form]);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];

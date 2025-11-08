@@ -13,7 +13,7 @@ export type Servico = {
     id: string;
     nomeServico: string;
     codigo: string;
-    vencimentoDoc: string;
+    vencimentoDoc: number | string;
     status: "ativo" | "inativo";
 };
 
@@ -22,7 +22,6 @@ export default function ListaServicos() {
     const { toast } = useToast();
     const [servicos, setServicos] = useState<Servico[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
-    const [dateFilter, setDateFilter] = useState("");
 
     useEffect(() => {
         loadServicos();
@@ -31,7 +30,11 @@ export default function ListaServicos() {
     const loadServicos = () => {
         const stored = localStorage.getItem("servicos");
         if (stored) {
-            setServicos(JSON.parse(stored));
+            const parsed = JSON.parse(stored).map((s: any) => ({
+                ...s,
+                vencimentoDoc: isNaN(Number(s.vencimentoDoc)) ? s.vencimentoDoc : Number(s.vencimentoDoc)
+            }));
+            setServicos(parsed);
         }
     };
 
@@ -46,14 +49,20 @@ export default function ListaServicos() {
     };
 
     const filteredServicos = servicos.filter((servico) => {
-        const matchesSearch = servico.nomeServico.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            servico.codigo.toLowerCase().includes(searchTerm.toLowerCase());
-        
-        const matchesDate = dateFilter ? 
-            new Date(servico.vencimentoDoc).toISOString().split('T')[0] === dateFilter : 
-            true;
-        
-        return matchesSearch && matchesDate;
+        const term = searchTerm.trim().toLowerCase();
+        if (term === "") return true;
+        const nomeMatch = servico.nomeServico.toLowerCase().includes(term);
+        const codigoMatch = servico.codigo.toLowerCase().includes(term);
+        let prazoMatch = false;
+        if (typeof servico.vencimentoDoc === 'number') {
+            prazoMatch = String(servico.vencimentoDoc).includes(term);
+        } else {
+            // data antiga: permitir busca por partes da data locale ou ISO
+            const iso = new Date(servico.vencimentoDoc).toISOString().split('T')[0];
+            const locale = new Date(servico.vencimentoDoc).toLocaleDateString('pt-BR');
+            prazoMatch = iso.includes(term) || locale.toLowerCase().includes(term);
+        }
+        return nomeMatch || codigoMatch || prazoMatch;
     });
 
     return (
@@ -82,46 +91,26 @@ export default function ListaServicos() {
                 </CardHeader>
                 <CardContent>
                     <div className="mb-6 space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
                             <div className="relative">
                                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                 <Input
-                                    placeholder="Buscar por nome ou código..."
+                                    placeholder="Buscar por nome, código ou dias..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     className="pl-10"
                                 />
                             </div>
-                            <div>
-                                <Input
-                                    type="date"
-                                    placeholder="Filtrar por data de vencimento"
-                                    value={dateFilter}
-                                    onChange={(e) => setDateFilter(e.target.value)}
-                                />
-                            </div>
                         </div>
-                        {(searchTerm || dateFilter) && (
+                        {searchTerm && (
                             <div className="flex gap-2 text-sm text-muted-foreground">
-                                <span>Filtros ativos:</span>
-                                {searchTerm && (
-                                    <span className="bg-secondary px-2 py-1 rounded">
-                                        Busca: "{searchTerm}"
-                                    </span>
-                                )}
-                                {dateFilter && (
-                                    <span className="bg-secondary px-2 py-1 rounded">
-                                        Data: {new Date(dateFilter).toLocaleDateString("pt-BR")}
-                                    </span>
-                                )}
+                                <span>Filtro ativo:</span>
+                                <span className="bg-secondary px-2 py-1 rounded">Busca: "{searchTerm}"</span>
                                 <button 
-                                    onClick={() => {
-                                        setSearchTerm("");
-                                        setDateFilter("");
-                                    }}
+                                    onClick={() => setSearchTerm("")}
                                     className="text-primary hover:underline ml-2"
                                 >
-                                    Limpar filtros
+                                    Limpar
                                 </button>
                             </div>
                         )}
@@ -138,7 +127,7 @@ export default function ListaServicos() {
                                     <TableRow>
                                         <TableHead>Nome do Serviço</TableHead>
                                         <TableHead>Código</TableHead>
-                                        <TableHead>Vencimento do Documento</TableHead>
+                                        <TableHead>Vencimento / Prazo</TableHead>
                                         <TableHead>Status</TableHead>
                                         <TableHead className="text-right">Ações</TableHead>
                                     </TableRow>
@@ -149,7 +138,9 @@ export default function ListaServicos() {
                                             <TableCell className="font-medium">{servico.nomeServico}</TableCell>
                                             <TableCell>{servico.codigo}</TableCell>
                                             <TableCell>
-                                                {new Date(servico.vencimentoDoc).toLocaleDateString("pt-BR")}
+                                                {typeof servico.vencimentoDoc === 'number'
+                                                    ? `${servico.vencimentoDoc} dia${servico.vencimentoDoc === 1 ? '' : 's'}`
+                                                    : new Date(servico.vencimentoDoc).toLocaleDateString("pt-BR")}
                                             </TableCell>
                                             <TableCell>
                                                 <Badge variant={servico.status === "ativo" ? "default" : "secondary"}>

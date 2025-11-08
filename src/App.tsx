@@ -14,6 +14,7 @@ import CadastroServico from "./pages/CadastroServico";
 import ListaServico from "./pages/ListaServico";
 import NotFound from "./pages/NotFound";
 import CadastroArquivos from "./pages/CadastroArquivo";
+import NovoUsuario from "./pages/NovoUsuario";
 import ListaArquivos from "./pages/ListaArquivos";
 import PastasArquivos from "./pages/PastasArquivos";
 import PastasClientes from "./pages/PastasClientes";
@@ -56,6 +57,7 @@ const App = () => (
           <Route path="/cadastro-servicos/:id" element={<CadastroServico />} />
           <Route path="/servicos" element={<ListaServico />} />
           <Route path="/cadastro-arquivos" element={<CadastroArquivos />} />
+          <Route path="/novo-usuario" element={<NovoUsuario />} />
           <Route path="/cadastro-arquivos/:id" element={<CadastroArquivos />} />
           <Route path="/arquivos" element={<ListaArquivos />} />
         </Routes>
