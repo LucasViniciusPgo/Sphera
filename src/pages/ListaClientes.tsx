@@ -4,11 +4,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, Edit, UserPlus } from "lucide-react";
+import { Search, Edit, UserPlus, Trash2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
 import type { Cliente } from "./CadastroClientes";
 
 const ListaClientes = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [parceiros, setParceiros] = useState<any[]>([]);
@@ -28,6 +31,16 @@ const ListaClientes = () => {
 
   const getParceiro = (parceiroId: string) => {
     return parceiros.find((p) => p.id === parceiroId);
+  };
+
+  const handleDelete = (clienteId: string) => {
+    const updatedClientes = clientes.filter(c => c.id !== clienteId);
+    localStorage.setItem("clientes", JSON.stringify(updatedClientes));
+    setClientes(updatedClientes);
+    toast({
+      title: "Cliente excluído",
+      description: "O cliente foi excluído com sucesso.",
+    });
   };
 
   const filteredClientes = clientes.filter((cliente) =>
@@ -92,13 +105,36 @@ const ListaClientes = () => {
                         <TableCell>{cliente.cnpj}</TableCell>
                         <TableCell>{parceiro?.nomeFantasia || "Parceiro não encontrado"}</TableCell>
                         <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => navigate(`/home/cadastro-clientes/${cliente.id}`)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
+                          <div className="flex gap-2 justify-end">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => navigate(`/home/cadastro-clientes/${cliente.id}`)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="sm">
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Tem certeza que deseja excluir o cliente "{cliente.nomeFantasia}"? Esta ação não pode ser desfeita.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => handleDelete(cliente.id)}>
+                                    Excluir
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
                         </TableCell>
                       </TableRow>
                     );

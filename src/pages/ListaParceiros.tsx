@@ -5,7 +5,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Search, Edit, Plus } from "lucide-react";
+import { ArrowLeft, Search, Edit, Plus, Trash2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
 
 export type Parceiro = {
   id: string;
@@ -24,6 +26,7 @@ export type Parceiro = {
 
 export default function ListaParceiros() {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [parceiros, setParceiros] = useState<Parceiro[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -36,6 +39,29 @@ export default function ListaParceiros() {
     if (stored) {
       setParceiros(JSON.parse(stored));
     }
+  };
+
+  const handleDelete = (parceiroId: string) => {
+    // Verificar se existem clientes vinculados
+    const clientes = JSON.parse(localStorage.getItem("clientes") || "[]");
+    const clientesVinculados = clientes.filter((c: any) => c.parceiroId === parceiroId);
+    
+    if (clientesVinculados.length > 0) {
+      toast({
+        title: "Não é possível excluir",
+        description: `Este parceiro possui ${clientesVinculados.length} cliente(s) vinculado(s). Remova os vínculos antes de excluir.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const updatedParceiros = parceiros.filter(p => p.id !== parceiroId);
+    localStorage.setItem("parceiros", JSON.stringify(updatedParceiros));
+    setParceiros(updatedParceiros);
+    toast({
+      title: "Parceiro excluído",
+      description: "O parceiro foi excluído com sucesso.",
+    });
   };
 
   const filteredParceiros = parceiros.filter((parceiro) =>
@@ -113,13 +139,36 @@ export default function ListaParceiros() {
                           {new Date(parceiro.dataVencimento).toLocaleDateString("pt-BR")}
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => navigate(`/home/cadastro-parceiros/${parceiro.id}`)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
+                          <div className="flex gap-2 justify-end">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => navigate(`/home/cadastro-parceiros/${parceiro.id}`)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="sm">
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Tem certeza que deseja excluir o parceiro "{parceiro.nomeFantasia}"? Esta ação não pode ser desfeita.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => handleDelete(parceiro.id)}>
+                                    Excluir
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}

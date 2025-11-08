@@ -6,7 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FileText, Search, Edit, ArrowLeft } from "lucide-react";
+import { FileText, Search, Edit, ArrowLeft, Trash2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
 import { Arquivo } from "./CadastroArquivo";
 
 type StatusType = "vencido" | "a-vencer" | "dentro-prazo";
@@ -20,6 +22,7 @@ interface ArquivoComDetalhes extends Arquivo {
 
 export default function ListaArquivos() {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const { servicoId } = useParams<{ servicoId: string }>();
   const [searchTerm, setSearchTerm] = useState("");
   const [filtroCliente, setFiltroCliente] = useState<string>("todos");
@@ -116,6 +119,18 @@ export default function ListaArquivos() {
 
   const handleEdit = (id: string) => {
     navigate(`/home/cadastro-arquivos/${id}`);
+  };
+
+  const handleDelete = (arquivoId: string) => {
+    const updatedArquivos = arquivos.filter(a => a.id !== arquivoId);
+    const storedArquivos = JSON.parse(localStorage.getItem("arquivos") || "[]");
+    const filteredStored = storedArquivos.filter((a: any) => a.id !== arquivoId);
+    localStorage.setItem("arquivos", JSON.stringify(filteredStored));
+    setArquivos(updatedArquivos);
+    toast({
+      title: "Arquivo excluído",
+      description: "O arquivo foi excluído com sucesso.",
+    });
   };
 
   return (
@@ -279,14 +294,37 @@ export default function ListaArquivos() {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleEdit(arquivo.id)}
-                            title="Editar arquivo"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
+                          <div className="flex gap-2 justify-end">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEdit(arquivo.id)}
+                              title="Editar arquivo"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="icon" title="Excluir arquivo">
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Tem certeza que deseja excluir o arquivo "{arquivo.NomeArquivo}"? Esta ação não pode ser desfeita.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => handleDelete(arquivo.id)}>
+                                    Excluir
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
                         </TableCell>
                       </TableRow>
                     );

@@ -5,7 +5,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Search, Edit, Plus } from "lucide-react";
+import { ArrowLeft, Search, Edit, Plus, Trash2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
 
 export type Servico = {
     id: string;
@@ -17,6 +19,7 @@ export type Servico = {
 
 export default function ListaServicos() {
     const navigate = useNavigate();
+    const { toast } = useToast();
     const [servicos, setServicos] = useState<Servico[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
     const [dateFilter, setDateFilter] = useState("");
@@ -30,6 +33,16 @@ export default function ListaServicos() {
         if (stored) {
             setServicos(JSON.parse(stored));
         }
+    };
+
+    const handleDelete = (servicoId: string) => {
+        const updatedServicos = servicos.filter(s => s.id !== servicoId);
+        localStorage.setItem("servicos", JSON.stringify(updatedServicos));
+        setServicos(updatedServicos);
+        toast({
+            title: "Serviço excluído",
+            description: "O serviço foi excluído com sucesso.",
+        });
     };
 
     const filteredServicos = servicos.filter((servico) => {
@@ -144,13 +157,36 @@ export default function ListaServicos() {
                                                 </Badge>
                                             </TableCell>
                                             <TableCell className="text-right">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => navigate(`/home/cadastro-servicos/${servico.id}`)}
-                                                >
-                                                    <Edit className="h-4 w-4" />
-                                                </Button>
+                                                <div className="flex gap-2 justify-end">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => navigate(`/home/cadastro-servicos/${servico.id}`)}
+                                                    >
+                                                        <Edit className="h-4 w-4" />
+                                                    </Button>
+                                                    <AlertDialog>
+                                                        <AlertDialogTrigger asChild>
+                                                            <Button variant="ghost" size="sm">
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        </AlertDialogTrigger>
+                                                        <AlertDialogContent>
+                                                            <AlertDialogHeader>
+                                                                <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                                                                <AlertDialogDescription>
+                                                                    Tem certeza que deseja excluir o serviço "{servico.nomeServico}"? Esta ação não pode ser desfeita.
+                                                                </AlertDialogDescription>
+                                                            </AlertDialogHeader>
+                                                            <AlertDialogFooter>
+                                                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                                                <AlertDialogAction onClick={() => handleDelete(servico.id)}>
+                                                                    Excluir
+                                                                </AlertDialogAction>
+                                                            </AlertDialogFooter>
+                                                        </AlertDialogContent>
+                                                    </AlertDialog>
+                                                </div>
                                             </TableCell>
                                         </TableRow>
                                     ))}
