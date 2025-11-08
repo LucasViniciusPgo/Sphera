@@ -23,17 +23,18 @@ interface ArquivoComDetalhes extends Arquivo {
 export default function ListaArquivos() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { servicoId } = useParams<{ servicoId: string }>();
+  const { parceiroId, clienteId } = useParams<{ parceiroId: string; clienteId: string }>();
   const [searchTerm, setSearchTerm] = useState("");
-  const [filtroCliente, setFiltroCliente] = useState<string>("todos");
+  const [filtroCliente, setFiltroCliente] = useState<string>(clienteId || "todos");
   const [filtroParceiro, setFiltroParceiro] = useState<string>("todos");
-  const [filtroServico, setFiltroServico] = useState<string>(servicoId || "todos");
+  const [filtroServico, setFiltroServico] = useState<string>("todos");
   const [filtroStatus, setFiltroStatus] = useState<string>("todos");
   const [arquivos, setArquivos] = useState<ArquivoComDetalhes[]>([]);
   const [clientes, setClientes] = useState<any[]>([]);
   const [parceiros, setParceiros] = useState<any[]>([]);
   const [servicos, setServicos] = useState<any[]>([]);
-  const [nomeServico, setNomeServico] = useState<string>("");
+  const [nomeCliente, setNomeCliente] = useState<string>("");
+  const [nomeParceiro, setNomeParceiro] = useState<string>("");
 
   const calcularStatus = (dataVencimento: string): StatusType => {
     const hoje = new Date();
@@ -72,9 +73,14 @@ export default function ListaArquivos() {
     setParceiros(parceirosData);
     setServicos(servicosData);
 
-    if (servicoId) {
-      const servico = servicosData.find((s: any) => s.id === servicoId);
-      setNomeServico(servico?.nomeServico || "");
+    if (clienteId) {
+      const cliente = clientesData.find((c: any) => c.id === clienteId);
+      setNomeCliente(cliente?.nomeFantasia || "");
+      
+      if (cliente && parceiroId) {
+        const parceiro = parceirosData.find((p: any) => p.id === parceiroId);
+        setNomeParceiro(parceiro?.nomeFantasia || "");
+      }
     }
 
     if (storedArquivos) {
@@ -95,7 +101,7 @@ export default function ListaArquivos() {
       });
       setArquivos(arquivosComDetalhes);
     }
-  }, [servicoId]);
+  }, [clienteId, parceiroId]);
 
   const arquivosFiltrados = useMemo(() => {
     return arquivos.filter((arquivo) => {
@@ -138,23 +144,23 @@ export default function ListaArquivos() {
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-2">
-            {servicoId && (
+            {clienteId && parceiroId && (
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => navigate("/home/arquivos")}
-                title="Voltar para pastas"
+                onClick={() => navigate(`/home/arquivos/${parceiroId}`)}
+                title="Voltar para clientes"
               >
                 <ArrowLeft className="h-4 w-4" />
               </Button>
             )}
             <div>
               <h1 className="text-3xl font-bold">
-                {servicoId ? `Arquivos - ${nomeServico}` : "Arquivos"}
+                {clienteId ? `Arquivos - ${nomeCliente}` : "Arquivos"}
               </h1>
               <p className="text-muted-foreground">
-                {servicoId 
-                  ? `Arquivos do serviço ${nomeServico}` 
+                {clienteId 
+                  ? `Arquivos do cliente ${nomeCliente} (${nomeParceiro})` 
                   : "Gerencie todos os arquivos cadastrados"}
               </p>
             </div>

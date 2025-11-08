@@ -3,72 +3,82 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Folder, FileText } from "lucide-react";
 
-interface Servico {
+interface Parceiro {
   id: string;
-  nomeServico: string;
+  nomeFantasia: string;
 }
 
 export default function PastasArquivos() {
   const navigate = useNavigate();
-  const [servicos, setServicos] = useState<Servico[]>([]);
-  const [arquivosPorServico, setArquivosPorServico] = useState<Record<string, number>>({});
+  const [parceiros, setParceiros] = useState<Parceiro[]>([]);
+  const [arquivosPorParceiro, setArquivosPorParceiro] = useState<Record<string, number>>({});
 
   useEffect(() => {
-    const storedServicos = localStorage.getItem("servicos");
+    const storedParceiros = localStorage.getItem("parceiros");
+    const storedClientes = localStorage.getItem("clientes");
     const storedArquivos = localStorage.getItem("arquivos");
 
-    if (storedServicos) {
-      setServicos(JSON.parse(storedServicos));
-    }
+    if (storedParceiros) {
+      const parceirosData = JSON.parse(storedParceiros);
+      setParceiros(parceirosData);
 
-    if (storedArquivos) {
-      const arquivos = JSON.parse(storedArquivos);
-      const contagem: Record<string, number> = {};
-      
-      arquivos.forEach((arquivo: any) => {
-        contagem[arquivo.Servico] = (contagem[arquivo.Servico] || 0) + 1;
-      });
-      
-      setArquivosPorServico(contagem);
+      if (storedArquivos && storedClientes) {
+        const arquivosData = JSON.parse(storedArquivos);
+        const clientesData = JSON.parse(storedClientes);
+        const contagem: Record<string, number> = {};
+        
+        parceirosData.forEach((parceiro: Parceiro) => {
+          const clientesDoParceiro = clientesData.filter(
+            (cliente: any) => cliente.parceiroId === parceiro.id
+          );
+          const clienteIds = clientesDoParceiro.map((c: any) => c.id);
+          
+          contagem[parceiro.id] = arquivosData.filter(
+            (arquivo: any) => clienteIds.includes(arquivo.Cliente)
+          ).length;
+        });
+        
+        setArquivosPorParceiro(contagem);
+      }
     }
   }, []);
 
-  const handlePastaClick = (servicoId: string) => {
-    navigate(`/home/arquivos/${servicoId}`);
+  const handlePastaClick = (parceiroId: string) => {
+    navigate(`/home/arquivos/${parceiroId}`);
   };
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Arquivos por Serviço</h1>
-        <p className="text-muted-foreground">Selecione um serviço para visualizar seus arquivos</p>
+        <h1 className="text-3xl font-bold">Arquivos</h1>
+        <p className="text-muted-foreground">Arquivos organizados por parceiro</p>
       </div>
 
-      {servicos.length === 0 ? (
+      {parceiros.length === 0 ? (
         <Card>
           <CardContent className="pt-6">
             <div className="text-center py-12">
               <Folder className="mx-auto h-12 w-12 text-muted-foreground" />
-              <h3 className="mt-4 text-lg font-semibold">Nenhum serviço encontrado</h3>
+              <h3 className="mt-4 text-lg font-semibold">Nenhum parceiro encontrado</h3>
               <p className="text-muted-foreground mt-2">
-                Cadastre serviços para organizar seus arquivos.
+                Cadastre parceiros para organizar seus arquivos.
               </p>
             </div>
           </CardContent>
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {servicos.map((servico) => {
-            const totalArquivos = arquivosPorServico[servico.id] || 0;
+          {parceiros.map((parceiro) => {
+            const totalArquivos = arquivosPorParceiro[parceiro.id] || 0;
             
             return (
               <Card
-                key={servico.id}
+                key={parceiro.id}
                 className="cursor-pointer hover:shadow-lg transition-shadow"
-                onClick={() => handlePastaClick(servico.id)}
+                onClick={() => handlePastaClick(parceiro.id)}
               >
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-lg font-medium">{servico.nomeServico}</CardTitle>
+                  <CardTitle className="text-lg font-medium">{parceiro.nomeFantasia}</CardTitle>
                   <Folder className="h-8 w-8 text-primary" />
                 </CardHeader>
                 <CardContent>
