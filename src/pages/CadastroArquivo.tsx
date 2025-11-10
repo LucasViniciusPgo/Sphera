@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Upload, FileText } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
+import { getCurrentUser } from "@/hooks/useCurrentUser";
 
 export interface Arquivo {
     id: string;
@@ -22,6 +23,12 @@ export interface Arquivo {
     DataVencimento: string;
     Observacao?: string;
     arquivo?: File;
+    parceiroId?: string;
+    clienteId?: string;
+    createdBy: string;
+    createdAt: string;
+    updatedBy: string;
+    updatedAt: string;
 }
 
 const arquivoSchema = z.object({
@@ -119,7 +126,15 @@ export default function CadastroArquivo() {
             if (isEditing && id) {
                 const index = arquivos.findIndex((a) => a.id === id);
                 if (index !== -1) {
-                    arquivos[index] = { ...data, id } as Arquivo;
+                    const existing = arquivos[index];
+                    arquivos[index] = { 
+                        ...data, 
+                        id,
+                        createdBy: existing.createdBy,
+                        createdAt: existing.createdAt,
+                        updatedBy: getCurrentUser(),
+                        updatedAt: new Date().toISOString()
+                    } as Arquivo;
                 }
                 toast({
                     title: "Arquivo atualizado!",
@@ -136,6 +151,10 @@ export default function CadastroArquivo() {
                     DataVencimento: data.DataVencimento,
                     Observacao: data.Observacao || "",
                     arquivo: selectedFile || undefined,
+                    createdBy: getCurrentUser(),
+                    createdAt: new Date().toISOString(),
+                    updatedBy: getCurrentUser(),
+                    updatedAt: new Date().toISOString()
                 };
                 arquivos.push(newArquivo);
                 toast({

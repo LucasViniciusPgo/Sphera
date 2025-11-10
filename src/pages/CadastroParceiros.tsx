@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import type { Parceiro } from "./ListaParceiros";
+import { getCurrentUser } from "@/hooks/useCurrentUser";
 
 const parceiroSchema = z.object({
   nomeFantasia: z.string().min(1, "Nome Fantasia é obrigatório").max(100),
@@ -74,7 +75,15 @@ export default function CadastroParceiros() {
       if (isEditing && id) {
         const index = parceiros.findIndex((p) => p.id === id);
         if (index !== -1) {
-          parceiros[index] = { ...data, id } as Parceiro;
+          const existing = parceiros[index];
+          parceiros[index] = { 
+            ...data, 
+            id,
+            createdBy: existing.createdBy,
+            createdAt: existing.createdAt,
+            updatedBy: getCurrentUser(),
+            updatedAt: new Date().toISOString()
+          } as Parceiro;
         }
         toast({
           title: "Parceiro atualizado!",
@@ -84,6 +93,10 @@ export default function CadastroParceiros() {
         const newParceiro: Parceiro = {
           ...data,
           id: crypto.randomUUID(),
+          createdBy: getCurrentUser(),
+          createdAt: new Date().toISOString(),
+          updatedBy: getCurrentUser(),
+          updatedAt: new Date().toISOString()
         } as Parceiro;
         parceiros.push(newParceiro);
         toast({

@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft } from "lucide-react";
+import { getCurrentUser } from "@/hooks/useCurrentUser";
 
 export interface Cliente {
   id: string;
@@ -25,6 +26,10 @@ export interface Cliente {
   status: "ativo" | "inativo";
   dataVencimento: string;
   parceiroId: string;
+  createdBy: string;
+  createdAt: string;
+  updatedBy: string;
+  updatedAt: string;
 }
 
 const clienteSchema = z.object({
@@ -93,7 +98,15 @@ const CadastroClientes = () => {
       if (isEditing && id) {
         const index = clientes.findIndex((c) => c.id === id);
         if (index !== -1) {
-          clientes[index] = { ...data, id } as Cliente;
+          const existing = clientes[index];
+          clientes[index] = { 
+            ...data, 
+            id,
+            createdBy: existing.createdBy,
+            createdAt: existing.createdAt,
+            updatedBy: getCurrentUser(),
+            updatedAt: new Date().toISOString()
+          } as Cliente;
         }
         toast({
           title: "Cliente atualizado!",
@@ -103,6 +116,10 @@ const CadastroClientes = () => {
         const newCliente: Cliente = {
           ...data,
           id: crypto.randomUUID(),
+          createdBy: getCurrentUser(),
+          createdAt: new Date().toISOString(),
+          updatedBy: getCurrentUser(),
+          updatedAt: new Date().toISOString()
         } as Cliente;
         clientes.push(newCliente);
         toast({

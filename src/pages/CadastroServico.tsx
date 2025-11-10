@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
+import { getCurrentUser } from "@/hooks/useCurrentUser";
 
 export interface Servico {
   id: string;
@@ -18,6 +19,10 @@ export interface Servico {
   // Número de dias de validade do documento (agora opcional). Null indica sem prazo definido.
   vencimentoDoc: number | null; // dias ou null
   status: "ativo" | "inativo";
+  createdBy: string;
+  createdAt: string;
+  updatedBy: string;
+  updatedAt: string;
 }
 
 // Campo vencimentoDoc agora opcional. Pode ser deixado em branco para "sem prazo".
@@ -87,7 +92,15 @@ export default function CadastroServico() {
       if (isEditing && id) {
         const index = servicos.findIndex((p) => p.id === id);
         if (index !== -1) {
-          servicos[index] = { ...data, id } as Servico;
+          const existing = servicos[index];
+          servicos[index] = { 
+            ...data, 
+            id,
+            createdBy: existing.createdBy,
+            createdAt: existing.createdAt,
+            updatedBy: getCurrentUser(),
+            updatedAt: new Date().toISOString()
+          } as Servico;
         }
         toast({
           title: "Serviço atualizado!",
@@ -98,6 +111,10 @@ export default function CadastroServico() {
           ...data,
           vencimentoDoc: data.vencimentoDoc === null ? null : Number(data.vencimentoDoc),
           id: crypto.randomUUID(),
+          createdBy: getCurrentUser(),
+          createdAt: new Date().toISOString(),
+          updatedBy: getCurrentUser(),
+          updatedAt: new Date().toISOString()
         } as Servico;
         servicos.push(newServico);
         toast({

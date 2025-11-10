@@ -22,6 +22,10 @@ export type Parceiro = {
   telefoneResponsavel: string;
   status: "ativo" | "inativo";
   dataVencimento: string;
+  createdBy: string;
+  createdAt: string;
+  updatedBy: string;
+  updatedAt: string;
 };
 
 export default function ListaParceiros() {
