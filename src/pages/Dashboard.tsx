@@ -6,9 +6,6 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 
 interface AuditLog {
   id: string;
@@ -21,20 +18,12 @@ interface AuditLog {
 }
 
 const Dashboard = () => {
-  const { currentUser, updateCurrentUser } = useCurrentUser();
+  const { currentUser } = useCurrentUser();
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [filteredLogs, setFilteredLogs] = useState<AuditLog[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterAction, setFilterAction] = useState<string>("all");
   const [filterEntity, setFilterEntity] = useState<string>("all");
-  const [showUserDialog, setShowUserDialog] = useState(false);
-  const [tempUsername, setTempUsername] = useState("");
-
-  useEffect(() => {
-    if (!currentUser) {
-      setShowUserDialog(true);
-    }
-  }, [currentUser]);
 
   useEffect(() => {
     const logs: AuditLog[] = [];
@@ -225,14 +214,6 @@ const Dashboard = () => {
     });
   };
 
-  const handleSaveUsername = () => {
-    if (tempUsername.trim()) {
-      updateCurrentUser(tempUsername.trim());
-      setShowUserDialog(false);
-      setTempUsername("");
-    }
-  };
-
   return (
     <div className="space-y-6">
       <div>
@@ -242,14 +223,7 @@ const Dashboard = () => {
         </p>
         {currentUser && (
           <p className="text-sm text-muted-foreground mt-1">
-            Usuário atual: <span className="font-medium">{currentUser}</span>
-            {" "}
-            <button
-              onClick={() => setShowUserDialog(true)}
-              className="text-primary hover:underline"
-            >
-              (alterar)
-            </button>
+            Usuário logado: <span className="font-medium">{currentUser}</span>
           </p>
         )}
       </div>
@@ -352,39 +326,6 @@ const Dashboard = () => {
           </div>
         </CardContent>
       </Card>
-
-      {/* Dialog para definir usuário */}
-      <Dialog open={showUserDialog} onOpenChange={setShowUserDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Definir Usuário</DialogTitle>
-            <DialogDescription>
-              Digite seu nome para identificar suas ações no sistema
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="username">Nome do Usuário</Label>
-              <Input
-                id="username"
-                placeholder="Digite seu nome"
-                value={tempUsername}
-                onChange={(e) => setTempUsername(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    handleSaveUsername();
-                  }
-                }}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button onClick={handleSaveUsername} disabled={!tempUsername.trim()}>
-              Salvar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };

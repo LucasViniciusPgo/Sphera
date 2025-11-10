@@ -10,6 +10,15 @@ export const useCurrentUser = () => {
     setCurrentUser(username);
   };
 
+  useEffect(() => {
+    // Atualiza o estado se o localStorage mudar
+    const handleStorageChange = () => {
+      setCurrentUser(localStorage.getItem("currentUser") || "");
+    };
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, []);
+
   return { currentUser, updateCurrentUser };
 };
 

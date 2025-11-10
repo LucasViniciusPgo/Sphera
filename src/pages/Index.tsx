@@ -14,6 +14,10 @@ const Index = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     console.log("Login attempt:", { email, password });
+    // Salva o email do usuário logado
+    if (email) {
+      localStorage.setItem("currentUser", email);
+    }
     navigate("/home");
   };
 
