@@ -15,16 +15,23 @@ export interface Servico {
   id: string;
   nomeServico: string;
   codigo: string;
-  // Agora armazenamos número de dias de validade do documento
-  vencimentoDoc: number; // dias
+  // Número de dias de validade do documento (agora opcional). Null indica sem prazo definido.
+  vencimentoDoc: number | null; // dias ou null
   status: "ativo" | "inativo";
 }
 
+// Campo vencimentoDoc agora opcional. Pode ser deixado em branco para "sem prazo".
 const servicoSchema = z.object({
   nomeServico: z.string().min(1, "Nome do Serviço é obrigatório").max(100),
   codigo: z.string().min(1, "Código do Serviço é obrigatório").max(100),
-  // número de dias para o documento vencer após a emissão
-  vencimentoDoc: z.coerce.number().int().positive("Informe dias > 0"),
+  vencimentoDoc: z
+    .string()
+    .optional()
+    .refine(
+      (val) => val === undefined || val === "" || (!isNaN(Number(val)) && Number(val) > 0),
+      "Informe dias > 0 ou deixe em branco"
+    )
+    .transform((val) => (val === undefined || val === "" ? null : Number(val))),
   status: z.enum(["ativo", "inativo"])
 });
 
@@ -42,7 +49,7 @@ export default function CadastroServico() {
     defaultValues: {
       nomeServico: "",
       codigo: "",
-      vencimentoDoc: 0,
+      vencimentoDoc: null,
       status: "ativo",
     },
   });
@@ -52,7 +59,17 @@ export default function CadastroServico() {
       const stored = localStorage.getItem("servicos");
       if (stored) {
         const servicosRaw = JSON.parse(stored);
-        const servicos: Servico[] = servicosRaw.map((s: any) => ({ ...s, vencimentoDoc: Number(s.vencimentoDoc) }));
+        const servicos: Servico[] = servicosRaw.map((s: any) => {
+          const raw = s.vencimentoDoc;
+          let venc: number | null;
+          if (raw === null || raw === undefined || raw === "") {
+            venc = null;
+          } else {
+            const num = Number(raw);
+            venc = isNaN(num) ? null : num;
+          }
+          return { ...s, vencimentoDoc: venc };
+        });
         const servico = servicos.find((p) => p.id === id);
         if (servico) {
           form.reset(servico);
@@ -79,7 +96,7 @@ export default function CadastroServico() {
       } else {
         const newServico: Servico = {
           ...data,
-          vencimentoDoc: Number(data.vencimentoDoc),
+          vencimentoDoc: data.vencimentoDoc === null ? null : Number(data.vencimentoDoc),
           id: crypto.randomUUID(),
         } as Servico;
         servicos.push(newServico);
@@ -170,15 +187,17 @@ export default function CadastroServico() {
                     name="vencimentoDoc"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Prazo de Vencimento (dias) *</FormLabel>
+                        <FormLabel>Prazo de Vencimento (dias) (opcional)</FormLabel>
                         <FormControl>
                           <Input
                             type="number"
-                            placeholder="Ex: 30"
+                            placeholder="Deixe em branco se não houver prazo"
                             min={1}
-                            {...field}
-                            value={field.value ?? ''}
-                            onChange={(e) => field.onChange(e.target.value === '' ? '' : Number(e.target.value))}
+                            value={field.value === null ? '' : field.value}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              field.onChange(val === '' ? '' : val);
+                            }}
                           />
                         </FormControl>
                         <FormMessage />

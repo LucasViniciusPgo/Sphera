@@ -165,40 +165,62 @@ export default function ListaArquivos() {
           <CardDescription>Busque e filtre por serviço ou status</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9"
-              />
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por nome, cliente, parceiro, serviço ou responsável..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <Select value={filtroServico} onValueChange={setFiltroServico}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Todos os Serviços" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos os Serviços</SelectItem>
+                  {servicos.map((servico) => (
+                    <SelectItem key={servico.id} value={servico.id}>
+                      {servico.nomeServico}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={filtroStatus} onValueChange={setFiltroStatus}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Todos os Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos os Status</SelectItem>
+                  <SelectItem value="vencido">Vencido</SelectItem>
+                  <SelectItem value="a-vencer">A Vencer</SelectItem>
+                  <SelectItem value="dentro-prazo">Dentro do Prazo</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <Select value={filtroServico} onValueChange={setFiltroServico}>
-              <SelectTrigger>
-                <SelectValue placeholder="Todos os Serviços" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todos os Serviços</SelectItem>
-                {servicos.map((servico) => (
-                  <SelectItem key={servico.id} value={servico.id}>
-                    {servico.nomeServico}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={filtroStatus} onValueChange={setFiltroStatus}>
-              <SelectTrigger>
-                <SelectValue placeholder="Todos os Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todos os Status</SelectItem>
-                <SelectItem value="vencido">Vencido</SelectItem>
-                <SelectItem value="a-vencer">A Vencer</SelectItem>
-                <SelectItem value="dentro-prazo">Dentro do Prazo</SelectItem>
-              </SelectContent>
-            </Select>
+            {(searchTerm || filtroServico !== 'todos' || filtroStatus !== 'todos') && (
+              <div className="flex flex-wrap gap-2 text-sm text-muted-foreground items-center">
+                <span>Filtro ativo:</span>
+                {searchTerm && (
+                  <span className="bg-secondary px-2 py-1 rounded">Busca: "{searchTerm}"</span>
+                )}
+                {filtroServico !== 'todos' && (
+                  <span className="bg-secondary px-2 py-1 rounded">Serviço: {servicos.find(s => s.id === filtroServico)?.nomeServico || filtroServico}</span>
+                )}
+                {filtroStatus !== 'todos' && (
+                  <span className="bg-secondary px-2 py-1 rounded">Status: {getStatusConfig(filtroStatus as StatusType)?.label}</span>
+                )}
+                <button
+                  onClick={() => { setSearchTerm(''); setFiltroServico('todos'); setFiltroStatus('todos'); }}
+                  className="text-primary hover:underline ml-2"
+                >
+                  Limpar
+                </button>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

@@ -13,7 +13,8 @@ export type Servico = {
     id: string;
     nomeServico: string;
     codigo: string;
-    vencimentoDoc: number | string;
+    // Pode ser número de dias, string (legado data antiga) ou null (sem prazo)
+    vencimentoDoc: number | string | null;
     status: "ativo" | "inativo";
 };
 
@@ -30,10 +31,18 @@ export default function ListaServicos() {
     const loadServicos = () => {
         const stored = localStorage.getItem("servicos");
         if (stored) {
-            const parsed = JSON.parse(stored).map((s: any) => ({
-                ...s,
-                vencimentoDoc: isNaN(Number(s.vencimentoDoc)) ? s.vencimentoDoc : Number(s.vencimentoDoc)
-            }));
+            const parsed = JSON.parse(stored).map((s: any) => {
+                const raw = s.vencimentoDoc;
+                let venc: number | string | null;
+                if (raw === null || raw === undefined || raw === "") {
+                    venc = null;
+                } else if (!isNaN(Number(raw))) {
+                    venc = Number(raw);
+                } else {
+                    venc = raw; // manter data string legado
+                }
+                return { ...s, vencimentoDoc: venc };
+            });
             setServicos(parsed);
         }
     };
@@ -56,11 +65,16 @@ export default function ListaServicos() {
         let prazoMatch = false;
         if (typeof servico.vencimentoDoc === 'number') {
             prazoMatch = String(servico.vencimentoDoc).includes(term);
+        } else if (servico.vencimentoDoc === null) {
+            prazoMatch = 'sem prazo'.includes(term); // permitir buscar "sem"
         } else {
             // data antiga: permitir busca por partes da data locale ou ISO
-            const iso = new Date(servico.vencimentoDoc).toISOString().split('T')[0];
-            const locale = new Date(servico.vencimentoDoc).toLocaleDateString('pt-BR');
-            prazoMatch = iso.includes(term) || locale.toLowerCase().includes(term);
+            const dateObj = new Date(servico.vencimentoDoc);
+            if (!isNaN(dateObj.getTime())) {
+                const iso = dateObj.toISOString().split('T')[0];
+                const locale = dateObj.toLocaleDateString('pt-BR');
+                prazoMatch = iso.includes(term) || locale.toLowerCase().includes(term);
+            }
         }
         return nomeMatch || codigoMatch || prazoMatch;
     });
@@ -138,9 +152,11 @@ export default function ListaServicos() {
                                             <TableCell className="font-medium">{servico.nomeServico}</TableCell>
                                             <TableCell>{servico.codigo}</TableCell>
                                             <TableCell>
-                                                {typeof servico.vencimentoDoc === 'number'
-                                                    ? `${servico.vencimentoDoc} dia${servico.vencimentoDoc === 1 ? '' : 's'}`
-                                                    : new Date(servico.vencimentoDoc).toLocaleDateString("pt-BR")}
+                                                {servico.vencimentoDoc === null
+                                                    ? 'Sem prazo'
+                                                    : typeof servico.vencimentoDoc === 'number'
+                                                        ? `${servico.vencimentoDoc} dia${servico.vencimentoDoc === 1 ? '' : 's'}`
+                                                        : new Date(servico.vencimentoDoc).toLocaleDateString("pt-BR")}
                                             </TableCell>
                                             <TableCell>
                                                 <Badge variant={servico.status === "ativo" ? "default" : "secondary"}>

@@ -56,33 +56,6 @@ const Index = () => {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="password" className="text-foreground">
-                Senha
-              </Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 bg-input border-border text-foreground placeholder:text-muted-foreground focus:ring-primary focus:border-primary transition-all"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end">
-              <a
-                href="#"
-                className="text-sm text-primary hover:text-primary/80 transition-colors"
-              >
-                Esqueceu a senha?
-              </a>
-            </div>
-
             <Button
               type="submit"
               className="w-full bg-gradient-to-r from-primary to-secondary hover:opacity-90 text-primary-foreground font-semibold py-6 shadow-lg hover:shadow-xl transition-all duration-300"

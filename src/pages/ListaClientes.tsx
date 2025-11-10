@@ -65,38 +65,50 @@ const ListaClientes = () => {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="mb-6">
-            <div className="relative">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Pesquisar por nome fantasia, razão social, CNPJ ou parceiro..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
+          <div className="mb-6 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por nome, razão social, CNPJ ou parceiro..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
             </div>
+            {searchTerm && (
+              <div className="flex gap-2 text-sm text-muted-foreground">
+                <span>Filtro ativo:</span>
+                <span className="bg-secondary px-2 py-1 rounded">Busca: "{searchTerm}"</span>
+                <button
+                  onClick={() => setSearchTerm("")}
+                  className="text-primary hover:underline ml-2"
+                >
+                  Limpar
+                </button>
+              </div>
+            )}
           </div>
 
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nome Fantasia</TableHead>
-                  <TableHead>Razão Social</TableHead>
-                  <TableHead>CNPJ</TableHead>
-                  <TableHead>Parceiro Vinculado</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredClientes.length === 0 ? (
+          {filteredClientes.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground border rounded-md">
+              {searchTerm ? "Nenhum cliente encontrado." : "Nenhum cliente cadastrado ainda."}
+            </div>
+          ) : (
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground">
-                      Nenhum cliente encontrado
-                    </TableCell>
+                    <TableHead>Nome Fantasia</TableHead>
+                    <TableHead>Razão Social</TableHead>
+                    <TableHead>CNPJ</TableHead>
+                    <TableHead>Parceiro Vinculado</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
-                ) : (
-                  filteredClientes.map((cliente) => {
+                </TableHeader>
+                <TableBody>
+                  {filteredClientes.map((cliente) => {
                     const parceiro = getParceiro(cliente.parceiroId);
                     return (
                       <TableRow key={cliente.id}>
@@ -138,11 +150,11 @@ const ListaClientes = () => {
                         </TableCell>
                       </TableRow>
                     );
-                  })
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
   );
