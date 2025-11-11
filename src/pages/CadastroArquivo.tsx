@@ -127,20 +127,36 @@ export default function CadastroArquivo() {
                 const index = arquivos.findIndex((a) => a.id === id);
                 if (index !== -1) {
                     const existing = arquivos[index];
+                    const updatedAt = new Date().toISOString();
                     arquivos[index] = { 
                         ...data, 
                         id,
                         createdBy: existing.createdBy,
                         createdAt: existing.createdAt,
                         updatedBy: getCurrentUser(),
-                        updatedAt: new Date().toISOString()
+                        updatedAt
                     } as Arquivo;
+
+                    // Audit log update (upload semantics kept separate)
+                    const auditLogs = JSON.parse(localStorage.getItem("auditLogs") || "[]");
+                    const updateLog = {
+                        id: `${id}-update-${updatedAt}`,
+                        action: "update",
+                        entityType: "arquivo",
+                        entityName: data.NomeArquivo,
+                        entityId: id,
+                        user: getCurrentUser(),
+                        timestamp: updatedAt,
+                    };
+                    auditLogs.push(updateLog);
+                    localStorage.setItem("auditLogs", JSON.stringify(auditLogs));
                 }
                 toast({
                     title: "Arquivo atualizado!",
                     description: "O arquivo foi atualizado com sucesso.",
                 });
             } else {
+                const createdAt = new Date().toISOString();
                 const newArquivo: Arquivo = {
                     id: crypto.randomUUID(),
                     NomeArquivo: data.NomeArquivo,
@@ -152,11 +168,27 @@ export default function CadastroArquivo() {
                     Observacao: data.Observacao || "",
                     arquivo: selectedFile || undefined,
                     createdBy: getCurrentUser(),
-                    createdAt: new Date().toISOString(),
+                    createdAt,
                     updatedBy: getCurrentUser(),
-                    updatedAt: new Date().toISOString()
+                    updatedAt: createdAt
                 };
                 arquivos.push(newArquivo);
+
+                // Audit log upload (treat as creation for arquivo)
+                const auditLogs = JSON.parse(localStorage.getItem("auditLogs") || "[]");
+                if (!auditLogs.find((l: any) => l.id === `${newArquivo.id}-upload`)) {
+                    const uploadLog = {
+                        id: `${newArquivo.id}-upload`,
+                        action: "upload",
+                        entityType: "arquivo",
+                        entityName: newArquivo.NomeArquivo,
+                        entityId: newArquivo.id,
+                        user: getCurrentUser(),
+                        timestamp: createdAt,
+                    };
+                    auditLogs.push(uploadLog);
+                    localStorage.setItem("auditLogs", JSON.stringify(auditLogs));
+                }
                 toast({
                     title: "Arquivo cadastrado!",
                     description: "O arquivo foi cadastrado com sucesso.",

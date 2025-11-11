@@ -8,6 +8,7 @@ import { Search, Edit, UserPlus, Trash2 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import type { Cliente } from "./CadastroClientes";
+import { getCurrentUser } from "@/hooks/useCurrentUser";
 
 const ListaClientes = () => {
   const navigate = useNavigate();
@@ -34,9 +35,28 @@ const ListaClientes = () => {
   };
 
   const handleDelete = (clienteId: string) => {
+    const cliente = clientes.find(c => c.id === clienteId);
     const updatedClientes = clientes.filter(c => c.id !== clienteId);
     localStorage.setItem("clientes", JSON.stringify(updatedClientes));
     setClientes(updatedClientes);
+
+    // Audit log delete
+    if (cliente) {
+      const timestamp = new Date().toISOString();
+      const deleteLog = {
+        id: `${clienteId}-delete-${timestamp}`,
+        action: "delete",
+        entityType: "cliente",
+        entityName: cliente.nomeFantasia,
+        entityId: clienteId,
+        user: getCurrentUser(),
+        timestamp,
+      };
+      const auditLogs = JSON.parse(localStorage.getItem("auditLogs") || "[]");
+      auditLogs.push(deleteLog);
+      localStorage.setItem("auditLogs", JSON.stringify(auditLogs));
+    }
+
     toast({
       title: "Cliente excluído",
       description: "O cliente foi excluído com sucesso.",

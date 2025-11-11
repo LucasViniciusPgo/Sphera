@@ -9,15 +9,17 @@ import { useNavigate } from "react-router-dom";
 const Index = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Login attempt:", { email, password });
-    // Salva o email do usuário logado
-    if (email) {
-      localStorage.setItem("currentUser", email);
+    const usuarios = JSON.parse(localStorage.getItem("usuarios") || "[]");
+    const existe = usuarios.find((u: any) => u.email === email);
+    if (!existe) {
+      // Redirecionar para primeiro acesso com email
+      navigate(`/primeiro-acesso?email=${encodeURIComponent(email)}`);
+      return;
     }
+    localStorage.setItem("currentUser", email);
     navigate("/home");
   };
 
@@ -37,7 +39,7 @@ const Index = () => {
               <Lock className="w-8 h-8 text-primary-foreground" />
             </div>
             <h1 className="text-3xl font-bold text-foreground">Bem-vindo</h1>
-            <p className="text-muted-foreground">Entre com suas credenciais</p>
+            <p className="text-muted-foreground">Entre com suas credenciais ou faça o primeiro acesso</p>
           </div>
 
           {/* Form */}

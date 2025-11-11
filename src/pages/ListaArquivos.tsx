@@ -10,6 +10,7 @@ import { FileText, Search, Edit, ArrowLeft, Trash2 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Arquivo } from "./CadastroArquivo";
+import { getCurrentUser } from "@/hooks/useCurrentUser";
 
 type StatusType = "vencido" | "a-vencer" | "dentro-prazo";
 
@@ -119,11 +120,29 @@ export default function ListaArquivos() {
   };
 
   const handleDelete = (arquivoId: string) => {
+    const arquivo = arquivos.find(a => a.id === arquivoId);
     const updatedArquivos = arquivos.filter((a) => a.id !== arquivoId);
     const storedArquivos = JSON.parse(localStorage.getItem("arquivos") || "[]");
     const filteredStored = storedArquivos.filter((a: any) => a.id !== arquivoId);
     localStorage.setItem("arquivos", JSON.stringify(filteredStored));
     setArquivos(updatedArquivos);
+
+    if (arquivo) {
+      const timestamp = new Date().toISOString();
+      const deleteLog = {
+        id: `${arquivoId}-delete-${timestamp}`,
+        action: "delete",
+        entityType: "arquivo",
+        entityName: arquivo.NomeArquivo,
+        entityId: arquivoId,
+        user: getCurrentUser(),
+        timestamp,
+      };
+      const auditLogs = JSON.parse(localStorage.getItem("auditLogs") || "[]");
+      auditLogs.push(deleteLog);
+      localStorage.setItem("auditLogs", JSON.stringify(auditLogs));
+    }
+
     toast({
       title: "Arquivo excluído",
       description: "O arquivo foi excluído com sucesso.",

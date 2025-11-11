@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Search, Edit, Plus, Trash2 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { getCurrentUser } from "@/hooks/useCurrentUser";
 
 export type Servico = {
     id: string;
@@ -48,9 +49,27 @@ export default function ListaServicos() {
     };
 
     const handleDelete = (servicoId: string) => {
+        const servico = servicos.find(s => s.id === servicoId);
         const updatedServicos = servicos.filter(s => s.id !== servicoId);
         localStorage.setItem("servicos", JSON.stringify(updatedServicos));
         setServicos(updatedServicos);
+
+        if (servico) {
+            const timestamp = new Date().toISOString();
+            const deleteLog = {
+                id: `${servicoId}-delete-${timestamp}`,
+                action: "delete",
+                entityType: "servico",
+                entityName: servico.nomeServico,
+                entityId: servicoId,
+                user: getCurrentUser(),
+                timestamp,
+            };
+            const auditLogs = JSON.parse(localStorage.getItem("auditLogs") || "[]");
+            auditLogs.push(deleteLog);
+            localStorage.setItem("auditLogs", JSON.stringify(auditLogs));
+        }
+
         toast({
             title: "Serviço excluído",
             description: "O serviço foi excluído com sucesso.",

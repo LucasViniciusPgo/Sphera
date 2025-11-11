@@ -93,30 +93,62 @@ export default function CadastroServico() {
         const index = servicos.findIndex((p) => p.id === id);
         if (index !== -1) {
           const existing = servicos[index];
+          const updatedAt = new Date().toISOString();
           servicos[index] = { 
             ...data, 
             id,
             createdBy: existing.createdBy,
             createdAt: existing.createdAt,
             updatedBy: getCurrentUser(),
-            updatedAt: new Date().toISOString()
+            updatedAt
           } as Servico;
+
+          // Audit log update
+          const auditLogs = JSON.parse(localStorage.getItem("auditLogs") || "[]");
+          const updateLog = {
+            id: `${id}-update-${updatedAt}`,
+            action: "update",
+            entityType: "servico",
+            entityName: data.nomeServico,
+            entityId: id,
+            user: getCurrentUser(),
+            timestamp: updatedAt,
+          };
+          auditLogs.push(updateLog);
+          localStorage.setItem("auditLogs", JSON.stringify(auditLogs));
         }
         toast({
           title: "Serviço atualizado!",
           description: "O serviço foi atualizado com sucesso.",
         });
       } else {
+        const createdAt = new Date().toISOString();
         const newServico: Servico = {
           ...data,
           vencimentoDoc: data.vencimentoDoc === null ? null : Number(data.vencimentoDoc),
           id: crypto.randomUUID(),
           createdBy: getCurrentUser(),
-          createdAt: new Date().toISOString(),
+          createdAt,
           updatedBy: getCurrentUser(),
-          updatedAt: new Date().toISOString()
+          updatedAt: createdAt
         } as Servico;
         servicos.push(newServico);
+
+        // Audit log create
+        const auditLogs = JSON.parse(localStorage.getItem("auditLogs") || "[]");
+        if (!auditLogs.find((l: any) => l.id === `${newServico.id}-create`)) {
+          const createLog = {
+            id: `${newServico.id}-create`,
+            action: "create",
+            entityType: "servico",
+            entityName: newServico.nomeServico,
+            entityId: newServico.id,
+            user: getCurrentUser(),
+            timestamp: createdAt,
+          };
+          auditLogs.push(createLog);
+          localStorage.setItem("auditLogs", JSON.stringify(auditLogs));
+        }
         toast({
           title: "Serviço cadastrado!",
           description: "O serviço foi cadastrado com sucesso.",

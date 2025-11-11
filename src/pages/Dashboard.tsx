@@ -136,9 +136,31 @@ const Dashboard = () => {
       }
     });
 
+    // Backfill: garantir que create/update atuais existam em auditLogs persistidos
+    const existingPersisted: AuditLog[] = JSON.parse(localStorage.getItem("auditLogs") || "[]");
+    const existingIds = new Set(existingPersisted.map(l => l.id));
+    const toPersist: AuditLog[] = [];
+    for (const l of logs) {
+      if ((l.action === 'create' || l.action === 'update') && !existingIds.has(l.id)) {
+        toPersist.push(l);
+      }
+    }
+    if (toPersist.length) {
+      const updated = [...existingPersisted, ...toPersist];
+      localStorage.setItem("auditLogs", JSON.stringify(updated));
+      existingPersisted.push(...toPersist);
+    }
+
+    // Carregar logs persistidos (exclusões e qualquer outro já salvo)
+    for (const pl of existingPersisted) {
+      if (!logs.find(l => l.id === pl.id)) {
+        logs.push(pl);
+      }
+    }
+
     // Ordenar por timestamp decrescente
     logs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-    
+
     setAuditLogs(logs);
     setFilteredLogs(logs);
   }, []);

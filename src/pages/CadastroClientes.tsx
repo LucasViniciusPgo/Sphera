@@ -99,29 +99,61 @@ const CadastroClientes = () => {
         const index = clientes.findIndex((c) => c.id === id);
         if (index !== -1) {
           const existing = clientes[index];
+          const updatedAt = new Date().toISOString();
           clientes[index] = { 
             ...data, 
             id,
             createdBy: existing.createdBy,
             createdAt: existing.createdAt,
             updatedBy: getCurrentUser(),
-            updatedAt: new Date().toISOString()
+            updatedAt
           } as Cliente;
+
+          // Audit log update
+          const auditLogs = JSON.parse(localStorage.getItem("auditLogs") || "[]");
+          const updateLog = {
+            id: `${id}-update-${updatedAt}`,
+            action: "update",
+            entityType: "cliente",
+            entityName: data.nomeFantasia,
+            entityId: id,
+            user: getCurrentUser(),
+            timestamp: updatedAt,
+          };
+          auditLogs.push(updateLog);
+          localStorage.setItem("auditLogs", JSON.stringify(auditLogs));
         }
         toast({
           title: "Cliente atualizado!",
           description: "O cliente foi atualizado com sucesso.",
         });
       } else {
+        const createdAt = new Date().toISOString();
         const newCliente: Cliente = {
           ...data,
           id: crypto.randomUUID(),
           createdBy: getCurrentUser(),
-          createdAt: new Date().toISOString(),
+          createdAt,
           updatedBy: getCurrentUser(),
-          updatedAt: new Date().toISOString()
+          updatedAt: createdAt
         } as Cliente;
         clientes.push(newCliente);
+
+        // Audit log create
+        const auditLogs = JSON.parse(localStorage.getItem("auditLogs") || "[]");
+        if (!auditLogs.find((l: any) => l.id === `${newCliente.id}-create`)) {
+          const createLog = {
+            id: `${newCliente.id}-create`,
+            action: "create",
+            entityType: "cliente",
+            entityName: newCliente.nomeFantasia,
+            entityId: newCliente.id,
+            user: getCurrentUser(),
+            timestamp: createdAt,
+          };
+          auditLogs.push(createLog);
+          localStorage.setItem("auditLogs", JSON.stringify(auditLogs));
+        }
         toast({
           title: "Cliente cadastrado!",
           description: "O cliente foi cadastrado com sucesso.",

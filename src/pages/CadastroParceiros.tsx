@@ -76,29 +76,62 @@ export default function CadastroParceiros() {
         const index = parceiros.findIndex((p) => p.id === id);
         if (index !== -1) {
           const existing = parceiros[index];
+          const updatedAt = new Date().toISOString();
           parceiros[index] = { 
             ...data, 
             id,
             createdBy: existing.createdBy,
             createdAt: existing.createdAt,
             updatedBy: getCurrentUser(),
-            updatedAt: new Date().toISOString()
+            updatedAt
           } as Parceiro;
+
+          // Registrar log de atualização
+          const auditLogs = JSON.parse(localStorage.getItem("auditLogs") || "[]");
+            const updateLog = {
+              id: `${id}-update-${updatedAt}`,
+              action: "update",
+              entityType: "parceiro",
+              entityName: data.nomeFantasia,
+              entityId: id,
+              user: getCurrentUser(),
+              timestamp: updatedAt,
+            };
+            auditLogs.push(updateLog);
+            localStorage.setItem("auditLogs", JSON.stringify(auditLogs));
         }
         toast({
           title: "Parceiro atualizado!",
           description: "O parceiro foi atualizado com sucesso.",
         });
       } else {
+        const createdAt = new Date().toISOString();
         const newParceiro: Parceiro = {
           ...data,
-          id: crypto.randomUUID(),
-          createdBy: getCurrentUser(),
-          createdAt: new Date().toISOString(),
-          updatedBy: getCurrentUser(),
-          updatedAt: new Date().toISOString()
+            id: crypto.randomUUID(),
+            createdBy: getCurrentUser(),
+            createdAt,
+            updatedBy: getCurrentUser(),
+            updatedAt: createdAt
         } as Parceiro;
         parceiros.push(newParceiro);
+
+        // Registrar log de criação (persistente)
+        const auditLogs = JSON.parse(localStorage.getItem("auditLogs") || "[]");
+        // Evitar duplicar se id já existir (caso de regravação manual)
+        if (!auditLogs.find((l: any) => l.id === `${newParceiro.id}-create`)) {
+          const createLog = {
+            id: `${newParceiro.id}-create`,
+            action: "create",
+            entityType: "parceiro",
+            entityName: newParceiro.nomeFantasia,
+            entityId: newParceiro.id,
+            user: getCurrentUser(),
+            timestamp: createdAt,
+          };
+          auditLogs.push(createLog);
+          localStorage.setItem("auditLogs", JSON.stringify(auditLogs));
+        }
         toast({
           title: "Parceiro cadastrado!",
           description: "O parceiro foi cadastrado com sucesso.",

@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Search, Edit, Plus, Trash2 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { getCurrentUser } from "@/hooks/useCurrentUser";
 
 export type Parceiro = {
   id: string;
@@ -59,9 +60,28 @@ export default function ListaParceiros() {
       return;
     }
 
+    const parceiro = parceiros.find(p => p.id === parceiroId);
     const updatedParceiros = parceiros.filter(p => p.id !== parceiroId);
     localStorage.setItem("parceiros", JSON.stringify(updatedParceiros));
     setParceiros(updatedParceiros);
+
+    // Registrar log de exclusão no localStorage
+    if (parceiro) {
+      const timestamp = new Date().toISOString();
+      const deleteLog = {
+        id: `${parceiroId}-delete-${timestamp}`,
+        action: "delete",
+        entityType: "parceiro",
+        entityName: parceiro.nomeFantasia,
+        entityId: parceiroId,
+        user: getCurrentUser(),
+        timestamp,
+      };
+      const existingLogs = JSON.parse(localStorage.getItem("auditLogs") || "[]");
+      existingLogs.push(deleteLog);
+      localStorage.setItem("auditLogs", JSON.stringify(existingLogs));
+    }
+
     toast({
       title: "Parceiro excluído",
       description: "O parceiro foi excluído com sucesso.",
