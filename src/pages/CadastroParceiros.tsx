@@ -18,7 +18,9 @@ const parceiroSchema = z.object({
   razaoSocial: z.string().min(1, "Razão Social é obrigatória").max(100),
   cnpj: z.string().min(14, "CNPJ inválido").max(18),
   inscricaoEstadual: z.string().min(1, "Inscrição Estadual/Municipal é obrigatória").max(50),
-  endereco: z.string().min(1, "Endereço é obrigatório").max(200),
+  rua: z.string().min(1, "Rua é obrigatória").max(120),
+  bairro: z.string().min(1, "Bairro é obrigatório").max(80),
+  numero: z.string().min(1, "Número é obrigatório").max(20),
   emailFinanceiro: z.string().email("Email inválido").max(255),
   telefoneFinanceiro: z.string().min(10, "Telefone inválido").max(20),
   emailResponsavel: z.string().email("Email inválido").max(255),
@@ -26,6 +28,27 @@ const parceiroSchema = z.object({
   status: z.enum(["ativo", "inativo"]),
   dataVencimento: z.string().min(1, "Data de vencimento é obrigatória"),
 });
+
+// Helpers de formatação (máscaras simples baseadas em regex)
+function formatCNPJ(value: string) {
+  const digits = value.replace(/\D/g, '').slice(0, 14);
+  // Aplica: XX.XXX.XXX/XXXX-XX
+  return digits
+    .replace(/^(\d{2})(\d)/, '$1.$2')
+    .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
+    .replace(/^(\d{2})\.(\d{3})\.(\d{3})(\d)/, '$1.$2.$3/$4')
+    .replace(/^(\d{2})\.(\d{3})\.(\d{3})\/(\d{4})(\d{2}).*/, '$1.$2.$3/$4-$5');
+}
+
+function formatPhone(value: string) {
+  const digits = value.replace(/\D/g, '').slice(0, 11);
+  // Se não há dígitos, retorna string vazia para permitir apagar tudo
+  if (!digits) return '';
+  if (digits.length <= 2) return `(${digits}`; // Exibe parêntese só se houver algum dígito
+  if (digits.length <= 6) return `(${digits.slice(0,2)}) ${digits.slice(2)}`;
+  if (digits.length <= 10) return `(${digits.slice(0,2)}) ${digits.slice(2,6)}-${digits.slice(6)}`;
+  return `(${digits.slice(0,2)}) ${digits.slice(2,7)}-${digits.slice(7,11)}`;
+}
 
 type ParceiroFormData = z.infer<typeof parceiroSchema>;
 
@@ -43,7 +66,9 @@ export default function CadastroParceiros() {
       razaoSocial: "",
       cnpj: "",
       inscricaoEstadual: "",
-      endereco: "",
+      rua: "",
+      bairro: "",
+      numero: "",
       emailFinanceiro: "",
       telefoneFinanceiro: "",
       emailResponsavel: "",
@@ -60,7 +85,22 @@ export default function CadastroParceiros() {
         const parceiros: Parceiro[] = JSON.parse(stored);
         const parceiro = parceiros.find((p) => p.id === id);
         if (parceiro) {
-          form.reset(parceiro);
+          const p: any = parceiro;
+          form.reset({
+            nomeFantasia: p.nomeFantasia,
+            razaoSocial: p.razaoSocial,
+            cnpj: p.cnpj,
+            inscricaoEstadual: p.inscricaoEstadual,
+            rua: p.rua || "",
+            bairro: p.bairro || "",
+            numero: p.numero || "",
+            emailFinanceiro: p.emailFinanceiro,
+            telefoneFinanceiro: p.telefoneFinanceiro,
+            emailResponsavel: p.emailResponsavel,
+            telefoneResponsavel: p.telefoneResponsavel,
+            status: p.status,
+            dataVencimento: p.dataVencimento,
+          });
         }
       }
     }
@@ -77,8 +117,10 @@ export default function CadastroParceiros() {
         if (index !== -1) {
           const existing = parceiros[index];
           const updatedAt = new Date().toISOString();
-          parceiros[index] = { 
-            ...data, 
+          const enderecoComposto = `${(data as any).rua}, ${(data as any).bairro}, ${(data as any).numero}`;
+          parceiros[index] = {
+            ...data,
+            endereco: enderecoComposto,
             id,
             createdBy: existing.createdBy,
             createdAt: existing.createdAt,
@@ -88,17 +130,17 @@ export default function CadastroParceiros() {
 
           // Registrar log de atualização
           const auditLogs = JSON.parse(localStorage.getItem("auditLogs") || "[]");
-            const updateLog = {
-              id: `${id}-update-${updatedAt}`,
-              action: "update",
-              entityType: "parceiro",
-              entityName: data.nomeFantasia,
-              entityId: id,
-              user: getCurrentUser(),
-              timestamp: updatedAt,
-            };
-            auditLogs.push(updateLog);
-            localStorage.setItem("auditLogs", JSON.stringify(auditLogs));
+          const updateLog = {
+            id: `${id}-update-${updatedAt}`,
+            action: "update",
+            entityType: "parceiro",
+            entityName: data.nomeFantasia,
+            entityId: id,
+            user: getCurrentUser(),
+            timestamp: updatedAt,
+          };
+          auditLogs.push(updateLog);
+          localStorage.setItem("auditLogs", JSON.stringify(auditLogs));
         }
         toast({
           title: "Parceiro atualizado!",
@@ -106,13 +148,15 @@ export default function CadastroParceiros() {
         });
       } else {
         const createdAt = new Date().toISOString();
+        const enderecoComposto = `${(data as any).rua}, ${(data as any).bairro}, ${(data as any).numero}`;
         const newParceiro: Parceiro = {
           ...data,
-            id: crypto.randomUUID(),
-            createdBy: getCurrentUser(),
-            createdAt,
-            updatedBy: getCurrentUser(),
-            updatedAt: createdAt
+          endereco: enderecoComposto,
+          id: crypto.randomUUID(),
+          createdBy: getCurrentUser(),
+          createdAt,
+          updatedBy: getCurrentUser(),
+          updatedAt: createdAt
         } as Parceiro;
         parceiros.push(newParceiro);
 
@@ -154,101 +198,56 @@ export default function CadastroParceiros() {
   return (
     <div className="max-w-4xl mx-auto">
       <Button
-          variant="ghost"
-          onClick={() => navigate("/home")}
-          className="mb-6"
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Voltar
-        </Button>
+        variant="ghost"
+        onClick={() => navigate("/home")}
+        className="mb-6"
+      >
+        <ArrowLeft className="mr-2 h-4 w-4" />
+        Voltar
+      </Button>
 
-        <Card className="border-border">
-          <CardHeader>
-            <CardTitle className="text-3xl">
-              {isEditing ? "Editar Parceiro" : "Cadastro de Parceiros"}
-            </CardTitle>
-            <CardDescription>
-              {isEditing 
-                ? "Atualize os dados do parceiro" 
-                : "Preencha os dados do parceiro para realizar o cadastro"
-              }
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                {/* Dados da Empresa */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">Dados da Empresa</h3>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="nomeFantasia"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Nome Fantasia *</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Nome do parceiro" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+      <Card className="border-border">
+        <CardHeader>
+          <CardTitle className="text-3xl">
+            {isEditing ? "Editar Parceiro" : "Cadastro de Parceiros"}
+          </CardTitle>
+          <CardDescription>
+            {isEditing
+              ? "Atualize os dados do parceiro"
+              : "Preencha os dados do parceiro para realizar o cadastro"
+            }
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              {/* Dados da Empresa */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Dados da Empresa</h3>
 
-                    <FormField
-                      control={form.control}
-                      name="razaoSocial"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Razão Social *</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Razão social completa" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="cnpj"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>CNPJ *</FormLabel>
-                          <FormControl>
-                            <Input placeholder="00.000.000/0000-00" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="inscricaoEstadual"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Inscrição Estadual/Municipal *</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Número da inscrição" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="nomeFantasia"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nome Fantasia *</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Nome do parceiro" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
                   <FormField
                     control={form.control}
-                    name="endereco"
+                    name="razaoSocial"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Endereço *</FormLabel>
+                        <FormLabel>Razão Social *</FormLabel>
                         <FormControl>
-                          <Input placeholder="Endereço completo" {...field} />
+                          <Input placeholder="Razão social completa" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -256,142 +255,230 @@ export default function CadastroParceiros() {
                   />
                 </div>
 
-                {/* Contato Financeiro */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">Contato Financeiro</h3>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="emailFinanceiro"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Email *</FormLabel>
-                          <FormControl>
-                            <Input type="email" placeholder="financeiro@empresa.com" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="cnpj"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>CNPJ *</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="00.000.000/0000-00"
+                            value={field.value}
+                            maxLength={18}
+                            onChange={(e) => field.onChange(formatCNPJ(e.target.value))}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-                    <FormField
-                      control={form.control}
-                      name="telefoneFinanceiro"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Telefone *</FormLabel>
-                          <FormControl>
-                            <Input placeholder="(00) 00000-0000" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
+                  <FormField
+                    control={form.control}
+                    name="inscricaoEstadual"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Inscrição Estadual/Municipal *</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Número da inscrição" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
 
-                {/* Contato Responsável */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">Contato do Responsável</h3>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="emailResponsavel"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Email *</FormLabel>
-                          <FormControl>
-                            <Input type="email" placeholder="responsavel@empresa.com" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="telefoneResponsavel"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Telefone *</FormLabel>
-                          <FormControl>
-                            <Input placeholder="(00) 00000-0000" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="rua"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Rua *</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Nome da rua" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="bairro"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Bairro *</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Nome do bairro" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="numero"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Número *</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Número" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
+              </div>
 
-                {/* Status e Vencimento */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">Configurações</h3>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="status"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Status *</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecione o status" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="ativo">Ativo</SelectItem>
-                              <SelectItem value="inativo">Inativo</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+              {/* Contato Financeiro */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Contato Financeiro</h3>
 
-                    <FormField
-                      control={form.control}
-                      name="dataVencimento"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Data de Vencimento da Fatura *</FormLabel>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="emailFinanceiro"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email *</FormLabel>
+                        <FormControl>
+                          <Input type="email" placeholder="financeiro@empresa.com" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="telefoneFinanceiro"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Telefone *</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="(00) 00000-0000"
+                            value={field.value}
+                            maxLength={15}
+                            onChange={(e) => field.onChange(formatPhone(e.target.value))}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
+
+              {/* Contato Responsável */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Contato do Responsável</h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="emailResponsavel"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email *</FormLabel>
+                        <FormControl>
+                          <Input type="email" placeholder="responsavel@empresa.com" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="telefoneResponsavel"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Telefone *</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="(00) 00000-0000"
+                            value={field.value}
+                            maxLength={15}
+                            onChange={(e) => field.onChange(formatPhone(e.target.value))}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
+
+              {/* Status e Vencimento */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Configurações</h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="status"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Status *</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
-                            <Input type="date" {...field} />
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione o status" />
+                            </SelectTrigger>
                           </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </div>
+                          <SelectContent>
+                            <SelectItem value="ativo">Ativo</SelectItem>
+                            <SelectItem value="inativo">Inativo</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-                <div className="flex gap-4 pt-4">
-                  <Button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="flex-1"
-                  >
-                    {isSubmitting 
-                      ? (isEditing ? "Atualizando..." : "Cadastrando...") 
-                      : (isEditing ? "Atualizar Parceiro" : "Cadastrar Parceiro")
-                    }
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => navigate("/home/parceiros")}
-                    disabled={isSubmitting}
-                  >
-                    Cancelar
-                  </Button>
+                  <FormField
+                    control={form.control}
+                    name="dataVencimento"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Data de Vencimento da Fatura *</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
-              </form>
-            </Form>
-          </CardContent>
+              </div>
+
+              <div className="flex gap-4 pt-4">
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="flex-1"
+                >
+                  {isSubmitting
+                    ? (isEditing ? "Atualizando..." : "Cadastrando...")
+                    : (isEditing ? "Atualizar Parceiro" : "Cadastrar Parceiro")
+                  }
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => navigate("/home/parceiros")}
+                  disabled={isSubmitting}
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </CardContent>
       </Card>
     </div>
   );

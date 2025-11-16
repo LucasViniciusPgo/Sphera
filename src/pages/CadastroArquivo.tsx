@@ -41,6 +41,14 @@ const arquivoSchema = z.object({
     Observacao: z.string().max(500).optional()
 });
 
+// Helper para adicionar dias e retornar em formato YYYY-MM-DD
+function addDaysISO(baseDate: string, days: number): string {
+    if (!baseDate) return "";
+    const d = new Date(baseDate + "T00:00:00");
+    d.setDate(d.getDate() + days);
+    return d.toISOString().slice(0, 10);
+}
+
 type ArquivoFormData = z.infer<typeof arquivoSchema>;
 
 export default function CadastroArquivo() {
@@ -52,6 +60,7 @@ export default function CadastroArquivo() {
     const [clientes, setClientes] = useState<any[]>([]);
     const [servicos, setServicos] = useState<any[]>([]);
     const [editingArquivo, setEditingArquivo] = useState<Arquivo | null>(null);
+    const [manualDue, setManualDue] = useState(false); // usuário editou manualmente DataVencimento
     // Removido vínculo automático entre serviço e data de vencimento
     const isEditing = !!id;
 
@@ -319,7 +328,24 @@ export default function CadastroArquivo() {
                                         render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Serviço *</FormLabel>
-                                                <Select onValueChange={field.onChange} value={field.value}>
+                                                <Select
+                                                    onValueChange={(value) => {
+                                                        field.onChange(value);
+                                                        // ao selecionar serviço, se tiver prazo, recalcula vencimento
+                                                        const servicoSel = servicos.find(s => s.id === value);
+                                                        if (servicoSel && servicoSel.vencimentoDoc) {
+                                                            const emissao = form.getValues('DataEmissao');
+                                                            const base = emissao || new Date().toISOString().slice(0,10);
+                                                            if (!emissao) {
+                                                                form.setValue('DataEmissao', base);
+                                                            }
+                                                            const nova = addDaysISO(base, servicoSel.vencimentoDoc);
+                                                            form.setValue('DataVencimento', nova);
+                                                            setManualDue(false);
+                                                        }
+                                                    }}
+                                                    value={field.value}
+                                                >
                                                     <FormControl>
                                                         <SelectTrigger>
                                                             <SelectValue placeholder="Selecione um serviço" />
@@ -361,7 +387,20 @@ export default function CadastroArquivo() {
                                             <FormItem>
                                                 <FormLabel>Data de Emissão *</FormLabel>
                                                 <FormControl>
-                                                    <Input type="date" {...field} />
+                                                    <Input
+                                                        type="date"
+                                                        value={field.value}
+                                                        onChange={(e) => {
+                                                            field.onChange(e.target.value);
+                                                            // Recalcula vencimento se serviço com prazo e não manual
+                                                            const servicoId = form.getValues('Servico');
+                                                            const servicoSel = servicos.find(s => s.id === servicoId);
+                                                            if (servicoSel && servicoSel.vencimentoDoc && !manualDue) {
+                                                                const nova = addDaysISO(e.target.value, servicoSel.vencimentoDoc);
+                                                                form.setValue('DataVencimento', nova);
+                                                            }
+                                                        }}
+                                                    />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
@@ -375,7 +414,14 @@ export default function CadastroArquivo() {
                                             <FormItem>
                                                 <FormLabel>Data de Vencimento *</FormLabel>
                                                 <FormControl>
-                                                    <Input type="date" {...field} />
+                                                    <Input
+                                                        type="date"
+                                                        value={field.value}
+                                                        onChange={(e) => {
+                                                            setManualDue(true); // usuário quer controlar manualmente
+                                                            field.onChange(e.target.value);
+                                                        }}
+                                                    />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>

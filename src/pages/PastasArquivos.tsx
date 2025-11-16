@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Folder, FileText, Search } from "lucide-react";
+import { Folder, Users, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
 interface Parceiro {
@@ -12,33 +12,29 @@ interface Parceiro {
 export default function PastasArquivos() {
   const navigate = useNavigate();
   const [parceiros, setParceiros] = useState<Parceiro[]>([]);
-  const [arquivosPorParceiro, setArquivosPorParceiro] = useState<Record<string, number>>({});
+  // Quantidade de clientes por parceiro
+  const [clientesPorParceiro, setClientesPorParceiro] = useState<Record<string, number>>({});
   const [searchTerm, setSearchTerm] = useState<string>("");
 
   useEffect(() => {
     const storedParceiros = localStorage.getItem("parceiros");
     const storedClientes = localStorage.getItem("clientes");
-    const storedArquivos = localStorage.getItem("arquivos");
+  // Não precisamos mais dos arquivos para esta tela, apenas parceiros e clientes
 
     if (!storedParceiros) return;
     const parceirosData: Parceiro[] = JSON.parse(storedParceiros);
     setParceiros(parceirosData);
 
-    if (storedArquivos && storedClientes) {
-      const arquivosData = JSON.parse(storedArquivos);
+    if (storedClientes) {
       const clientesData = JSON.parse(storedClientes);
       const contagem: Record<string, number> = {};
 
       parceirosData.forEach((parceiro: Parceiro) => {
-        const clientesDoParceiro = clientesData.filter(
+        contagem[parceiro.id] = clientesData.filter(
           (cliente: any) => cliente.parceiroId === parceiro.id
-        );
-        const clienteIds = clientesDoParceiro.map((c: any) => c.id);
-        contagem[parceiro.id] = arquivosData.filter(
-          (arquivo: any) => clienteIds.includes(arquivo.Cliente)
         ).length;
       });
-      setArquivosPorParceiro(contagem);
+      setClientesPorParceiro(contagem);
     }
   }, []);
 
@@ -108,7 +104,7 @@ export default function PastasArquivos() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {parceirosFiltrados.map((parceiro) => {
-            const totalArquivos = arquivosPorParceiro[parceiro.id] || 0;
+            const totalClientes = clientesPorParceiro[parceiro.id] || 0;
             
             return (
               <Card
@@ -122,9 +118,9 @@ export default function PastasArquivos() {
                 </CardHeader>
                 <CardContent>
                   <div className="flex items-center gap-2 text-muted-foreground">
-                    <FileText className="h-4 w-4" />
+                    <Users className="h-4 w-4" />
                     <span className="text-sm">
-                      {totalArquivos} {totalArquivos === 1 ? "arquivo" : "arquivos"}
+                      {totalClientes} {totalClientes === 1 ? "cliente" : "clientes"}
                     </span>
                   </div>
                 </CardContent>

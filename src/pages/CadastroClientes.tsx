@@ -18,6 +18,10 @@ export interface Cliente {
   razaoSocial: string;
   cnpj: string;
   inscricaoEstadual: string;
+  rua: string;
+  bairro: string;
+  numero: string;
+  // Campo composto mantido para compatibilidade com registros antigos
   endereco: string;
   emailFinanceiro: string;
   telefoneFinanceiro: string;
@@ -37,7 +41,9 @@ const clienteSchema = z.object({
   razaoSocial: z.string().min(1, "Razão Social é obrigatória").max(100),
   cnpj: z.string().min(14, "CNPJ inválido").max(18),
   inscricaoEstadual: z.string().min(1, "Inscrição Estadual/Municipal é obrigatória").max(50),
-  endereco: z.string().min(1, "Endereço é obrigatório").max(200),
+  rua: z.string().min(1, "Rua é obrigatória").max(120),
+  bairro: z.string().min(1, "Bairro é obrigatório").max(80),
+  numero: z.string().min(1, "Número é obrigatório").max(20),
   emailFinanceiro: z.string().email("Email inválido").max(255),
   telefoneFinanceiro: z.string().min(10, "Telefone inválido").max(20),
   emailResponsavel: z.string().email("Email inválido").max(255),
@@ -46,6 +52,27 @@ const clienteSchema = z.object({
   dataVencimento: z.string().min(1, "Data de vencimento é obrigatória"),
   parceiroId: z.string().min(1, "Selecione um parceiro"),
 });
+
+// Helpers de formatação (máscaras simples baseadas em regex)
+function formatCNPJ(value: string) {
+  const digits = value.replace(/\D/g, '').slice(0, 14);
+  // Aplica: XX.XXX.XXX/XXXX-XX
+  return digits
+    .replace(/^(\d{2})(\d)/, '$1.$2')
+    .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
+    .replace(/^(\d{2})\.(\d{3})\.(\d{3})(\d)/, '$1.$2.$3/$4')
+    .replace(/^(\d{2})\.(\d{3})\.(\d{3})\/(\d{4})(\d{2}).*/, '$1.$2.$3/$4-$5');
+}
+
+function formatPhone(value: string) {
+  const digits = value.replace(/\D/g, '').slice(0, 11);
+  // Se não há dígitos, retorna string vazia para permitir apagar tudo
+  if (!digits) return '';
+  if (digits.length <= 2) return `(${digits}`; // Exibe parêntese só se houver algum dígito
+  if (digits.length <= 6) return `(${digits.slice(0,2)}) ${digits.slice(2)}`;
+  if (digits.length <= 10) return `(${digits.slice(0,2)}) ${digits.slice(2,6)}-${digits.slice(6)}`;
+  return `(${digits.slice(0,2)}) ${digits.slice(2,7)}-${digits.slice(7,11)}`;
+}
 
 type ClienteFormData = z.infer<typeof clienteSchema>;
 
@@ -63,7 +90,9 @@ const CadastroClientes = () => {
       razaoSocial: "",
       cnpj: "",
       inscricaoEstadual: "",
-      endereco: "",
+      rua: "",
+      bairro: "",
+      numero: "",
       emailFinanceiro: "",
       telefoneFinanceiro: "",
       emailResponsavel: "",
@@ -81,7 +110,23 @@ const CadastroClientes = () => {
         const clientes: Cliente[] = JSON.parse(stored);
         const cliente = clientes.find((c) => c.id === id);
         if (cliente) {
-          form.reset(cliente);
+          const c: any = cliente;
+          form.reset({
+            nomeFantasia: c.nomeFantasia,
+            razaoSocial: c.razaoSocial,
+            cnpj: c.cnpj,
+            inscricaoEstadual: c.inscricaoEstadual,
+            rua: c.rua || "",
+            bairro: c.bairro || "",
+            numero: c.numero || "",
+            emailFinanceiro: c.emailFinanceiro,
+            telefoneFinanceiro: c.telefoneFinanceiro,
+            emailResponsavel: c.emailResponsavel,
+            telefoneResponsavel: c.telefoneResponsavel,
+            status: c.status,
+            dataVencimento: c.dataVencimento,
+            parceiroId: c.parceiroId,
+          });
         }
       }
     }
@@ -100,8 +145,10 @@ const CadastroClientes = () => {
         if (index !== -1) {
           const existing = clientes[index];
           const updatedAt = new Date().toISOString();
-          clientes[index] = { 
-            ...data, 
+          const enderecoComposto = `${data.rua}, ${data.bairro}, ${data.numero}`;
+          clientes[index] = {
+            ...data,
+            endereco: enderecoComposto,
             id,
             createdBy: existing.createdBy,
             createdAt: existing.createdAt,
@@ -129,8 +176,10 @@ const CadastroClientes = () => {
         });
       } else {
         const createdAt = new Date().toISOString();
+        const enderecoComposto = `${data.rua}, ${data.bairro}, ${data.numero}`;
         const newCliente: Cliente = {
           ...data,
+          endereco: enderecoComposto,
           id: crypto.randomUUID(),
           createdBy: getCurrentUser(),
           createdAt,
@@ -243,7 +292,12 @@ const CadastroClientes = () => {
                         <FormItem>
                           <FormLabel>CNPJ *</FormLabel>
                           <FormControl>
-                            <Input placeholder="00.000.000/0000-00" {...field} />
+                            <Input
+                              placeholder="00.000.000/0000-00"
+                              value={field.value}
+                              maxLength={18}
+                              onChange={(e) => field.onChange(formatCNPJ(e.target.value))}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -265,19 +319,47 @@ const CadastroClientes = () => {
                     />
                   </div>
 
-                  <FormField
-                    control={form.control}
-                    name="endereco"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Endereço *</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Endereço completo" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="rua"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Rua *</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Nome da rua" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="bairro"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Bairro *</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Nome do bairro" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="numero"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Número *</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Número" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                 </div>
 
                 {/* Contato Financeiro */}
@@ -306,7 +388,12 @@ const CadastroClientes = () => {
                         <FormItem>
                           <FormLabel>Telefone *</FormLabel>
                           <FormControl>
-                            <Input placeholder="(00) 00000-0000" {...field} />
+                            <Input
+                              placeholder="(00) 00000-0000"
+                              value={field.value}
+                              maxLength={15}
+                              onChange={(e) => field.onChange(formatPhone(e.target.value))}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -341,7 +428,12 @@ const CadastroClientes = () => {
                         <FormItem>
                           <FormLabel>Telefone *</FormLabel>
                           <FormControl>
-                            <Input placeholder="(00) 00000-0000" {...field} />
+                            <Input
+                              placeholder="(00) 00000-0000"
+                              value={field.value}
+                              maxLength={15}
+                              onChange={(e) => field.onChange(formatPhone(e.target.value))}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
