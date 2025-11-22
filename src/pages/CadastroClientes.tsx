@@ -504,12 +504,12 @@ const CadastroClientes = () => {
 
                     <FormField
                       control={form.control}
-                      name="nomeFantasia"
+                      name="nomeFinanceiro"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Nome *</FormLabel>
                           <FormControl>
-                            <Input type="email" placeholder="Nome" {...field} />
+                            <Input placeholder="Nome" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -559,12 +559,12 @@ const CadastroClientes = () => {
 
                     <FormField
                       control={form.control}
-                      name="nomeFantasia"
+                      name="nomeResponsavel"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Nome *</FormLabel>
                           <FormControl>
-                            <Input type="email" placeholder="Nome" {...field} />
+                            <Input placeholder="Nome" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
