@@ -17,17 +17,26 @@ export interface Cliente {
   nomeFantasia: string;
   razaoSocial: string;
   cnpj: string;
-  inscricaoEstadual: string;
+  inscricaoEstadual?: string;
+  inscricaoMunicipal: string;
   rua: string;
   bairro: string;
   numero: string;
+  cidade: string;
+  estado: string;
+  cep: string;
+  complemento?: string;
+  lote?: string;
   // Campo composto mantido para compatibilidade com registros antigos
   endereco: string;
+  nomeFinanceiro: string;
   emailFinanceiro: string;
   telefoneFinanceiro: string;
+  nomeResponsavel: string;
   emailResponsavel: string;
   telefoneResponsavel: string;
   status: "ativo" | "inativo";
+  vencimentoContrato: string;
   dataVencimento: string;
   parceiroId: string;
   createdBy: string;
@@ -40,15 +49,24 @@ const clienteSchema = z.object({
   nomeFantasia: z.string().min(1, "Nome Fantasia é obrigatório").max(100),
   razaoSocial: z.string().min(1, "Razão Social é obrigatória").max(100),
   cnpj: z.string().min(14, "CNPJ inválido").max(18),
-  inscricaoEstadual: z.string().min(1, "Inscrição Estadual/Municipal é obrigatória").max(50),
+  inscricaoEstadual: z.string().max(50).optional(),
+  inscricaoMunicipal: z.string().min(1, "Inscrição Municipal é obrigatória").max(50),
   rua: z.string().min(1, "Rua é obrigatória").max(120),
   bairro: z.string().min(1, "Bairro é obrigatório").max(80),
   numero: z.string().min(1, "Número é obrigatório").max(20),
+  cidade: z.string().min(1, "Cidade é obrigatório").max(80),
+  estado: z.string().min(1, "UF é obrigatório").max(2),
+  cep: z.string().min(1, "CEP é obrigatório").max(20),
+  complemento: z.string().max(100).optional(),
+  lote: z.string().max(50).optional(),
+  nomeFinanceiro: z.string().min(1, "Nome do contato financeiro é obrigatório").max(100),
   emailFinanceiro: z.string().email("Email inválido").max(255),
   telefoneFinanceiro: z.string().min(10, "Telefone inválido").max(20),
+  nomeResponsavel: z.string().min(1, "Nome do responsável é obrigatório").max(100),
   emailResponsavel: z.string().email("Email inválido").max(255),
   telefoneResponsavel: z.string().min(10, "Telefone inválido").max(20),
-  status: z.enum(["ativo", "inativo"]),
+  status: z.literal("ativo"),
+  vencimentoContrato: z.string().min(1, "Data de vencimento do contrato é obrigatória"),
   dataVencimento: z.string().min(1, "Data de vencimento é obrigatória"),
   parceiroId: z.string().min(1, "Selecione um parceiro"),
 });
@@ -74,6 +92,13 @@ function formatPhone(value: string) {
   return `(${digits.slice(0,2)}) ${digits.slice(2,7)}-${digits.slice(7,11)}`;
 }
 
+function formatCEP(value: string): string {
+    const digits = value.replace(/\D/g, "").slice(0, 8);
+    if (digits.length <= 5) return digits;
+    return digits.replace(/^(\d{5})(\d{3})$/, "$1-$2");
+}
+
+
 type ClienteFormData = z.infer<typeof clienteSchema>;
 
 const CadastroClientes = () => {
@@ -90,14 +115,23 @@ const CadastroClientes = () => {
       razaoSocial: "",
       cnpj: "",
       inscricaoEstadual: "",
+      inscricaoMunicipal: "",
       rua: "",
       bairro: "",
       numero: "",
+      cidade: "",
+      estado: "",
+      cep: "",
+      complemento: "",
+      lote: "",
+      nomeFinanceiro: "",
       emailFinanceiro: "",
       telefoneFinanceiro: "",
+      nomeResponsavel: "",
       emailResponsavel: "",
       telefoneResponsavel: "",
       status: "ativo",
+      vencimentoContrato: "",
       dataVencimento: "",
       parceiroId: "",
     },
@@ -116,14 +150,23 @@ const CadastroClientes = () => {
             razaoSocial: c.razaoSocial,
             cnpj: c.cnpj,
             inscricaoEstadual: c.inscricaoEstadual,
+            inscricaoMunicipal: c.inscricaoMunicipal,
             rua: c.rua || "",
             bairro: c.bairro || "",
             numero: c.numero || "",
+            cidade: c.cidade || "",
+            estado: c.estado || "",
+            cep: c.cep || "",
+            complemento: c.complemento || "",
+            lote: c.lote || "",
+            nomeFinanceiro: c.nomeFinanceiro,
             emailFinanceiro: c.emailFinanceiro,
             telefoneFinanceiro: c.telefoneFinanceiro,
             emailResponsavel: c.emailResponsavel,
+            nomeResponsavel: c.nomeResponsavel,
             telefoneResponsavel: c.telefoneResponsavel,
             status: c.status,
+            vencimentoContrato: c.vencimentoContrato,
             dataVencimento: c.dataVencimento,
             parceiroId: c.parceiroId,
           });
@@ -239,8 +282,8 @@ const CadastroClientes = () => {
               {isEditing ? "Editar Cliente" : "Cadastro de Clientes"}
             </CardTitle>
             <CardDescription>
-              {isEditing 
-                ? "Atualize os dados do cliente" 
+              {isEditing
+                ? "Atualize os dados do cliente"
                 : "Preencha os dados do cliente para realizar o cadastro"
               }
             </CardDescription>
@@ -248,12 +291,12 @@ const CadastroClientes = () => {
           <CardContent>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-               
+
 
                 {/* Dados da Empresa */}
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold">Dados da Empresa</h3>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
@@ -309,7 +352,21 @@ const CadastroClientes = () => {
                       name="inscricaoEstadual"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Inscrição Estadual/Municipal *</FormLabel>
+                          <FormLabel>Inscrição Estadual</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Número da inscrição" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="inscricaoMunicipal"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Inscrição Municipal *</FormLabel>
                           <FormControl>
                             <Input placeholder="Número da inscrição" {...field} />
                           </FormControl>
@@ -346,6 +403,7 @@ const CadastroClientes = () => {
                         </FormItem>
                       )}
                     />
+
                     <FormField
                       control={form.control}
                       name="numero"
@@ -359,14 +417,105 @@ const CadastroClientes = () => {
                         </FormItem>
                       )}
                     />
+
+                    <FormField
+                      control={form.control}
+                      name="cidade"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Cidade *</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Nome da cidade" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="estado"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>UF *</FormLabel>
+                          <FormControl>
+                            <Input placeholder="UF" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="cep"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>CEP *</FormLabel>
+                          <FormControl>
+                            <Input
+                                placeholder="00000-000"
+                                maxLength={9}
+                                value={field.value}
+                                onChange={(e) => field.onChange(formatCEP(e.target.value))}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="complemento"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Complemento </FormLabel>
+                          <FormControl>
+                            <Input placeholder="Complemento" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="lote"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Lote </FormLabel>
+                          <FormControl>
+                            <Input placeholder="Lote" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
                   </div>
                 </div>
 
                 {/* Contato Financeiro */}
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold">Contato Financeiro</h3>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                    <FormField
+                      control={form.control}
+                      name="nomeFantasia"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Nome *</FormLabel>
+                          <FormControl>
+                            <Input type="email" placeholder="Nome" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
                     <FormField
                       control={form.control}
                       name="emailFinanceiro"
@@ -405,8 +554,23 @@ const CadastroClientes = () => {
                 {/* Contato Responsável */}
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold">Contato do Responsável</h3>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                    <FormField
+                      control={form.control}
+                      name="nomeFantasia"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Nome *</FormLabel>
+                          <FormControl>
+                            <Input type="email" placeholder="Nome" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
                     <FormField
                       control={form.control}
                       name="emailResponsavel"
@@ -445,25 +609,18 @@ const CadastroClientes = () => {
                 {/* Status e Vencimento */}
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold">Configurações</h3>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
                     <FormField
                       control={form.control}
                       name="status"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Status *</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormLabel>Status </FormLabel>
                             <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecione o status" />
-                              </SelectTrigger>
+                                <Input value="Ativo" disabled />
                             </FormControl>
-                            <SelectContent>
-                              <SelectItem value="ativo">Ativo</SelectItem>
-                              <SelectItem value="inativo">Inativo</SelectItem>
-                            </SelectContent>
-                          </Select>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -482,13 +639,32 @@ const CadastroClientes = () => {
                         </FormItem>
                       )}
                     />
+                      
+                    <FormField
+                      control={form.control}
+                      name="vencimentoContrato"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Prazo de Vencimento do Contrato (dias) *</FormLabel>
+                          <FormControl>
+                            <Input
+                                type="number"
+                                placeholder="Número de dias"
+                                min={1}
+                                {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
                 </div>
 
                  {/* Parceiro Vinculado */}
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold">Parceiro Vinculado</h3>
-                  
+
                   <FormField
                     control={form.control}
                     name="parceiroId"
@@ -521,8 +697,8 @@ const CadastroClientes = () => {
                     disabled={isSubmitting}
                     className="flex-1"
                   >
-                    {isSubmitting 
-                      ? (isEditing ? "Atualizando..." : "Cadastrando...") 
+                    {isSubmitting
+                      ? (isEditing ? "Atualizando..." : "Cadastrando...")
                       : (isEditing ? "Atualizar Cliente" : "Cadastrar Cliente")
                     }
                   </Button>
