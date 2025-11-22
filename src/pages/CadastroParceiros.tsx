@@ -14,19 +14,21 @@ import type { Parceiro } from "./ListaParceiros";
 import { getCurrentUser } from "@/hooks/useCurrentUser";
 
 const parceiroSchema = z.object({
-  nomeFantasia: z.string().min(1, "Nome Fantasia é obrigatório").max(100),
   razaoSocial: z.string().min(1, "Razão Social é obrigatória").max(100),
-  cnpj: z.string().min(14, "CNPJ inválido").max(18),
-  inscricaoEstadual: z.string().min(1, "Inscrição Estadual/Municipal é obrigatória").max(50),
-  rua: z.string().min(1, "Rua é obrigatória").max(120),
-  bairro: z.string().min(1, "Bairro é obrigatório").max(80),
-  numero: z.string().min(1, "Número é obrigatório").max(20),
+  cnpj: z.string().min(14, "CNPJ inválido").max(18).optional(),
+  rua: z.string().max(120).optional(),
+  bairro: z.string().max(80).optional(),
+  numero: z.string().max(20).optional(),
+  cidade: z.string().max(80).optional(),
+  estado: z.string().max(2).optional(),
+  cep: z.string().max(20).optional(),
+  complemento: z.string().max(100).optional(),
+  lote: z.string().max(50).optional(),
   emailFinanceiro: z.string().email("Email inválido").max(255),
   telefoneFinanceiro: z.string().min(10, "Telefone inválido").max(20),
   emailResponsavel: z.string().email("Email inválido").max(255),
   telefoneResponsavel: z.string().min(10, "Telefone inválido").max(20),
-  status: z.enum(["ativo", "inativo"]),
-  dataVencimento: z.string().min(1, "Data de vencimento é obrigatória"),
+  status: z.literal("ativo"),
 });
 
 // Helpers de formatação (máscaras simples baseadas em regex)
@@ -50,6 +52,12 @@ function formatPhone(value: string) {
   return `(${digits.slice(0,2)}) ${digits.slice(2,7)}-${digits.slice(7,11)}`;
 }
 
+function formatCEP(value: string): string {
+    const digits = value.replace(/\D/g, "").slice(0, 8);
+    if (digits.length <= 5) return digits;
+    return digits.replace(/^(\d{5})(\d{3})$/, "$1-$2");
+}
+
 type ParceiroFormData = z.infer<typeof parceiroSchema>;
 
 export default function CadastroParceiros() {
@@ -62,19 +70,21 @@ export default function CadastroParceiros() {
   const form = useForm<ParceiroFormData>({
     resolver: zodResolver(parceiroSchema),
     defaultValues: {
-      nomeFantasia: "",
       razaoSocial: "",
       cnpj: "",
-      inscricaoEstadual: "",
       rua: "",
       bairro: "",
       numero: "",
+      cidade: "",
+      estado: "",
+      cep: "",
+      complemento: "",
+      lote: "",
       emailFinanceiro: "",
       telefoneFinanceiro: "",
       emailResponsavel: "",
       telefoneResponsavel: "",
       status: "ativo",
-      dataVencimento: "",
     },
   });
 
@@ -87,19 +97,21 @@ export default function CadastroParceiros() {
         if (parceiro) {
           const p: any = parceiro;
           form.reset({
-            nomeFantasia: p.nomeFantasia,
             razaoSocial: p.razaoSocial,
             cnpj: p.cnpj,
-            inscricaoEstadual: p.inscricaoEstadual,
             rua: p.rua || "",
             bairro: p.bairro || "",
             numero: p.numero || "",
+            cidade: p.cidade || "",
+            estado: p.estado || "",
+            cep: p.cep || "",
+            complemento: p.complemento || "",
+            lote: p.lote || "",
             emailFinanceiro: p.emailFinanceiro,
             telefoneFinanceiro: p.telefoneFinanceiro,
             emailResponsavel: p.emailResponsavel,
             telefoneResponsavel: p.telefoneResponsavel,
             status: p.status,
-            dataVencimento: p.dataVencimento,
           });
         }
       }
@@ -134,7 +146,7 @@ export default function CadastroParceiros() {
             id: `${id}-update-${updatedAt}`,
             action: "update",
             entityType: "parceiro",
-            entityName: data.nomeFantasia,
+            entityName: data.razaoSocial,
             entityId: id,
             user: getCurrentUser(),
             timestamp: updatedAt,
@@ -228,20 +240,6 @@ export default function CadastroParceiros() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
-                    name="nomeFantasia"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Nome Fantasia *</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Nome do parceiro" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
                     name="razaoSocial"
                     render={({ field }) => (
                       <FormItem>
@@ -253,9 +251,7 @@ export default function CadastroParceiros() {
                       </FormItem>
                     )}
                   />
-                </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
                     name="cnpj"
@@ -275,22 +271,6 @@ export default function CadastroParceiros() {
                     )}
                   />
 
-                  <FormField
-                    control={form.control}
-                    name="inscricaoEstadual"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Inscrição Estadual/Municipal *</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Número da inscrição" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <FormField
                     control={form.control}
                     name="rua"
@@ -330,6 +310,82 @@ export default function CadastroParceiros() {
                       </FormItem>
                     )}
                   />
+
+
+                    <FormField
+                        control={form.control}
+                        name="cidade"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Cidade *</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="Nome da cidade" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+
+                    <FormField
+                        control={form.control}
+                        name="estado"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>UF *</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="UF" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+
+                    <FormField
+                        control={form.control}
+                        name="cep"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>CEP *</FormLabel>
+                                <FormControl>
+                                    <Input
+                                        placeholder="00000-000"
+                                        maxLength={9}
+                                        value={field.value}
+                                        onChange={(e) => field.onChange(formatCEP(e.target.value))}
+                                    />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+
+                    <FormField
+                        control={form.control}
+                        name="complemento"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Complemento </FormLabel>
+                                <FormControl>
+                                    <Input placeholder="Complemento" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+
+                    <FormField
+                        control={form.control}
+                        name="lote"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Lote </FormLabel>
+                                <FormControl>
+                                    <Input placeholder="Lote" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
                 </div>
               </div>
 
@@ -418,41 +474,19 @@ export default function CadastroParceiros() {
                 <h3 className="text-lg font-semibold">Configurações</h3>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="status"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Status *</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione o status" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="ativo">Ativo</SelectItem>
-                            <SelectItem value="inativo">Inativo</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="dataVencimento"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Data de Vencimento da Fatura *</FormLabel>
-                        <FormControl>
-                          <Input type="date" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                    <FormField
+                        control={form.control}
+                        name="status"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Status </FormLabel>
+                                <FormControl>
+                                    <Input value="Ativo" disabled />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
                 </div>
               </div>
 
