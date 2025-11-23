@@ -13,9 +13,12 @@ import { useNavigate, useParams } from "react-router-dom";
 import type { Parceiro } from "./ListaParceiros";
 import { getCurrentUser } from "@/hooks/useCurrentUser";
 
+const emptyToUndefined = (val: unknown) =>
+    typeof val === "string" && val.trim() === "" ? undefined : val;
+
 const parceiroSchema = z.object({
   razaoSocial: z.string().min(1, "Razão Social é obrigatória").max(100),
-  cnpj: z.string().min(14, "CNPJ inválido").max(18).optional(),
+  cnpj: z.preprocess(emptyToUndefined, z.string().min(14, "CNPJ inválido").max(18).optional()),
   rua: z.string().max(120).optional(),
   bairro: z.string().max(80).optional(),
   numero: z.string().max(20).optional(),
@@ -24,10 +27,31 @@ const parceiroSchema = z.object({
   cep: z.string().max(20).optional(),
   complemento: z.string().max(100).optional(),
   lote: z.string().max(50).optional(),
-  emailFinanceiro: z.string().email("Email inválido").max(255),
-  telefoneFinanceiro: z.string().min(10, "Telefone inválido").max(20),
-  emailResponsavel: z.string().email("Email inválido").max(255),
-  telefoneResponsavel: z.string().min(10, "Telefone inválido").max(20),
+  emailFinanceiro: z.preprocess(
+        emptyToUndefined,
+        z.string().email("Email inválido").max(255).optional()
+    ),
+  telefoneFinanceiro: z.preprocess(
+        emptyToUndefined,
+        z.string().min(10, "Telefone inválido").max(20).optional()
+    ),
+  emailResponsavel: z.preprocess(
+        emptyToUndefined,
+        z.string().email("Email inválido").max(255).optional()
+    ),
+  telefoneResponsavel: z.preprocess(
+        emptyToUndefined,
+        z.string().min(10, "Telefone inválido").max(20).optional()
+    ),
+  telefoneFixo: z.preprocess(
+        emptyToUndefined,
+        z.string().min(10, "Telefone inválido").max(20).optional()
+    ),
+  celular: z.string().min(10, "Telefone inválido").max(20),
+  telefoneReserva: z.preprocess(
+        emptyToUndefined,
+        z.string().min(10, "Telefone inválido").max(20).optional()
+    ),
   status: z.literal("ativo"),
 });
 
@@ -84,6 +108,9 @@ export default function CadastroParceiros() {
       telefoneFinanceiro: "",
       emailResponsavel: "",
       telefoneResponsavel: "",
+      telefoneFixo: "",
+      celular: "",
+      telefoneReserva: "",
       status: "ativo",
     },
   });
@@ -111,6 +138,9 @@ export default function CadastroParceiros() {
             telefoneFinanceiro: p.telefoneFinanceiro,
             emailResponsavel: p.emailResponsavel,
             telefoneResponsavel: p.telefoneResponsavel,
+            telefoneFixo: p.telefoneFixo,
+            celular: p.celular,
+            telefoneReserva: p.telefoneReserva,
             status: p.status,
           });
         }
@@ -180,7 +210,7 @@ export default function CadastroParceiros() {
             id: `${newParceiro.id}-create`,
             action: "create",
             entityType: "parceiro",
-            entityName: newParceiro.nomeFantasia,
+            entityName: newParceiro.razaoSocial,
             entityId: newParceiro.id,
             user: getCurrentUser(),
             timestamp: createdAt,
@@ -233,6 +263,7 @@ export default function CadastroParceiros() {
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+
               {/* Dados da Empresa */}
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Dados da Empresa</h3>
@@ -257,7 +288,7 @@ export default function CadastroParceiros() {
                     name="cnpj"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>CNPJ *</FormLabel>
+                        <FormLabel>CNPJ </FormLabel>
                         <FormControl>
                           <Input
                             placeholder="00.000.000/0000-00"
@@ -276,7 +307,7 @@ export default function CadastroParceiros() {
                     name="rua"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Rua *</FormLabel>
+                        <FormLabel>Rua </FormLabel>
                         <FormControl>
                           <Input placeholder="Nome da rua" {...field} />
                         </FormControl>
@@ -289,7 +320,7 @@ export default function CadastroParceiros() {
                     name="bairro"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Bairro *</FormLabel>
+                        <FormLabel>Bairro </FormLabel>
                         <FormControl>
                           <Input placeholder="Nome do bairro" {...field} />
                         </FormControl>
@@ -302,7 +333,7 @@ export default function CadastroParceiros() {
                     name="numero"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Número *</FormLabel>
+                        <FormLabel>Número </FormLabel>
                         <FormControl>
                           <Input placeholder="Número" {...field} />
                         </FormControl>
@@ -317,7 +348,7 @@ export default function CadastroParceiros() {
                         name="cidade"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Cidade *</FormLabel>
+                                <FormLabel>Cidade </FormLabel>
                                 <FormControl>
                                     <Input placeholder="Nome da cidade" {...field} />
                                 </FormControl>
@@ -331,7 +362,7 @@ export default function CadastroParceiros() {
                         name="estado"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>UF *</FormLabel>
+                                <FormLabel>UF </FormLabel>
                                 <FormControl>
                                     <Input placeholder="UF" {...field} />
                                 </FormControl>
@@ -345,7 +376,7 @@ export default function CadastroParceiros() {
                         name="cep"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>CEP *</FormLabel>
+                                <FormLabel>CEP </FormLabel>
                                 <FormControl>
                                     <Input
                                         placeholder="00000-000"
@@ -399,7 +430,7 @@ export default function CadastroParceiros() {
                     name="emailFinanceiro"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Email *</FormLabel>
+                        <FormLabel>Email </FormLabel>
                         <FormControl>
                           <Input type="email" placeholder="financeiro@empresa.com" {...field} />
                         </FormControl>
@@ -413,7 +444,7 @@ export default function CadastroParceiros() {
                     name="telefoneFinanceiro"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Telefone *</FormLabel>
+                        <FormLabel>Telefone </FormLabel>
                         <FormControl>
                           <Input
                             placeholder="(00) 00000-0000"
@@ -439,7 +470,7 @@ export default function CadastroParceiros() {
                     name="emailResponsavel"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Email *</FormLabel>
+                        <FormLabel>Email </FormLabel>
                         <FormControl>
                           <Input type="email" placeholder="responsavel@empresa.com" {...field} />
                         </FormControl>
@@ -453,7 +484,7 @@ export default function CadastroParceiros() {
                     name="telefoneResponsavel"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Telefone *</FormLabel>
+                        <FormLabel>Telefone </FormLabel>
                         <FormControl>
                           <Input
                             placeholder="(00) 00000-0000"
@@ -468,6 +499,72 @@ export default function CadastroParceiros() {
                   />
                 </div>
               </div>
+
+              {/* Contato */}
+              <div className="space-y-4">
+                    <h3 className="text-lg font-semibold">Contato</h3>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                        <FormField
+                            control={form.control}
+                            name="telefoneFixo"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Telefone Fixo</FormLabel>
+                                    <FormControl>
+                                        <Input
+                                            placeholder="(00) 00000-0000"
+                                            value={field.value}
+                                            maxLength={15}
+                                            onChange={(e) => field.onChange(formatPhone(e.target.value))}
+                                        />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+
+                        <FormField
+                            control={form.control}
+                            name="celular"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Celular *</FormLabel>
+                                    <FormControl>
+                                        <Input
+                                            placeholder="(00) 00000-0000"
+                                            value={field.value}
+                                            maxLength={15}
+                                            onChange={(e) => field.onChange(formatPhone(e.target.value))}
+                                        />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+
+                        <FormField
+                            control={form.control}
+                            name="telefoneReserva"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Telefone Reserva </FormLabel>
+                                    <FormControl>
+                                        <Input
+                                            placeholder="(00) 00000-0000"
+                                            value={field.value}
+                                            maxLength={15}
+                                            onChange={(e) => field.onChange(formatPhone(e.target.value))}
+                                        />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+
+                    </div>
+                </div>
 
               {/* Status e Vencimento */}
               <div className="space-y-4">

@@ -67,7 +67,7 @@ const ListaClientes = () => {
     cliente.nomeFantasia.toLowerCase().includes(searchTerm.toLowerCase()) ||
     cliente.razaoSocial.toLowerCase().includes(searchTerm.toLowerCase()) ||
     cliente.cnpj.includes(searchTerm) ||
-    getParceiro(cliente.parceiroId)?.nomeFantasia.toLowerCase().includes(searchTerm.toLowerCase())
+    getParceiro(cliente.parceiroId)?.razaoSocial.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -135,7 +135,7 @@ const ListaClientes = () => {
                         <TableCell className="font-medium">{cliente.nomeFantasia}</TableCell>
                         <TableCell>{cliente.razaoSocial}</TableCell>
                         <TableCell>{cliente.cnpj}</TableCell>
-                        <TableCell>{parceiro?.nomeFantasia || "Parceiro não encontrado"}</TableCell>
+                        <TableCell>{parceiro?.razaoSocial || "Parceiro não encontrado"}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex gap-2 justify-end">
                             <Button

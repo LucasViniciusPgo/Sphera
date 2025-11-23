@@ -680,7 +680,7 @@ const CadastroClientes = () => {
                           <SelectContent>
                             {parceiros.map((parceiro: any) => (
                               <SelectItem key={parceiro.id} value={parceiro.id}>
-                                {parceiro.nomeFantasia}
+                                {parceiro.razaoSocial}
                               </SelectItem>
                             ))}
                           </SelectContent>
