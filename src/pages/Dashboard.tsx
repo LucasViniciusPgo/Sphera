@@ -36,7 +36,7 @@ const Dashboard = () => {
           id: `${p.id}-create`,
           action: "create",
           entityType: "parceiro",
-          entityName: p.nomeFantasia,
+          entityName: p.razaoSocial,
           entityId: p.id,
           user: p.createdBy || "Sistema",
           timestamp: p.createdAt,

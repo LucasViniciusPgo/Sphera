@@ -6,10 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft } from "lucide-react";
-import { useNavigate, useParams } from "react-router-dom";
+import {useLocation, useNavigate, useParams} from "react-router-dom";
 import type { Parceiro } from "./ListaParceiros";
 import { getCurrentUser } from "@/hooks/useCurrentUser";
 
@@ -90,6 +89,8 @@ export default function CadastroParceiros() {
   const { id } = useParams();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isEditing = !!id;
+  const location = useLocation();
+  const readonly = new URLSearchParams(location.search).get("view") === "readonly";
 
   const form = useForm<ParceiroFormData>({
     resolver: zodResolver(parceiroSchema),
@@ -241,7 +242,7 @@ export default function CadastroParceiros() {
     <div className="max-w-4xl mx-auto">
       <Button
         variant="ghost"
-        onClick={() => navigate("/home")}
+        onClick={() => navigate("/home/parceiros")}
         className="mb-6"
       >
         <ArrowLeft className="mr-2 h-4 w-4" />
@@ -251,18 +252,23 @@ export default function CadastroParceiros() {
       <Card className="border-border">
         <CardHeader>
           <CardTitle className="text-3xl">
-            {isEditing ? "Editar Parceiro" : "Cadastro de Parceiros"}
+              {readonly
+                  ? "Visualizar Parceiro"
+                  : isEditing
+                      ? "Editar Parceiro"
+                      : "Cadastro de Parceiros"}
           </CardTitle>
           <CardDescription>
-            {isEditing
-              ? "Atualize os dados do parceiro"
-              : "Preencha os dados do parceiro para realizar o cadastro"
-            }
+              {readonly
+                  ? "Visualize os dados do parceiro"
+                  : isEditing
+                      ? "Atualize os dados do parceiro"
+                      : "Preencha os dados do parceiro para realizar o cadastro"}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={readonly ? undefined : form.handleSubmit(onSubmit)} className="space-y-6">
 
               {/* Dados da Empresa */}
               <div className="space-y-4">
@@ -587,7 +593,8 @@ export default function CadastroParceiros() {
                 </div>
               </div>
 
-              <div className="flex gap-4 pt-4">
+              {!readonly && (
+                <div className="flex gap-4 pt-4">
                 <Button
                   type="submit"
                   disabled={isSubmitting}
@@ -607,6 +614,7 @@ export default function CadastroParceiros() {
                   Cancelar
                 </Button>
               </div>
+              )}
             </form>
           </Form>
         </CardContent>
