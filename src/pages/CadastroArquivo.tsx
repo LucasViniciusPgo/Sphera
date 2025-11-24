@@ -1,17 +1,17 @@
-import { useState, useEffect } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import {useState, useEffect} from "react";
+import {useForm} from "react-hook-form";
+import {zodResolver} from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Upload, FileText } from "lucide-react";
-import { useNavigate, useParams } from "react-router-dom";
-import { getCurrentUser } from "@/hooks/useCurrentUser";
+import {Button} from "@/components/ui/button";
+import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card";
+import {Form, FormControl, FormField, FormItem, FormLabel, FormMessage} from "@/components/ui/form";
+import {Input} from "@/components/ui/input";
+import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select";
+import {Textarea} from "@/components/ui/textarea";
+import {useToast} from "@/hooks/use-toast";
+import {ArrowLeft, Upload, FileText} from "lucide-react";
+import {useLocation, useNavigate, useParams} from "react-router-dom";
+import {getCurrentUser} from "@/hooks/useCurrentUser";
 
 export interface Arquivo {
     id: string;
@@ -52,9 +52,9 @@ function addDaysISO(baseDate: string, days: number): string {
 type ArquivoFormData = z.infer<typeof arquivoSchema>;
 
 export default function CadastroArquivo() {
-    const { toast } = useToast();
+    const {toast} = useToast();
     const navigate = useNavigate();
-    const { id } = useParams();
+    const {id} = useParams();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [clientes, setClientes] = useState<any[]>([]);
@@ -63,6 +63,8 @@ export default function CadastroArquivo() {
     const [manualDue, setManualDue] = useState(false); // usuário editou manualmente DataVencimento
     // Removido vínculo automático entre serviço e data de vencimento
     const isEditing = !!id;
+    const location = useLocation();
+    const readonly = new URLSearchParams(location.search).get("view") === "readonly";
 
     const form = useForm<ArquivoFormData>({
         resolver: zodResolver(arquivoSchema),
@@ -83,7 +85,7 @@ export default function CadastroArquivo() {
         const servicosData = localStorage.getItem("servicos");
         if (clientesData) setClientes(JSON.parse(clientesData));
         if (servicosData) {
-            const parsed = JSON.parse(servicosData).map((s: any) => ({ ...s, vencimentoDoc: Number(s.vencimentoDoc) }));
+            const parsed = JSON.parse(servicosData).map((s: any) => ({...s, vencimentoDoc: Number(s.vencimentoDoc)}));
             setServicos(parsed);
         }
         if (id) {
@@ -117,7 +119,7 @@ export default function CadastroArquivo() {
                 e.target.value = "";
                 return;
             }
-            
+
             setSelectedFile(file);
             // Auto-preencher o nome do arquivo se estiver vazio
             if (!form.getValues("NomeArquivo")) {
@@ -137,8 +139,8 @@ export default function CadastroArquivo() {
                 if (index !== -1) {
                     const existing = arquivos[index];
                     const updatedAt = new Date().toISOString();
-                    arquivos[index] = { 
-                        ...data, 
+                    arquivos[index] = {
+                        ...data,
                         id,
                         createdBy: existing.createdBy,
                         createdAt: existing.createdAt,
@@ -205,7 +207,7 @@ export default function CadastroArquivo() {
             }
 
             localStorage.setItem("arquivos", JSON.stringify(arquivos));
-            navigate("/home");
+            navigate("/home/arquivos");
         } catch (error) {
             toast({
                 title: "Erro ao salvar",
@@ -221,35 +223,44 @@ export default function CadastroArquivo() {
         <div className="max-w-4xl mx-auto">
             <Button
                 variant="ghost"
-                onClick={() => navigate("/home")}
+                onClick={() => navigate("/home/arquivos")}
                 className="mb-6"
             >
-                <ArrowLeft className="mr-2 h-4 w-4" />
+                <ArrowLeft className="mr-2 h-4 w-4"/>
                 Voltar
             </Button>
 
             <Card className="border-border">
                 <CardHeader>
                     <CardTitle className="text-3xl">
-                        {isEditing ? "Editar Arquivo" : "Cadastro de Arquivos"}
+                        {
+                            readonly
+                                ? "Visualizar Arquivo"
+                                : isEditing
+                                    ? "Editar Arquivo"
+                                    : "Cadastro de Arquivos"
+                        }
                     </CardTitle>
                     <CardDescription>
-                        {isEditing
-                            ? "Atualize os dados do arquivo"
-                            : "Preencha os dados do arquivo para realizar o cadastro"
+                        {
+                            readonly
+                                ? "Visualize os dados do arquivo"
+                                : isEditing
+                                    ? "Atualize os dados do arquivo"
+                                    : "Preencha os dados do arquivo para realizar o cadastro"
                         }
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
                     <Form {...form}>
-                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                        <form onSubmit={readonly ? undefined : form.handleSubmit(onSubmit)} className="space-y-6">
                             {/* Upload de Arquivo */}
                             <div className="space-y-4">
                                 <h3 className="text-lg font-semibold">Upload do Arquivo</h3>
 
                                 <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6">
                                     <div className="flex flex-col items-center justify-center text-center">
-                                        <Upload className="h-10 w-10 text-muted-foreground mb-4" />
+                                        <Upload className="h-10 w-10 text-muted-foreground mb-4"/>
                                         <label htmlFor="file-upload" className="cursor-pointer">
                                             <span className="text-sm font-medium text-primary hover:text-primary/80">
                                                 Clique para selecionar um arquivo
@@ -268,7 +279,7 @@ export default function CadastroArquivo() {
                                     </div>
                                     {selectedFile && (
                                         <div className="mt-4 p-3 bg-muted rounded-md flex items-center gap-2">
-                                            <FileText className="h-4 w-4" />
+                                            <FileText className="h-4 w-4"/>
                                             <span className="text-sm">{selectedFile.name}</span>
                                             <span className="text-xs text-muted-foreground">
                                                 ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
@@ -285,13 +296,13 @@ export default function CadastroArquivo() {
                                 <FormField
                                     control={form.control}
                                     name="NomeArquivo"
-                                    render={({ field }) => (
+                                    render={({field}) => (
                                         <FormItem>
                                             <FormLabel>Nome do Arquivo *</FormLabel>
                                             <FormControl>
                                                 <Input placeholder="Nome identificador do arquivo" {...field} />
                                             </FormControl>
-                                            <FormMessage />
+                                            <FormMessage/>
                                         </FormItem>
                                     )}
                                 />
@@ -300,13 +311,13 @@ export default function CadastroArquivo() {
                                     <FormField
                                         control={form.control}
                                         name="Cliente"
-                                        render={({ field }) => (
+                                        render={({field}) => (
                                             <FormItem>
                                                 <FormLabel>Cliente *</FormLabel>
                                                 <Select onValueChange={field.onChange} value={field.value}>
                                                     <FormControl>
                                                         <SelectTrigger>
-                                                            <SelectValue placeholder="Selecione um cliente" />
+                                                            <SelectValue placeholder="Selecione um cliente"/>
                                                         </SelectTrigger>
                                                     </FormControl>
                                                     <SelectContent>
@@ -317,7 +328,7 @@ export default function CadastroArquivo() {
                                                         ))}
                                                     </SelectContent>
                                                 </Select>
-                                                <FormMessage />
+                                                <FormMessage/>
                                             </FormItem>
                                         )}
                                     />
@@ -325,7 +336,7 @@ export default function CadastroArquivo() {
                                     <FormField
                                         control={form.control}
                                         name="Servico"
-                                        render={({ field }) => (
+                                        render={({field}) => (
                                             <FormItem>
                                                 <FormLabel>Serviço *</FormLabel>
                                                 <Select
@@ -335,7 +346,7 @@ export default function CadastroArquivo() {
                                                         const servicoSel = servicos.find(s => s.id === value);
                                                         if (servicoSel && servicoSel.vencimentoDoc) {
                                                             const emissao = form.getValues('DataEmissao');
-                                                            const base = emissao || new Date().toISOString().slice(0,10);
+                                                            const base = emissao || new Date().toISOString().slice(0, 10);
                                                             if (!emissao) {
                                                                 form.setValue('DataEmissao', base);
                                                             }
@@ -348,7 +359,7 @@ export default function CadastroArquivo() {
                                                 >
                                                     <FormControl>
                                                         <SelectTrigger>
-                                                            <SelectValue placeholder="Selecione um serviço" />
+                                                            <SelectValue placeholder="Selecione um serviço"/>
                                                         </SelectTrigger>
                                                     </FormControl>
                                                     <SelectContent>
@@ -359,7 +370,7 @@ export default function CadastroArquivo() {
                                                         ))}
                                                     </SelectContent>
                                                 </Select>
-                                                <FormMessage />
+                                                <FormMessage/>
                                             </FormItem>
                                         )}
                                     />
@@ -368,13 +379,13 @@ export default function CadastroArquivo() {
                                 <FormField
                                     control={form.control}
                                     name="Resposavel"
-                                    render={({ field }) => (
+                                    render={({field}) => (
                                         <FormItem>
                                             <FormLabel>Responsável *</FormLabel>
                                             <FormControl>
                                                 <Input placeholder="Nome do responsável pelo arquivo" {...field} />
                                             </FormControl>
-                                            <FormMessage />
+                                            <FormMessage/>
                                         </FormItem>
                                     )}
                                 />
@@ -383,7 +394,7 @@ export default function CadastroArquivo() {
                                     <FormField
                                         control={form.control}
                                         name="DataEmissao"
-                                        render={({ field }) => (
+                                        render={({field}) => (
                                             <FormItem>
                                                 <FormLabel>Data de Emissão *</FormLabel>
                                                 <FormControl>
@@ -402,7 +413,7 @@ export default function CadastroArquivo() {
                                                         }}
                                                     />
                                                 </FormControl>
-                                                <FormMessage />
+                                                <FormMessage/>
                                             </FormItem>
                                         )}
                                     />
@@ -410,7 +421,7 @@ export default function CadastroArquivo() {
                                     <FormField
                                         control={form.control}
                                         name="DataVencimento"
-                                        render={({ field }) => (
+                                        render={({field}) => (
                                             <FormItem>
                                                 <FormLabel>Data de Vencimento *</FormLabel>
                                                 <FormControl>
@@ -423,7 +434,7 @@ export default function CadastroArquivo() {
                                                         }}
                                                     />
                                                 </FormControl>
-                                                <FormMessage />
+                                                <FormMessage/>
                                             </FormItem>
                                         )}
                                     />
@@ -432,7 +443,7 @@ export default function CadastroArquivo() {
                                 <FormField
                                     control={form.control}
                                     name="Observacao"
-                                    render={({ field }) => (
+                                    render={({field}) => (
                                         <FormItem>
                                             <FormLabel>Observação</FormLabel>
                                             <FormControl>
@@ -442,45 +453,47 @@ export default function CadastroArquivo() {
                                                     {...field}
                                                 />
                                             </FormControl>
-                                            <FormMessage />
+                                            <FormMessage/>
                                         </FormItem>
                                     )}
                                 />
                             </div>
 
-                            <div className="flex gap-4 pt-4">
-                                <Button
-                                    type="submit"
-                                    disabled={isSubmitting}
-                                    className="flex-1"
-                                >
-                                    {isSubmitting
-                                        ? (isEditing ? "Atualizando..." : "Cadastrando...")
-                                        : (isEditing ? "Atualizar Arquivo" : "Cadastrar Arquivo")
-                                    }
-                                </Button>
+                            {!readonly && (
+                                <div className="flex gap-4 pt-4">
+                                    <Button
+                                        type="submit"
+                                        disabled={isSubmitting}
+                                        className="flex-1"
+                                    >
+                                        {isSubmitting
+                                            ? (isEditing ? "Atualizando..." : "Cadastrando...")
+                                            : (isEditing ? "Atualizar Arquivo" : "Cadastrar Arquivo")
+                                        }
+                                    </Button>
 
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    onClick={() => {
-                                        form.reset();
-                                        setSelectedFile(null);
-                                    }}
-                                    disabled={isSubmitting}
-                                >
-                                    Limpar
-                                </Button>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    onClick={() => navigate("/home")}
-                                    disabled={isSubmitting}
-                                >
-                                    Cancelar
-                                </Button>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() => {
+                                            form.reset();
+                                            setSelectedFile(null);
+                                        }}
+                                        disabled={isSubmitting}
+                                    >
+                                        Limpar
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() => navigate("/home")}
+                                        disabled={isSubmitting}
+                                    >
+                                        Cancelar
+                                    </Button>
 
-                            </div>
+                                </div>
+                            )}
                         </form>
                     </Form>
                 </CardContent>

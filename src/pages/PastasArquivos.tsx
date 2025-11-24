@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 
 interface Parceiro {
   id: string;
-  nomeFantasia: string;
+  razaoSocial: string;
 }
 
 export default function PastasArquivos() {
@@ -40,7 +40,7 @@ export default function PastasArquivos() {
 
   const parceirosFiltrados = useMemo(() => {
     return parceiros.filter((p) =>
-      searchTerm === "" || p.nomeFantasia.toLowerCase().includes(searchTerm.toLowerCase())
+      searchTerm === "" || p.razaoSocial.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [parceiros, searchTerm]);
 
@@ -113,7 +113,7 @@ export default function PastasArquivos() {
                 onClick={() => handlePastaClick(parceiro.id)}
               >
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-lg font-medium">{parceiro.nomeFantasia}</CardTitle>
+                  <CardTitle className="text-lg font-medium">{parceiro.razaoSocial}</CardTitle>
                   <Folder className="h-8 w-8 text-primary" />
                 </CardHeader>
                 <CardContent>

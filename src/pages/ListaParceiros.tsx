@@ -5,24 +5,24 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Search, Edit, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Search, Edit, Plus, Trash2, Eye } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { getCurrentUser } from "@/hooks/useCurrentUser";
 
 export type Parceiro = {
   id: string;
-  nomeFantasia: string;
   razaoSocial: string;
-  cnpj: string;
-  inscricaoEstadual: string;
+  cnpj?: string | null;
   endereco: string;
   emailFinanceiro: string;
   telefoneFinanceiro: string;
   emailResponsavel: string;
   telefoneResponsavel: string;
+  telefoneFixo: string;
+  celular: string;
+  telefoneReserva: string;
   status: "ativo" | "inativo";
-  dataVencimento: string;
   createdBy: string;
   createdAt: string;
   updatedBy: string;
@@ -72,7 +72,7 @@ export default function ListaParceiros() {
         id: `${parceiroId}-delete-${timestamp}`,
         action: "delete",
         entityType: "parceiro",
-        entityName: parceiro.nomeFantasia,
+        entityName: parceiro.razaoSocial,
         entityId: parceiroId,
         user: getCurrentUser(),
         timestamp,
@@ -88,11 +88,14 @@ export default function ListaParceiros() {
     });
   };
 
-  const filteredParceiros = parceiros.filter((parceiro) =>
-    parceiro.nomeFantasia.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    parceiro.razaoSocial.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    parceiro.cnpj.includes(searchTerm)
-  );
+    const filteredParceiros = parceiros.filter((parceiro) => {
+        const term = searchTerm.toLowerCase();
+        const razao = parceiro.razaoSocial.toLowerCase();
+        const cnpj = (parceiro.cnpj ?? "").toLowerCase();
+
+        return razao.includes(term) || cnpj.includes(term);
+    });
+
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -154,30 +157,34 @@ export default function ListaParceiros() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Nome Fantasia</TableHead>
+                      <TableHead>Razão Social</TableHead>
                       <TableHead>CNPJ</TableHead>
-                      <TableHead>Email Financeiro</TableHead>
+                      <TableHead>Celular</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead>Vencimento</TableHead>
                       <TableHead className="text-right">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredParceiros.map((parceiro) => (
                       <TableRow key={parceiro.id}>
-                        <TableCell className="font-medium">{parceiro.nomeFantasia}</TableCell>
+                        <TableCell className="font-medium">{parceiro.razaoSocial}</TableCell>
                         <TableCell>{parceiro.cnpj}</TableCell>
-                        <TableCell>{parceiro.emailFinanceiro}</TableCell>
+                        <TableCell>{parceiro.celular}</TableCell>
                         <TableCell>
                           <Badge variant={parceiro.status === "ativo" ? "default" : "secondary"}>
                             {parceiro.status === "ativo" ? "Ativo" : "Inativo"}
                           </Badge>
                         </TableCell>
-                        <TableCell>
-                          {new Date(parceiro.dataVencimento).toLocaleDateString("pt-BR")}
-                        </TableCell>
                         <TableCell className="text-right">
                           <div className="flex gap-2 justify-end">
+                              <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => navigate(`/home/cadastro-parceiros/${parceiro.id}?view=readonly`)}
+                              >
+                                  <Eye className="h-4 w-4" />
+                              </Button>
+
                             <Button
                               variant="ghost"
                               size="sm"
@@ -195,7 +202,7 @@ export default function ListaParceiros() {
                                 <AlertDialogHeader>
                                   <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
                                   <AlertDialogDescription>
-                                    Tem certeza que deseja excluir o parceiro "{parceiro.nomeFantasia}"? Esta ação não pode ser desfeita.
+                                    Tem certeza que deseja excluir o parceiro "{parceiro.razaoSocial}"? Esta ação não pode ser desfeita.
                                   </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
