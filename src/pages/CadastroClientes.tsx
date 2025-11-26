@@ -1,16 +1,16 @@
-import {useState, useEffect} from "react";
-import {useForm} from "react-hook-form";
-import {zodResolver} from "@hookform/resolvers/zod";
+import { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import {useLocation, useNavigate, useParams} from "react-router-dom";
-import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card";
-import {Form, FormControl, FormField, FormItem, FormLabel, FormMessage} from "@/components/ui/form";
-import {Input} from "@/components/ui/input";
-import {Button} from "@/components/ui/button";
-import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select";
-import {useToast} from "@/hooks/use-toast";
-import {ArrowLeft} from "lucide-react";
-import {getCurrentUser} from "@/hooks/useCurrentUser";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+import { ArrowLeft } from "lucide-react";
+import { getCurrentUser } from "@/hooks/useCurrentUser";
 
 export interface Cliente {
     id: string;
@@ -65,7 +65,7 @@ const clienteSchema = z.object({
     nomeResponsavel: z.string().min(1, "Nome do responsável é obrigatório").max(100),
     emailResponsavel: z.string().email("Email inválido").max(255),
     telefoneResponsavel: z.string().min(10, "Telefone inválido").max(20),
-    status: z.literal("ativo"),
+    status: z.enum(["ativo", "inativo"]),
     vencimentoContrato: z.string().min(1, "Data de vencimento do contrato é obrigatória"),
     dataVencimento: z.string().min(1, "Data de vencimento é obrigatória"),
     parceiroId: z.string().min(1, "Selecione um parceiro"),
@@ -102,9 +102,9 @@ function formatCEP(value: string): string {
 type ClienteFormData = z.infer<typeof clienteSchema>;
 
 const CadastroClientes = () => {
-    const {toast} = useToast();
+    const { toast } = useToast();
     const navigate = useNavigate();
-    const {id} = useParams();
+    const { id } = useParams();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const isEditing = !!id;
     const location = useLocation();
@@ -274,7 +274,7 @@ const CadastroClientes = () => {
                 onClick={() => navigate("/home/clientes")}
                 className="mb-6"
             >
-                <ArrowLeft className="mr-2 h-4 w-4"/>
+                <ArrowLeft className="mr-2 h-4 w-4" />
                 Voltar
             </Button>
 
@@ -311,13 +311,13 @@ const CadastroClientes = () => {
                                     <FormField
                                         control={form.control}
                                         name="nomeFantasia"
-                                        render={({field}) => (
+                                        render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Nome Fantasia *</FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder="Nome do cliente" {...field} />
+                                                    <Input placeholder="Nome do cliente" {...field} readOnly={readonly} />
                                                 </FormControl>
-                                                <FormMessage/>
+                                                <FormMessage />
                                             </FormItem>
                                         )}
                                     />
@@ -325,13 +325,13 @@ const CadastroClientes = () => {
                                     <FormField
                                         control={form.control}
                                         name="razaoSocial"
-                                        render={({field}) => (
+                                        render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Razão Social *</FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder="Razão social completa" {...field} />
+                                                    <Input placeholder="Razão social completa" {...field} readOnly={readonly} />
                                                 </FormControl>
-                                                <FormMessage/>
+                                                <FormMessage />
                                             </FormItem>
                                         )}
                                     />
@@ -341,7 +341,7 @@ const CadastroClientes = () => {
                                     <FormField
                                         control={form.control}
                                         name="cnpj"
-                                        render={({field}) => (
+                                        render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>CNPJ *</FormLabel>
                                                 <FormControl>
@@ -350,9 +350,10 @@ const CadastroClientes = () => {
                                                         value={field.value}
                                                         maxLength={18}
                                                         onChange={(e) => field.onChange(formatCNPJ(e.target.value))}
+                                                        readOnly={readonly}
                                                     />
                                                 </FormControl>
-                                                <FormMessage/>
+                                                <FormMessage />
                                             </FormItem>
                                         )}
                                     />
@@ -360,13 +361,13 @@ const CadastroClientes = () => {
                                     <FormField
                                         control={form.control}
                                         name="inscricaoEstadual"
-                                        render={({field}) => (
+                                        render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Inscrição Estadual</FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder="Número da inscrição" {...field} />
+                                                    <Input placeholder="Número da inscrição" {...field} readOnly={readonly} />
                                                 </FormControl>
-                                                <FormMessage/>
+                                                <FormMessage />
                                             </FormItem>
                                         )}
                                     />
@@ -374,42 +375,46 @@ const CadastroClientes = () => {
                                     <FormField
                                         control={form.control}
                                         name="inscricaoMunicipal"
-                                        render={({field}) => (
+                                        render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Inscrição Municipal *</FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder="Número da inscrição" {...field} />
+                                                    <Input placeholder="Número da inscrição" {...field} readOnly={readonly} />
                                                 </FormControl>
-                                                <FormMessage/>
+                                                <FormMessage />
                                             </FormItem>
                                         )}
                                     />
                                 </div>
+                            </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {/* Dados de localização */}
+                            <div className="space-y-4">
+                                <h3 className="text-lg font-semibold">Dados de localização</h3>
+                                <div className="grid md:grid-cols-2 gap-4">
                                     <FormField
                                         control={form.control}
                                         name="rua"
-                                        render={({field}) => (
+                                        render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Rua *</FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder="Nome da rua" {...field} />
+                                                    <Input placeholder="Nome da rua" {...field} readOnly={readonly} />
                                                 </FormControl>
-                                                <FormMessage/>
+                                                <FormMessage />
                                             </FormItem>
                                         )}
                                     />
                                     <FormField
                                         control={form.control}
                                         name="bairro"
-                                        render={({field}) => (
+                                        render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Bairro *</FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder="Nome do bairro" {...field} />
+                                                    <Input placeholder="Nome do bairro" {...field} readOnly={readonly} />
                                                 </FormControl>
-                                                <FormMessage/>
+                                                <FormMessage />
                                             </FormItem>
                                         )}
                                     />
@@ -417,13 +422,13 @@ const CadastroClientes = () => {
                                     <FormField
                                         control={form.control}
                                         name="numero"
-                                        render={({field}) => (
+                                        render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Número *</FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder="Número" {...field} />
+                                                    <Input placeholder="Número" {...field} readOnly={readonly} />
                                                 </FormControl>
-                                                <FormMessage/>
+                                                <FormMessage />
                                             </FormItem>
                                         )}
                                     />
@@ -431,13 +436,13 @@ const CadastroClientes = () => {
                                     <FormField
                                         control={form.control}
                                         name="cidade"
-                                        render={({field}) => (
+                                        render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Cidade *</FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder="Nome da cidade" {...field} />
+                                                    <Input placeholder="Nome da cidade" {...field} readOnly={readonly} />
                                                 </FormControl>
-                                                <FormMessage/>
+                                                <FormMessage />
                                             </FormItem>
                                         )}
                                     />
@@ -445,13 +450,13 @@ const CadastroClientes = () => {
                                     <FormField
                                         control={form.control}
                                         name="estado"
-                                        render={({field}) => (
+                                        render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>UF *</FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder="UF" {...field} />
+                                                    <Input placeholder="UF" {...field} readOnly={readonly} />
                                                 </FormControl>
-                                                <FormMessage/>
+                                                <FormMessage />
                                             </FormItem>
                                         )}
                                     />
@@ -459,7 +464,7 @@ const CadastroClientes = () => {
                                     <FormField
                                         control={form.control}
                                         name="cep"
-                                        render={({field}) => (
+                                        render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>CEP *</FormLabel>
                                                 <FormControl>
@@ -468,9 +473,10 @@ const CadastroClientes = () => {
                                                         maxLength={9}
                                                         value={field.value}
                                                         onChange={(e) => field.onChange(formatCEP(e.target.value))}
+                                                        readOnly={readonly}
                                                     />
                                                 </FormControl>
-                                                <FormMessage/>
+                                                <FormMessage />
                                             </FormItem>
                                         )}
                                     />
@@ -478,13 +484,13 @@ const CadastroClientes = () => {
                                     <FormField
                                         control={form.control}
                                         name="complemento"
-                                        render={({field}) => (
+                                        render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Complemento </FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder="Complemento" {...field} />
+                                                    <Input placeholder="Complemento" {...field} readOnly={readonly} />
                                                 </FormControl>
-                                                <FormMessage/>
+                                                <FormMessage />
                                             </FormItem>
                                         )}
                                     />
@@ -492,13 +498,13 @@ const CadastroClientes = () => {
                                     <FormField
                                         control={form.control}
                                         name="lote"
-                                        render={({field}) => (
+                                        render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Lote </FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder="Lote" {...field} />
+                                                    <Input placeholder="Lote" {...field} readOnly={readonly} />
                                                 </FormControl>
-                                                <FormMessage/>
+                                                <FormMessage />
                                             </FormItem>
                                         )}
                                     />
@@ -515,13 +521,13 @@ const CadastroClientes = () => {
                                     <FormField
                                         control={form.control}
                                         name="nomeFinanceiro"
-                                        render={({field}) => (
+                                        render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Nome *</FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder="Nome" {...field} />
+                                                    <Input placeholder="Nome" {...field} readOnly={readonly} />
                                                 </FormControl>
-                                                <FormMessage/>
+                                                <FormMessage />
                                             </FormItem>
                                         )}
                                     />
@@ -529,14 +535,14 @@ const CadastroClientes = () => {
                                     <FormField
                                         control={form.control}
                                         name="emailFinanceiro"
-                                        render={({field}) => (
+                                        render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Email *</FormLabel>
                                                 <FormControl>
                                                     <Input type="email"
-                                                           placeholder="financeiro@empresa.com" {...field} />
+                                                        placeholder="financeiro@empresa.com" {...field} readOnly={readonly} />
                                                 </FormControl>
-                                                <FormMessage/>
+                                                <FormMessage />
                                             </FormItem>
                                         )}
                                     />
@@ -544,7 +550,7 @@ const CadastroClientes = () => {
                                     <FormField
                                         control={form.control}
                                         name="telefoneFinanceiro"
-                                        render={({field}) => (
+                                        render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Telefone *</FormLabel>
                                                 <FormControl>
@@ -553,9 +559,10 @@ const CadastroClientes = () => {
                                                         value={field.value}
                                                         maxLength={15}
                                                         onChange={(e) => field.onChange(formatPhone(e.target.value))}
+                                                        readOnly={readonly}
                                                     />
                                                 </FormControl>
-                                                <FormMessage/>
+                                                <FormMessage />
                                             </FormItem>
                                         )}
                                     />
@@ -571,13 +578,13 @@ const CadastroClientes = () => {
                                     <FormField
                                         control={form.control}
                                         name="nomeResponsavel"
-                                        render={({field}) => (
+                                        render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Nome *</FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder="Nome" {...field} />
+                                                    <Input placeholder="Nome" {...field} readOnly={readonly} />
                                                 </FormControl>
-                                                <FormMessage/>
+                                                <FormMessage />
                                             </FormItem>
                                         )}
                                     />
@@ -585,14 +592,14 @@ const CadastroClientes = () => {
                                     <FormField
                                         control={form.control}
                                         name="emailResponsavel"
-                                        render={({field}) => (
+                                        render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Email *</FormLabel>
                                                 <FormControl>
                                                     <Input type="email"
-                                                           placeholder="responsavel@empresa.com" {...field} />
+                                                        placeholder="responsavel@empresa.com" {...field} readOnly={readonly} />
                                                 </FormControl>
-                                                <FormMessage/>
+                                                <FormMessage />
                                             </FormItem>
                                         )}
                                     />
@@ -600,7 +607,7 @@ const CadastroClientes = () => {
                                     <FormField
                                         control={form.control}
                                         name="telefoneResponsavel"
-                                        render={({field}) => (
+                                        render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Telefone *</FormLabel>
                                                 <FormControl>
@@ -609,9 +616,10 @@ const CadastroClientes = () => {
                                                         value={field.value}
                                                         maxLength={15}
                                                         onChange={(e) => field.onChange(formatPhone(e.target.value))}
+                                                        readOnly={readonly}
                                                     />
                                                 </FormControl>
-                                                <FormMessage/>
+                                                <FormMessage />
                                             </FormItem>
                                         )}
                                     />
@@ -627,13 +635,21 @@ const CadastroClientes = () => {
                                     <FormField
                                         control={form.control}
                                         name="status"
-                                        render={({field}) => (
+                                        render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Status </FormLabel>
                                                 <FormControl>
-                                                    <Input value="Ativo" disabled/>
+                                                    <Select value={field.value} onValueChange={field.onChange}>
+                                                        <SelectTrigger disabled={readonly || !isEditing}>
+                                                            <SelectValue placeholder="Selecione o status" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="ativo">Ativo</SelectItem>
+                                                            <SelectItem value="inativo">Inativo</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
                                                 </FormControl>
-                                                <FormMessage/>
+                                                <FormMessage />
                                             </FormItem>
                                         )}
                                     />
@@ -641,13 +657,13 @@ const CadastroClientes = () => {
                                     <FormField
                                         control={form.control}
                                         name="dataVencimento"
-                                        render={({field}) => (
+                                        render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Data de Vencimento da Fatura *</FormLabel>
                                                 <FormControl>
-                                                    <Input type="date" {...field} />
+                                                    <Input type="date" {...field} readOnly={readonly} />
                                                 </FormControl>
-                                                <FormMessage/>
+                                                <FormMessage />
                                             </FormItem>
                                         )}
                                     />
@@ -655,7 +671,7 @@ const CadastroClientes = () => {
                                     <FormField
                                         control={form.control}
                                         name="vencimentoContrato"
-                                        render={({field}) => (
+                                        render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Prazo de Vencimento do Contrato (dias) *</FormLabel>
                                                 <FormControl>
@@ -664,9 +680,10 @@ const CadastroClientes = () => {
                                                         placeholder="Número de dias"
                                                         min={1}
                                                         {...field}
+                                                        readOnly={readonly}
                                                     />
                                                 </FormControl>
-                                                <FormMessage/>
+                                                <FormMessage />
                                             </FormItem>
                                         )}
                                     />
@@ -680,13 +697,13 @@ const CadastroClientes = () => {
                                 <FormField
                                     control={form.control}
                                     name="parceiroId"
-                                    render={({field}) => (
+                                    render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>Parceiro *</FormLabel>
                                             <Select onValueChange={field.onChange} value={field.value}>
                                                 <FormControl>
                                                     <SelectTrigger disabled={readonly}>
-                                                        <SelectValue placeholder="Selecione um parceiro"/>
+                                                        <SelectValue placeholder="Selecione um parceiro" />
                                                     </SelectTrigger>
                                                 </FormControl>
                                                 <SelectContent>
@@ -697,7 +714,7 @@ const CadastroClientes = () => {
                                                     ))}
                                                 </SelectContent>
                                             </Select>
-                                            <FormMessage/>
+                                            <FormMessage />
                                         </FormItem>
                                     )}
                                 />

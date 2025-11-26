@@ -216,7 +216,7 @@ export default function CadastroServico() {
                                             <FormItem>
                                                 <FormLabel>Nome do Serviço *</FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder="Nome do serviço" {...field} />
+                                                    <Input placeholder="Nome do serviço" {...field} readOnly={readonly} />
                                                 </FormControl>
                                                 <FormMessage/>
                                             </FormItem>
@@ -230,7 +230,7 @@ export default function CadastroServico() {
                                             <FormItem>
                                                 <FormLabel>Código do Serviço *</FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder="Código do serviço" {...field} />
+                                                    <Input placeholder="Código do serviço" {...field} readOnly={readonly} />
                                                 </FormControl>
                                                 <FormMessage/>
                                             </FormItem>
@@ -256,7 +256,7 @@ export default function CadastroServico() {
                                                         onChange={(e) => {
                                                             const val = e.target.value;
                                                             field.onChange(val === '' ? '' : val);
-                                                        }}
+                                                        }} readOnly={readonly}
                                                     />
                                                 </FormControl>
                                                 <FormMessage/>
@@ -267,11 +267,19 @@ export default function CadastroServico() {
                                     <FormField
                                         control={form.control}
                                         name="status"
-                                        render={() => (
+                                        render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Status </FormLabel>
                                                 <FormControl>
-                                                    <Input value="Ativo" disabled/>
+                                                    <Select value={field.value} onValueChange={field.onChange}>
+                                                        <SelectTrigger disabled={readonly || !isEditing}>
+                                                            <SelectValue placeholder="Selecione o status" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="ativo">Ativo</SelectItem>
+                                                            <SelectItem value="inativo">Inativo</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
                                                 </FormControl>
                                                 <FormMessage/>
                                             </FormItem>

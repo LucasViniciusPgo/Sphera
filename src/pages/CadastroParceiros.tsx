@@ -3,6 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -51,7 +52,7 @@ const parceiroSchema = z.object({
         emptyToUndefined,
         z.string().min(10, "Telefone inválido").max(20).optional()
     ),
-  status: z.literal("ativo"),
+  status: z.enum(["ativo", "inativo"]),
 });
 
 // Helpers de formatação (máscaras simples baseadas em regex)
@@ -282,7 +283,7 @@ export default function CadastroParceiros() {
                       <FormItem>
                         <FormLabel>Razão Social *</FormLabel>
                         <FormControl>
-                          <Input placeholder="Razão social completa" {...field} />
+                          <Input placeholder="Razão social completa" {...field} readOnly={readonly} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -301,6 +302,7 @@ export default function CadastroParceiros() {
                             value={field.value}
                             maxLength={18}
                             onChange={(e) => field.onChange(formatCNPJ(e.target.value))}
+                            readOnly={readonly}
                           />
                         </FormControl>
                         <FormMessage />
@@ -315,7 +317,7 @@ export default function CadastroParceiros() {
                       <FormItem>
                         <FormLabel>Rua </FormLabel>
                         <FormControl>
-                          <Input placeholder="Nome da rua" {...field} />
+                          <Input placeholder="Nome da rua" {...field} readOnly={readonly} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -328,7 +330,7 @@ export default function CadastroParceiros() {
                       <FormItem>
                         <FormLabel>Bairro </FormLabel>
                         <FormControl>
-                          <Input placeholder="Nome do bairro" {...field} />
+                          <Input placeholder="Nome do bairro" {...field} readOnly={readonly} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -341,7 +343,7 @@ export default function CadastroParceiros() {
                       <FormItem>
                         <FormLabel>Número </FormLabel>
                         <FormControl>
-                          <Input placeholder="Número" {...field} />
+                          <Input placeholder="Número" {...field} readOnly={readonly} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -356,7 +358,7 @@ export default function CadastroParceiros() {
                             <FormItem>
                                 <FormLabel>Cidade </FormLabel>
                                 <FormControl>
-                                    <Input placeholder="Nome da cidade" {...field} />
+                                    <Input placeholder="Nome da cidade" {...field} readOnly={readonly} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -370,7 +372,7 @@ export default function CadastroParceiros() {
                             <FormItem>
                                 <FormLabel>UF </FormLabel>
                                 <FormControl>
-                                    <Input placeholder="UF" {...field} />
+                                    <Input placeholder="UF" {...field} readOnly={readonly} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -389,6 +391,7 @@ export default function CadastroParceiros() {
                                         maxLength={9}
                                         value={field.value}
                                         onChange={(e) => field.onChange(formatCEP(e.target.value))}
+                                        readOnly={readonly}
                                     />
                                 </FormControl>
                                 <FormMessage />
@@ -403,7 +406,7 @@ export default function CadastroParceiros() {
                             <FormItem>
                                 <FormLabel>Complemento </FormLabel>
                                 <FormControl>
-                                    <Input placeholder="Complemento" {...field} />
+                                    <Input placeholder="Complemento" {...field} readOnly={readonly} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -417,7 +420,7 @@ export default function CadastroParceiros() {
                             <FormItem>
                                 <FormLabel>Lote </FormLabel>
                                 <FormControl>
-                                    <Input placeholder="Lote" {...field} />
+                                    <Input placeholder="Lote" {...field} readOnly={readonly} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -578,17 +581,25 @@ export default function CadastroParceiros() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
-                        control={form.control}
-                        name="status"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Status </FormLabel>
-                                <FormControl>
-                                    <Input value="Ativo" disabled />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
+                      control={form.control}
+                      name="status"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Status </FormLabel>
+                          <FormControl>
+                            <Select value={field.value} onValueChange={field.onChange}>
+                              <SelectTrigger disabled={readonly || !isEditing}>
+                                <SelectValue placeholder="Selecione o status" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="ativo">Ativo</SelectItem>
+                                <SelectItem value="inativo">Inativo</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
                     />
                 </div>
               </div>
