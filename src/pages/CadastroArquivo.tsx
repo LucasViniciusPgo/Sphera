@@ -274,8 +274,8 @@ export default function CadastroArquivo() {
                                             type="file"
                                             className="hidden"
                                             accept=".pdf"
-                                            onChange={handleFileChange}
-                                        />
+                                            onChange={readonly ? undefined : handleFileChange} 
+                                        /> 
                                     </div>
                                     {selectedFile && (
                                         <div className="mt-4 p-3 bg-muted rounded-md flex items-center gap-2">
@@ -300,7 +300,7 @@ export default function CadastroArquivo() {
                                         <FormItem>
                                             <FormLabel>Nome do Arquivo *</FormLabel>
                                             <FormControl>
-                                                <Input placeholder="Nome identificador do arquivo" {...field} />
+                                                <Input placeholder="Nome identificador do arquivo" {...field} readOnly={readonly} />
                                             </FormControl>
                                             <FormMessage/>
                                         </FormItem>
@@ -314,10 +314,10 @@ export default function CadastroArquivo() {
                                         render={({field}) => (
                                             <FormItem>
                                                 <FormLabel>Cliente *</FormLabel>
-                                                <Select onValueChange={field.onChange} value={field.value}>
+                                                <Select onValueChange={field.onChange} value={field.value} disabled={readonly}>
                                                     <FormControl>
                                                         <SelectTrigger>
-                                                            <SelectValue placeholder="Selecione um cliente"/>
+                                                            <SelectValue placeholder="Selecione um cliente"/> 
                                                         </SelectTrigger>
                                                     </FormControl>
                                                     <SelectContent>
@@ -356,6 +356,7 @@ export default function CadastroArquivo() {
                                                         }
                                                     }}
                                                     value={field.value}
+                                                    disabled={readonly}
                                                 >
                                                     <FormControl>
                                                         <SelectTrigger>
@@ -383,7 +384,7 @@ export default function CadastroArquivo() {
                                         <FormItem>
                                             <FormLabel>Responsável *</FormLabel>
                                             <FormControl>
-                                                <Input placeholder="Nome do responsável pelo arquivo" {...field} />
+                                                <Input placeholder="Nome do responsável pelo arquivo" {...field} readOnly={readonly} />
                                             </FormControl>
                                             <FormMessage/>
                                         </FormItem>
@@ -410,8 +411,9 @@ export default function CadastroArquivo() {
                                                                 const nova = addDaysISO(e.target.value, servicoSel.vencimentoDoc);
                                                                 form.setValue('DataVencimento', nova);
                                                             }
-                                                        }}
-                                                    />
+                                                        }} 
+                                                        readOnly={readonly}
+                                                    /> 
                                                 </FormControl>
                                                 <FormMessage/>
                                             </FormItem>
@@ -432,6 +434,7 @@ export default function CadastroArquivo() {
                                                             setManualDue(true); // usuário quer controlar manualmente
                                                             field.onChange(e.target.value);
                                                         }}
+                                                        readOnly={readonly}
                                                     />
                                                 </FormControl>
                                                 <FormMessage/>
@@ -450,7 +453,7 @@ export default function CadastroArquivo() {
                                                 <Textarea
                                                     placeholder="Observações adicionais sobre o arquivo..."
                                                     className="min-h-[100px]"
-                                                    {...field}
+                                                    {...field} readOnly={readonly}
                                                 />
                                             </FormControl>
                                             <FormMessage/>
