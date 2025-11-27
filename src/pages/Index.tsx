@@ -5,22 +5,27 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Lock, Mail, UserPlus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import http from "@/lib/http";
 
 const Index = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const usuarios = JSON.parse(localStorage.getItem("usuarios") || "[]");
-    const existe = usuarios.find((u: any) => u.email === email);
-    if (!existe) {
-      // Redirecionar para primeiro acesso com email
-      navigate(`/primeiro-acesso?email=${encodeURIComponent(email)}`);
+    const res = await http.get(`users/first-access`, { params: { email }});
+    localStorage.setItem("currentUser", email);
+    if (res.status == 200)
+    {
+      const userId = res.data.id;
+      if (res.data.isFirstAccess === false) {
+        navigate("/login", { state: { email, userId } });
+        return;
+      }
+      navigate("/primeiro-acesso", { state: { email, userId } });
       return;
     }
-    localStorage.setItem("currentUser", email);
-    navigate("/home");
+    
   };
 
   return (
@@ -69,20 +74,6 @@ const Index = () => {
               Entrar
             </Button>
           </form>
-
-
-          {/* Footer */}
-          <div className="text-center">
-            <p className="text-sm text-muted-foreground mb-3">Não tem uma conta?</p>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => navigate("/novo-usuario")}
-              className="w-full flex items-center gap-2"
-            >
-              <UserPlus className="w-4 h-4" /> Cadastrar novo usuário
-            </Button>
-          </div>
         </div>
       </Card>
     </div>

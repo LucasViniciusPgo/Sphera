@@ -5,43 +5,34 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Lock, Mail } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
-import http from "@/lib/http";
+import { http, setAuthToken } from "@/lib/http";
 
+interface NovoUsuario {
+  email: string;
+  password: string;
+  createdAt: string;
+}
 
-const PrimeiroAcesso = () => {
+const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [email, setEmail] = useState("");
-  const [userId, setUserId] = useState("");
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  // Captura email vindo da tela de login via state ou query
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-
     const stateEmail = (location.state as any)?.email;
     if (stateEmail) {
       setEmail(stateEmail);
+      return;
     }
+    const params = new URLSearchParams(location.search);
     const queryEmail = params.get("email");
     if (queryEmail) {
       setEmail(queryEmail);
     }
-
-    const stateUserId = (location.state as any)?.userId;
-    if (stateUserId) {
-      setUserId(stateUserId);
-    }
-    const queryUserId = params.get("userId");
-    if (queryUserId) {
-      setUserId(queryUserId);
-    }
   }, [location]);
-
-  
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,44 +43,25 @@ const PrimeiroAcesso = () => {
       setError("Email não informado.");
       return;
     }
-    if (password !== confirmPassword) {
-      setError("As senhas não coincidem.");
-      return;
-    }
-    if (password.length < 8) {
-      setError("Senha deve ter pelo menos 8 caracteres.");
-      return;
-    }
-    if (password.search(/[A-Z]/) < 0) {
-      setError("Senha deve conter pelo menos uma letra maiúscula.");
-      return;
-    }
-    if (password.search(/[a-z]/) < 0) {
-      setError("Senha deve conter pelo menos uma letra minúscula.");
-      return;
-    }
-    if (password.search(/[0-9]/) < 0) {
-      setError("Senha deve conter pelo menos um número.");
-      return;
-    }
-    if (password.search(/[^a-zA-Z0-9\s]/) < 0) {
-      setError("Senha deve conter pelo menos um caractere especial.");
+
+    var res = await http.post(`auths/login`, { email, password })
+    if (res.status != 200) {
+      setError("Erro ao realizar login. Verifique suas credenciais.");
       return;
     }
 
-    var res = await http.patch(`users/${userId}/first-password`, { newPassword: password })
-    if (res.status == 409) {
-      setError("Senha de usuário já definida. Tente fazer login.");
+    setSuccess("Login realizado com sucesso!");
+    if (res.data.token) {
+      localStorage.setItem("authToken", res.data.token);
+      setAuthToken(res.data.token);
     }
-    else if (res.status != 204) {
-      setError("Erro ao criar usuário. Tente novamente.");
-      return;
+    if (res.data.refreshToken) {
+      localStorage.setItem("refreshToken", res.data.refreshToken);
     }
 
-    setSuccess("Usuário criado com sucesso!");
-
+    // Persistir usuário
     // Redirecionar após curto delay para feedback
-    setTimeout(() => navigate("/login", { state: { email, userId } }), 800);
+    setTimeout(() => navigate("/home"), 800);
   };
 
   return (
@@ -107,8 +79,8 @@ const PrimeiroAcesso = () => {
             <div className="mx-auto w-16 h-16 bg-gradient-to-br from-primary to-secondary rounded-2xl flex items-center justify-center shadow-lg">
               <Lock className="w-8 h-8 text-primary-foreground" />
             </div>
-            <h1 className="text-3xl font-bold text-foreground">Primeiro Acesso</h1>
-            <p className="text-muted-foreground">Defina sua senha para continuar</p>
+            <h1 className="text-3xl font-bold text-foreground">Login</h1>
+            <p className="text-muted-foreground">Insira suas credenciais de acesso para continuar</p>
           </div>
 
           {/* Form */}
@@ -139,18 +111,6 @@ const PrimeiroAcesso = () => {
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="confirm" className="text-foreground">Confirmar Senha</Label>
-              <Input
-                id="confirm"
-                type="password"
-                placeholder="Repita a senha"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
-              />
-            </div>
-
             {error && <p className="text-sm text-red-500">{error}</p>}
             {success && <p className="text-sm text-green-600">{success}</p>}
 
@@ -158,7 +118,7 @@ const PrimeiroAcesso = () => {
               type="submit"
               className="w-full bg-gradient-to-r from-primary to-secondary hover:opacity-90 text-primary-foreground font-semibold py-6 shadow-lg hover:shadow-xl transition-all duration-300"
             >
-              Salvar e Entrar
+              Entrar
             </Button>
           </form>
 
@@ -169,4 +129,4 @@ const PrimeiroAcesso = () => {
     </div>
   );
 };
-export default PrimeiroAcesso;
+export default Login;
