@@ -3,6 +3,8 @@ import type { ParceiroFormData } from "@/pages/CadastroParceiros";
 import { cleanCNPJ } from "@/utils/format.ts";
 import {
     addContactToPartner,
+    removeContactFromPartner,
+    buildContactsFromForm,
     EContactRole,
     EContactType,
     EPhoneType,
@@ -81,81 +83,18 @@ export async function createPartner(data: ParceiroFormData) {
     const partner = res.data;
     const partnerId: string = partner.id;
 
-    const contactsPayloads = [];
+    const contacts = buildContactsFromForm(data);
 
-    if (data.emailFinanceiro) {
-        contactsPayloads.push({
-            type: EContactType.Email,
-            role: EContactRole.Financial,
-            phoneType: null,
-            value: data.emailFinanceiro,
-        });
-    }
-
-    if (data.telefoneFinanceiro) {
-        contactsPayloads.push({
-            type: EContactType.Phone,
-            role: EContactRole.Financial,
-            phoneType: null,
-            value: cleanPhone(data.telefoneFinanceiro)!,
-        });
-    }
-
-    if (data.emailResponsavel) {
-        contactsPayloads.push({
-            type: EContactType.Email,
-            role: EContactRole.Personal,
-            phoneType: null,
-            value: data.emailResponsavel,
-        });
-    }
-
-    if (data.telefoneResponsavel) {
-        contactsPayloads.push({
-            type: EContactType.Phone,
-            role: EContactRole.Personal,
-            phoneType: null,
-            value: cleanPhone(data.telefoneResponsavel)!,
-        });
-    }
-
-    if (data.telefoneFixo) {
-        contactsPayloads.push({
-            type: EContactType.Phone,
-            role: EContactRole.General,
-            phoneType: EPhoneType.Landline,
-            value: cleanPhone(data.telefoneFixo)!,
-        });
-    }
-
-    if (data.celular) {
-        contactsPayloads.push({
-            type: EContactType.Phone,
-            role: EContactRole.General,
-            phoneType: EPhoneType.Mobile,
-            value: cleanPhone(data.celular)!,
-        });
-    }
-
-    if (data.telefoneReserva) {
-        contactsPayloads.push({
-            type: EContactType.Phone,
-            role: EContactRole.General,
-            phoneType: EPhoneType.Backup,
-            value: cleanPhone(data.telefoneReserva)!,
-        });
-    }
-
-    if (contactsPayloads.length > 0) {
+    if (contacts.length > 0) {
         await Promise.all(
-            contactsPayloads.map((c) => addContactToPartner(partnerId, c))
+            contacts.map((c) => addContactToPartner(partnerId, c))
         );
     }
 
     return partner;
 }
 
-export async function updatePartner(id: string, data: ParceiroFormData, currentStatus?: boolean) {
+export async function updatePartner(id: string, data: ParceiroFormData, currentStatus?: boolean, existingContacts?: PartnerContact[]) {
     const newStatusBool = data.status === "ativo";
 
     const payload: UpdatePartnerCommand = {
@@ -173,6 +112,20 @@ export async function updatePartner(id: string, data: ParceiroFormData, currentS
         } else {
             await deactivatePartner(id);
         }
+    }
+
+    if (existingContacts && existingContacts.length > 0) {
+        await Promise.all(
+            existingContacts.map((c) => removeContactFromPartner(id, c.id))
+        );
+    }
+
+    const contacts = buildContactsFromForm(data);
+
+    if (contacts.length) {
+        await Promise.all(
+            contacts.map((c) => addContactToPartner(id, c))
+        );
     }
 }
 

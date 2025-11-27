@@ -1,4 +1,6 @@
 import http from "@/lib/http";
+import type { ParceiroFormData } from "@/pages/CadastroParceiros";
+import { cleanPhone } from "@/utils/format.ts";
 
 export enum EContactType {
     Email = 0,
@@ -37,9 +39,89 @@ export interface PartnerContact {
     updatedBy: string | null;
 }
 
+export function buildContactsFromForm(data: ParceiroFormData): AddContactToPartnerCommand[] {
+    const contacts: AddContactToPartnerCommand[] = [];
+
+    // Financeiro - email
+    if (data.emailFinanceiro) {
+        contacts.push({
+            type: EContactType.Email,
+            role: EContactRole.Financial,
+            phoneType: null,
+            value: data.emailFinanceiro,
+        });
+    }
+
+    // Financeiro - telefone
+    if (data.telefoneFinanceiro) {
+        contacts.push({
+            type: EContactType.Phone,
+            role: EContactRole.Financial,
+            phoneType: EPhoneType.Landline,
+            value: cleanPhone(data.telefoneFinanceiro)!,
+        });
+    }
+
+    // Responsável - email
+    if (data.emailResponsavel) {
+        contacts.push({
+            type: EContactType.Email,
+            role: EContactRole.Personal,
+            phoneType: null,
+            value: data.emailResponsavel,
+        });
+    }
+
+    // Responsável - telefone
+    if (data.telefoneResponsavel) {
+        contacts.push({
+            type: EContactType.Phone,
+            role: EContactRole.Personal,
+            phoneType: EPhoneType.Mobile,
+            value: cleanPhone(data.telefoneResponsavel)!,
+        });
+    }
+
+    // Geral - telefone fixo
+    if (data.telefoneFixo) {
+        contacts.push({
+            type: EContactType.Phone,
+            role: EContactRole.General,
+            phoneType: EPhoneType.Landline,
+            value: cleanPhone(data.telefoneFixo)!,
+        });
+    }
+
+    // Geral - celular
+    if (data.celular) {
+        contacts.push({
+            type: EContactType.Phone,
+            role: EContactRole.General,
+            phoneType: EPhoneType.Mobile,
+            value: cleanPhone(data.celular)!,
+        });
+    }
+
+    // Geral - reserva
+    if (data.telefoneReserva) {
+        contacts.push({
+            type: EContactType.Phone,
+            role: EContactRole.General,
+            phoneType: EPhoneType.Backup,
+            value: cleanPhone(data.telefoneReserva)!,
+        });
+    }
+
+    return contacts;
+}
+
 export async function addContactToPartner(
     partnerId: string,
     body: AddContactToPartnerCommand
 ) {
     return http.post(`/api/v1/Partners/${partnerId}/Contacts`, body);
+}
+
+export async function removeContactFromPartner(partnerId: string, contactId: string) {
+    return http.delete(`/api/v1/Partners/${partnerId}/Contacts/${contactId}`);
 }

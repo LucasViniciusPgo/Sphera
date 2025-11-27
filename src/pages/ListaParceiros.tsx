@@ -21,6 +21,7 @@ import {useToast} from "@/hooks/use-toast";
 import {
     getPartners,
     deletePartner,
+    getPartnerById,
     type PartnerDetails,
 } from "@/services/partnersService.ts";
 import {formatCNPJ, formatPhone} from "@/utils/format.ts";
@@ -30,6 +31,7 @@ import {
     EContactType,
     EPhoneType,
     type PartnerContact,
+    removeContactFromPartner
 } from "@/services/partnersContactsService.ts";
 
 export type Parceiro = {
@@ -241,6 +243,15 @@ export default function ListaParceiros() {
             //     });
             //     return;
             // }
+
+            const { data: partnerDetails } = await getPartnerById(parceiroId);
+            const contacts = partnerDetails.contacts || [];
+
+            if (contacts.length > 0) {
+                await Promise.all(
+                    contacts.map((c) => removeContactFromPartner(parceiroId, c.id))
+                );
+            }
 
             await deletePartner(parceiroId);
             setParceiros((prev) => prev.filter((p) => p.id !== parceiroId));
