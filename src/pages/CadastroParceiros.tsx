@@ -10,9 +10,14 @@ import {Input} from "@/components/ui/input";
 import {useToast} from "@/hooks/use-toast";
 import {ArrowLeft} from "lucide-react";
 import {useLocation, useNavigate, useParams} from "react-router-dom";
-import type {Parceiro} from "./ListaParceiros";
-import {getCurrentUser} from "@/hooks/useCurrentUser";
-import {createPartner, updatePartner, getPartnerById} from "@/services/PartnersService.ts";
+import {createPartner, updatePartner, getPartnerById, type AddressDTO} from "@/services/partnersService.ts";
+import {formatCNPJ} from "@/utils/format.ts";
+import {
+    EContactRole,
+    EContactType,
+    EPhoneType,
+    type PartnerContact,
+} from "@/services/partnersContactsService.ts";
 
 const emptyToUndefined = (val: unknown) =>
     typeof val === "string" && val.trim() === "" ? undefined : val;
@@ -57,16 +62,6 @@ const parceiroSchema = z.object({
 });
 
 // Helpers de formatação (máscaras simples baseadas em regex)
-function formatCNPJ(value: string) {
-    const digits = value.replace(/\D/g, '').slice(0, 14);
-    // Aplica: XX.XXX.XXX/XXXX-XX
-    return digits
-        .replace(/^(\d{2})(\d)/, '$1.$2')
-        .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
-        .replace(/^(\d{2})\.(\d{3})\.(\d{3})(\d)/, '$1.$2.$3/$4')
-        .replace(/^(\d{2})\.(\d{3})\.(\d{3})\/(\d{4})(\d{2}).*/, '$1.$2.$3/$4-$5');
-}
-
 function formatPhone(value: string) {
     const digits = value.replace(/\D/g, '').slice(0, 11);
     // Se não há dígitos, retorna string vazia para permitir apagar tudo
@@ -128,11 +123,88 @@ export default function CadastroParceiros() {
 
                 const statusBool: boolean = parceiroApi.status;
 
-                const addr = parceiroApi.address || {};
+                const addr: AddressDTO = parceiroApi.address || {} as AddressDTO;
+                const contacts: PartnerContact[] = parceiroApi.contacts || [];
+
+                let emailFinanceiro = "";
+                let telefoneFinanceiro = "";
+                let emailResponsavel = "";
+                let telefoneResponsavel = "";
+                let telefoneFixo = "";
+                let celular = "";
+                let telefoneReserva = "";
+
+                for (const c of contacts) {
+                    // EMAIL FINANCEIRO
+                    if (
+                        c.type === EContactType.Email &&
+                        c.role === EContactRole.Financial &&
+                        !emailFinanceiro
+                    ) {
+                        emailFinanceiro = c.value;
+                    }
+
+                    // EMAIL RESPONSÁVEL
+                    if (
+                        c.type === EContactType.Email &&
+                        c.role === EContactRole.Personal &&
+                        !emailResponsavel
+                    ) {
+                        emailResponsavel = c.value;
+                    }
+
+                    // TELEFONE FINANCEIRO
+                    if (
+                        c.type === EContactType.Phone &&
+                        c.role === EContactRole.Financial &&
+                        !telefoneFinanceiro
+                    ) {
+                        telefoneFinanceiro = formatPhone(c.value);
+                    }
+
+                    // TELEFONE RESPONSÁVEL
+                    if (
+                        c.type === EContactType.Phone &&
+                        c.role === EContactRole.Personal &&
+                        !telefoneResponsavel
+                    ) {
+                        telefoneResponsavel = formatPhone(c.value);
+                    }
+
+                    // TELEFONE FIXO (geral + fixo)
+                    if (
+                        c.type === EContactType.Phone &&
+                        c.role === EContactRole.General &&
+                        c.phoneType === EPhoneType.Landline &&
+                        !telefoneFixo
+                    ) {
+                        telefoneFixo = formatPhone(c.value);
+                    }
+
+                    // CELULAR (geral + mobile)
+                    if (
+                        c.type === EContactType.Phone &&
+                        c.role === EContactRole.General &&
+                        c.phoneType === EPhoneType.Mobile &&
+                        !celular
+                    ) {
+                        celular = formatPhone(c.value);
+                    }
+
+                    // TELEFONE RESERVA (geral + reserva)
+                    if (
+                        c.type === EContactType.Phone &&
+                        c.role === EContactRole.General &&
+                        c.phoneType === EPhoneType.Backup &&
+                        !telefoneReserva
+                    ) {
+                        telefoneReserva = formatPhone(c.value);
+                    }
+                }
 
                 form.reset({
                     razaoSocial: parceiroApi.legalName || "",
-                    cnpj: parceiroApi.cnpj || "",
+                    cnpj: formatCNPJ(parceiroApi.cnpj ?? ""),
                     rua: addr.street || "",
                     bairro: addr.neighborhood || "",
                     numero: addr.number?.toString?.() || "",
@@ -141,13 +213,13 @@ export default function CadastroParceiros() {
                     cep: addr.zipCode || "",
                     complemento: addr.complement || "",
                     lote: addr.lot || "",
-                    emailFinanceiro: "",      // API de Partner não tem isso ainda
-                    telefoneFinanceiro: "",
-                    emailResponsavel: "",
-                    telefoneResponsavel: "",
-                    telefoneFixo: "",
-                    celular: "",
-                    telefoneReserva: "",
+                    emailFinanceiro,
+                    telefoneFinanceiro,
+                    emailResponsavel,
+                    telefoneResponsavel,
+                    telefoneFixo,
+                    celular,
+                    telefoneReserva,
                     status: statusBool ? "ativo" : "inativo",          // mapeando status booleano pra string
                 });
 

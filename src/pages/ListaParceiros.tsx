@@ -18,12 +18,19 @@ import {
     AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
 import {useToast} from "@/hooks/use-toast";
-import {getCurrentUser} from "@/hooks/useCurrentUser";
 import {
     getPartners,
     deletePartner,
-    type ApiPartner,
-} from "@/services/PartnersService.ts";
+    type PartnerDetails,
+} from "@/services/partnersService.ts";
+import {formatCNPJ, formatPhone} from "@/utils/format.ts";
+
+import {
+    EContactRole,
+    EContactType,
+    EPhoneType,
+    type PartnerContact,
+} from "@/services/partnersContactsService.ts";
 
 export type Parceiro = {
     id: string;
@@ -44,7 +51,7 @@ export type Parceiro = {
     updatedAt: string;
 };
 
-function buildEndereco(address?: ApiPartner["address"]): string {
+function buildEndereco(address?: PartnerDetails["address"]): string {
     if (!address) return "";
     const partes = [
         address.street,
@@ -56,20 +63,129 @@ function buildEndereco(address?: ApiPartner["address"]): string {
     return partes.join(", ");
 }
 
-function mapApiPartnerToParceiro(api: ApiPartner): Parceiro {
+function getPhonesAndEmailsFromContacts(contacts: PartnerContact[] | undefined) {
+    let emailFinanceiro = "";
+    let telefoneFinanceiro = "";
+    let emailResponsavel = "";
+    let telefoneResponsavel = "";
+    let telefoneFixo = "";
+    let celular = "";
+    let telefoneReserva = "";
+
+    if (!contacts || contacts.length === 0) {
+        return {
+            emailFinanceiro,
+            telefoneFinanceiro,
+            emailResponsavel,
+            telefoneResponsavel,
+            telefoneFixo,
+            celular,
+            telefoneReserva,
+        };
+    }
+
+    for (const c of contacts) {
+        // EMAIL FINANCEIRO (role 0)
+        if (
+            c.type === EContactType.Email &&
+            c.role === EContactRole.Financial &&
+            !emailFinanceiro
+        ) {
+            emailFinanceiro = c.value;
+        }
+
+        // EMAIL RESPONSÁVEL (role 1)
+        if (
+            c.type === EContactType.Email &&
+            c.role === EContactRole.Personal &&
+            !emailResponsavel
+        ) {
+            emailResponsavel = c.value;
+        }
+
+        // TELEFONE FINANCEIRO
+        if (
+            c.type === EContactType.Phone &&
+            c.role === EContactRole.Financial &&
+            !telefoneFinanceiro
+        ) {
+            telefoneFinanceiro = formatPhone(c.value);
+        }
+
+        // TELEFONE RESPONSÁVEL
+        if (
+            c.type === EContactType.Phone &&
+            c.role === EContactRole.Personal &&
+            !telefoneResponsavel
+        ) {
+            telefoneResponsavel = formatPhone(c.value);
+        }
+
+        // FIXO (geral + Landline)
+        if (
+            c.type === EContactType.Phone &&
+            c.role === EContactRole.General &&
+            c.phoneType === EPhoneType.Landline &&
+            !telefoneFixo
+        ) {
+            telefoneFixo = formatPhone(c.value);
+        }
+
+        // CELULAR (geral + Mobile)
+        if (
+            c.type === EContactType.Phone &&
+            c.role === EContactRole.General &&
+            c.phoneType === EPhoneType.Mobile &&
+            !celular
+        ) {
+            celular = formatPhone(c.value);
+        }
+
+        // RESERVA (geral + Reserve)
+        if (
+            c.type === EContactType.Phone &&
+            c.role === EContactRole.General &&
+            c.phoneType === EPhoneType.Backup &&
+            !telefoneReserva
+        ) {
+            telefoneReserva = formatPhone(c.value);
+        }
+    }
+
+    return {
+        emailFinanceiro,
+        telefoneFinanceiro,
+        emailResponsavel,
+        telefoneResponsavel,
+        telefoneFixo,
+        celular,
+        telefoneReserva,
+    };
+}
+
+function mapApiPartnerToParceiro(api: PartnerDetails): Parceiro {
+    const {
+        emailFinanceiro,
+        telefoneFinanceiro,
+        emailResponsavel,
+        telefoneResponsavel,
+        telefoneFixo,
+        celular,
+        telefoneReserva,
+    } = getPhonesAndEmailsFromContacts(api.contacts);
+
     return {
         id: api.id,
         razaoSocial: api.legalName,
         cnpj: api.cnpj ?? null,
         endereco: buildEndereco(api.address),
-        // ainda não estamos trazendo contacts da API
-        emailFinanceiro: "",
-        telefoneFinanceiro: "",
-        emailResponsavel: "",
-        telefoneResponsavel: "",
-        telefoneFixo: "",
-        celular: "",
-        telefoneReserva: "",
+        emailFinanceiro,
+        telefoneFinanceiro,
+        emailResponsavel,
+        telefoneResponsavel,
+        telefoneFixo,
+        celular,
+        telefoneReserva,
         status: api.status ? "ativo" : "inativo",
         createdBy: "",
         createdAt: "",
@@ -226,7 +342,7 @@ export default function ListaParceiros() {
                                     {filteredParceiros.map((parceiro) => (
                                         <TableRow key={parceiro.id}>
                                             <TableCell className="font-medium">{parceiro.razaoSocial}</TableCell>
-                                            <TableCell>{parceiro.cnpj}</TableCell>
+                                            <TableCell>{formatCNPJ(parceiro.cnpj)}</TableCell>
                                             <TableCell>{parceiro.celular}</TableCell>
                                             <TableCell>
                                                 <Badge variant={parceiro.status === "ativo" ? "default" : "secondary"}>
