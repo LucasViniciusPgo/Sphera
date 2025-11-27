@@ -73,12 +73,12 @@ function normalizeError(err: unknown): ApiError {
 
 export async function request<T = any>(
   cfg: AxiosRequestConfig
-): Promise<ApiResponse<T>> {
+): Promise<ApiResponse<T> | ApiError> {
   try {
     const res: AxiosResponse<T> = await client.request<T>(cfg);
     return { data: res.data, status: res.status, headers: res.headers };
   } catch (e) {
-    throw normalizeError(e);
+    return normalizeError(e);
   }
 }
 
@@ -89,6 +89,8 @@ export const http = {
     request<T>({ ...(cfg || {}), url, method: "POST", data: body }),
   put: async <T = any, B = any>(url: string, body?: B, cfg?: AxiosRequestConfig) =>
     request<T>({ ...(cfg || {}), url, method: "PUT", data: body }),
+  patch: async <T = any, B = any>(url: string, body?: B, cfg?: AxiosRequestConfig) =>
+    request<T>({ ...(cfg || {}), url, method: "PATCH", data: body }),
   delete: async <T = any>(url: string, cfg?: AxiosRequestConfig) =>
     request<T>({ ...(cfg || {}), url, method: "DELETE" }),
   createCancelToken: (): CancelTokenSource => axios.CancelToken.source(),
