@@ -5,17 +5,14 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Lock, Mail } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
+import http from "@/lib/http";
 
-interface NovoUsuario {
-  email: string;
-  password: string;
-  createdAt: string;
-}
 
 const PrimeiroAcesso = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [email, setEmail] = useState("");
+  const [userId, setUserId] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -23,19 +20,30 @@ const PrimeiroAcesso = () => {
 
   // Captura email vindo da tela de login via state ou query
   useEffect(() => {
+    const params = new URLSearchParams(location.search);
+
     const stateEmail = (location.state as any)?.email;
     if (stateEmail) {
       setEmail(stateEmail);
-      return;
     }
-    const params = new URLSearchParams(location.search);
     const queryEmail = params.get("email");
     if (queryEmail) {
       setEmail(queryEmail);
     }
+
+    const stateUserId = (location.state as any)?.userId;
+    if (stateUserId) {
+      setUserId(stateUserId);
+    }
+    const queryUserId = params.get("userId");
+    if (queryUserId) {
+      setUserId(queryUserId);
+    }
   }, [location]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSuccess(null);
@@ -48,21 +56,40 @@ const PrimeiroAcesso = () => {
       setError("As senhas não coincidem.");
       return;
     }
-
-    // Persistir usuário
-    const usuarios: NovoUsuario[] = JSON.parse(localStorage.getItem("usuarios") || "[]");
-    if (usuarios.find(u => u.email === email)) {
-      setError("Já existe um usuário cadastrado com este email.");
+    if (password.length < 8) {
+      setError("Senha deve ter pelo menos 8 caracteres.");
       return;
     }
-    const novoUsuario: NovoUsuario = { email, password, createdAt: new Date().toISOString() };
-    usuarios.push(novoUsuario);
-    localStorage.setItem("usuarios", JSON.stringify(usuarios));
-    localStorage.setItem("currentUser", email);
+    if (password.search(/[A-Z]/) < 0) {
+      setError("Senha deve conter pelo menos uma letra maiúscula.");
+      return;
+    }
+    if (password.search(/[a-z]/) < 0) {
+      setError("Senha deve conter pelo menos uma letra minúscula.");
+      return;
+    }
+    if (password.search(/[0-9]/) < 0) {
+      setError("Senha deve conter pelo menos um número.");
+      return;
+    }
+    if (password.search(/[^a-zA-Z0-9\s]/) < 0) {
+      setError("Senha deve conter pelo menos um caractere especial.");
+      return;
+    }
+
+    var res = await http.patch(`users/${userId}/first-password`, { newPassword: password })
+    if (res.status == 409) {
+      setError("Senha de usuário já definida. Tente fazer login.");
+    }
+    else if (res.status != 204) {
+      setError("Erro ao criar usuário. Tente novamente.");
+      return;
+    }
+
     setSuccess("Usuário criado com sucesso!");
 
     // Redirecionar após curto delay para feedback
-    setTimeout(() => navigate("/home"), 800);
+    setTimeout(() => navigate("/login", { state: { email, userId } }), 800);
   };
 
   return (
