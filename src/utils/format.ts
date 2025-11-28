@@ -36,3 +36,15 @@ export function cleanPhone(value?: string | null): string | null {
     const digits = value.replace(/\D/g, "");
     return digits.length > 0 ? digits : null;
 }
+
+export function formatCEP(value: string): string {
+    const digits = value.replace(/\D/g, "").slice(0, 8);
+    if (digits.length <= 5) return digits;
+    return digits.replace(/^(\d{5})(\d{3})$/, "$1-$2");
+}
+
+export function cleanCEP(value?: string | null): string | null {
+    if (!value) return null;
+    const digits = value.replace(/\D/g, "");
+    return digits.length > 0 ? digits : null;
+}

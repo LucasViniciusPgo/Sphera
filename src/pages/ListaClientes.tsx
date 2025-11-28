@@ -1,4 +1,4 @@
-import {useState, useEffect} from "react";
+import {useState, useEffect, useCallback} from "react";
 import {useNavigate} from "react-router-dom";
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card";
 import {Input} from "@/components/ui/input";
@@ -17,68 +17,67 @@ import {
     AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
 import {useToast} from "@/hooks/use-toast";
-import type {Cliente} from "./CadastroClientes";
-import {getCurrentUser} from "@/hooks/useCurrentUser";
+import { getClients, deleteClient, type ClientDetails } from "@/services/clientsService.ts";
+import { formatCNPJ } from "@/utils/format.ts";
 
 const ListaClientes = () => {
     const navigate = useNavigate();
     const {toast} = useToast();
     const [searchTerm, setSearchTerm] = useState("");
-    const [clientes, setClientes] = useState<Cliente[]>([]);
-    const [parceiros, setParceiros] = useState<any[]>([]);
+    const [clientes, setClientes] = useState<ClientDetails[]>([]);
+
+    const loadClientes = useCallback(async () => {
+        try {
+            const { items } = await getClients({ includePartner: true });
+            setClientes(items);
+        } catch (error: any) {
+            console.error(error);
+            toast({
+                title: "Erro ao carregar clientes",
+                description:
+                    error?.data?.message ||
+                    error?.message ||
+                    "Não foi possível carregar a lista de clientes.",
+                variant: "destructive",
+            });
+        }
+    }, [toast]);
 
     useEffect(() => {
-        const loadData = () => {
-            const clientesData = JSON.parse(localStorage.getItem("clientes") || "[]");
-            const parceirosData = JSON.parse(localStorage.getItem("parceiros") || "[]");
-            setClientes(clientesData);
-            setParceiros(parceirosData);
-        };
+        loadClientes();
+    }, [loadClientes]);
 
-        loadData();
-        window.addEventListener("storage", loadData);
-        return () => window.removeEventListener("storage", loadData);
-    }, []);
-
-    const getParceiro = (parceiroId: string) => {
-        return parceiros.find((p) => p.id === parceiroId);
-    };
-
-    const handleDelete = (clienteId: string) => {
-        const cliente = clientes.find(c => c.id === clienteId);
-        const updatedClientes = clientes.filter(c => c.id !== clienteId);
-        localStorage.setItem("clientes", JSON.stringify(updatedClientes));
-        setClientes(updatedClientes);
-
-        // Audit log delete
-        if (cliente) {
-            const timestamp = new Date().toISOString();
-            const deleteLog = {
-                id: `${clienteId}-delete-${timestamp}`,
-                action: "delete",
-                entityType: "cliente",
-                entityName: cliente.nomeFantasia,
-                entityId: clienteId,
-                user: getCurrentUser(),
-                timestamp,
-            };
-            const auditLogs = JSON.parse(localStorage.getItem("auditLogs") || "[]");
-            auditLogs.push(deleteLog);
-            localStorage.setItem("auditLogs", JSON.stringify(auditLogs));
+    const handleDelete = async (clienteId: string) => {
+        try {
+            await deleteClient(clienteId);
+            setClientes((prev) => prev.filter((c) => c.id !== clienteId));
+            toast({
+                title: "Cliente excluído",
+                description: "O cliente foi excluído com sucesso.",
+            });
+        } catch (error: any) {
+            console.error(error);
+            toast({
+                title: "Erro ao excluir",
+                description:
+                    error?.data?.message ||
+                    error?.message ||
+                    "Não foi possível excluir o cliente.",
+                variant: "destructive",
+            });
         }
-
-        toast({
-            title: "Cliente excluído",
-            description: "O cliente foi excluído com sucesso.",
-        });
     };
 
-    const filteredClientes = clientes.filter((cliente) =>
-        cliente.nomeFantasia.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        cliente.razaoSocial.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        cliente.cnpj.includes(searchTerm) ||
-        getParceiro(cliente.parceiroId)?.razaoSocial.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredClientes = clientes.filter((cliente) => {
+        const term = searchTerm.toLowerCase();
+        const parceiroNome = cliente.partner?.legalName?.toLowerCase() ?? "";
+        return (
+            cliente.tradeName.toLowerCase().includes(term) ||
+            cliente.legalName.toLowerCase().includes(term) ||
+            (cliente.cnpj ?? "").includes(searchTerm) ||
+            parceiroNome.includes(term)
+        );
+    });
 
     return (
         <Card className="max-w-6xl mx-auto">
@@ -139,13 +138,12 @@ const ListaClientes = () => {
                             </TableHeader>
                             <TableBody>
                                 {filteredClientes.map((cliente) => {
-                                    const parceiro = getParceiro(cliente.parceiroId);
                                     return (
                                         <TableRow key={cliente.id}>
-                                            <TableCell className="font-medium">{cliente.nomeFantasia}</TableCell>
-                                            <TableCell>{cliente.razaoSocial}</TableCell>
-                                            <TableCell>{cliente.cnpj}</TableCell>
-                                            <TableCell>{parceiro?.razaoSocial || "Parceiro não encontrado"}</TableCell>
+                                            <TableCell className="font-medium">{cliente.tradeName}</TableCell>
+                                            <TableCell>{cliente.legalName}</TableCell>
+                                            <TableCell>{formatCNPJ(cliente.cnpj)}</TableCell>
+                                            <TableCell>{cliente?.partner.legalName || "Parceiro não encontrado"}</TableCell>
                                             <TableCell className="text-right">
                                                 <div className="flex gap-2 justify-end">
 
@@ -174,7 +172,7 @@ const ListaClientes = () => {
                                                                 <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
                                                                 <AlertDialogDescription>
                                                                     Tem certeza que deseja excluir o cliente
-                                                                    "{cliente.nomeFantasia}"? Esta ação não pode ser
+                                                                    "{cliente.tradeName}"? Esta ação não pode ser
                                                                     desfeita.
                                                                 </AlertDialogDescription>
                                                             </AlertDialogHeader>
