@@ -4,62 +4,83 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Folder, FileText, ArrowLeft, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { http } from "@/lib/http";
 
-interface Cliente {
+interface Client {
   id: string;
-  nomeFantasia: string;
-  parceiroId: string;
+  legalName: string;
+  partnerId: string;
+  documents: any[];
 }
 
 export default function PastasClientes() {
   const navigate = useNavigate();
-  const { parceiroId } = useParams<{ parceiroId: string }>();
-  const [clientes, setClientes] = useState<Cliente[]>([]);
-  const [arquivosPorCliente, setArquivosPorCliente] = useState<Record<string, number>>({});
+  const { partnerId } = useParams<{ partnerId: string }>();
+  const [clients, setClients] = useState<Client[]>([]);
+  const [documentsPerClient, setDocumentsPerClient] = useState<Record<string, number>>({});
   const [nomeParceiro, setNomeParceiro] = useState<string>("");
   const [searchTerm, setSearchTerm] = useState<string>("");
 
   useEffect(() => {
-    const storedClientes = localStorage.getItem("clientes");
-    const storedArquivos = localStorage.getItem("arquivos");
-    const storedParceiros = localStorage.getItem("parceiros");
+    const fetchData = async () => {
+      const clientsResponse = await http.get("/clients", { params: { partnerId, includePartner: true } });
+      if (clientsResponse.status == 200)
+      {
+        setClients(clientsResponse.data);
+        let legalName = "";
+        if (clientsResponse.data.length > 0 && clientsResponse.data[0].partner) {
+          legalName = clientsResponse.data[0].partner.legalName;
+        } else {
+          const partnerResponse = await http.get(`/partners/${partnerId}`);
+          if (partnerResponse.status == 200) {
+            legalName = partnerResponse.data.legalName;
+          }
+        }
+        setNomeParceiro(legalName);
+      }
 
-    if (storedParceiros && parceiroId) {
-      const parceirosData = JSON.parse(storedParceiros);
-      const parceiro = parceirosData.find((p: any) => p.id === parceiroId);
-      setNomeParceiro(parceiro?.nomeFantasia || "");
-    }
-
-    if (storedClientes) {
-      const clientesData = JSON.parse(storedClientes);
-      const clientesDoParceiro = clientesData.filter(
-        (cliente: Cliente) => cliente.parceiroId === parceiroId
-      );
-      setClientes(clientesDoParceiro);
-
-      if (storedArquivos) {
-        const arquivosData = JSON.parse(storedArquivos);
-        const contagem: Record<string, number> = {};
-
-        clientesDoParceiro.forEach((cliente: Cliente) => {
-          contagem[cliente.id] = arquivosData.filter(
-            (arquivo: any) => arquivo.Cliente === cliente.id
+      const documentsResponse = await http.get("/documents");
+      if (documentsResponse.status == 200)
+      {
+        const count: Record<string, number> = {};
+        clientsResponse.data.forEach((client: Client) => {
+          count[client.id] = documentsResponse.data.filter(
+            (document: any) => document.clientId === client.id
           ).length;
         });
-
-        setArquivosPorCliente(contagem);
+        setDocumentsPerClient(count);
       }
-    }
-  }, [parceiroId]);
+    };
 
-  const clientesFiltrados = useMemo(() => {
-    return clientes.filter((c) =>
-      searchTerm === "" || c.nomeFantasia.toLowerCase().includes(searchTerm.toLowerCase())
+    fetchData()
+    .then(() => {})
+    .catch((err) => {
+      console.error(err);
+    });
+    
+
+      // if (storedArquivos) {
+      //   const arquivosData = JSON.parse(storedArquivos);
+      //   const contagem: Record<string, number> = {};
+
+      //   clientesDoParceiro.forEach((cliente: Cliente) => {
+      //     contagem[cliente.id] = arquivosData.filter(
+      //       (arquivo: any) => arquivo.Cliente === cliente.id
+      //     ).length;
+      //   });
+
+      //   setArquivosPorCliente(contagem);
+      // }
+    
+  }, [ partnerId ]);
+
+  const searchClients = useMemo(() => {
+    return clients.filter((c) =>
+      searchTerm === "" || c.legalName.toLowerCase().includes(searchTerm.toLowerCase())
     );
-  }, [clientes, searchTerm]);
-
-  const handlePastaClick = (clienteId: string) => {
-    navigate(`/home/arquivos/${parceiroId}/${clienteId}`);
+  }, [clients, searchTerm]);
+  const handlePastaClick = (clientId: string) => {
+    navigate(`/home/arquivos/${partnerId}/${clientId}`);
   };
 
   return (
@@ -113,7 +134,7 @@ export default function PastasClientes() {
         </CardContent>
       </Card>
 
-      {clientes.length === 0 ? (
+      {clients.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Folder className="h-12 w-12 text-muted-foreground mb-4" />
@@ -125,11 +146,11 @@ export default function PastasClientes() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {clientes.map((cliente) => (
+          {clients.map((client) => (
             <Card
-              key={cliente.id}
+              key={client.id}
               className="cursor-pointer hover:bg-accent transition-colors"
-              onClick={() => handlePastaClick(cliente.id)}
+              onClick={() => handlePastaClick(client.id)}
             >
               <CardHeader>
                 <div className="flex items-center gap-3">
@@ -137,10 +158,10 @@ export default function PastasClientes() {
                     <Folder className="h-6 w-6 text-primary" />
                   </div>
                   <div className="flex-1">
-                    <CardTitle className="text-lg">{cliente.nomeFantasia}</CardTitle>
+                    <CardTitle className="text-lg">{client.legalName}</CardTitle>
                     <CardDescription className="flex items-center gap-1 mt-1">
                       <FileText className="h-3 w-3" />
-                      {arquivosPorCliente[cliente.id] || 0} {(arquivosPorCliente[cliente.id] || 0) === 1 ? "arquivo" : "arquivos"}
+                      {documentsPerClient[client.id] || 0} {(documentsPerClient[client.id] || 0) === 1 ? "documento" : "documentos"}
                     </CardDescription>
                   </div>
                 </div>
