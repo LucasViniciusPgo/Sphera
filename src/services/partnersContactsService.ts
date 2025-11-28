@@ -119,9 +119,9 @@ export async function addContactToPartner(
     partnerId: string,
     body: AddContactToPartnerCommand
 ) {
-    return http.post(`/api/v1/Partners/${partnerId}/Contacts`, body);
+    return http.post(`Partners/${partnerId}/Contacts`, body);
 }
 
 export async function removeContactFromPartner(partnerId: string, contactId: string) {
-    return http.delete(`/api/v1/Partners/${partnerId}/Contacts/${contactId}`);
+    return http.delete(`Partners/${partnerId}/Contacts/${contactId}`);
 }

@@ -77,9 +77,7 @@ export async function createPartner(data: ParceiroFormData) {
         address: buildAddressFromForm(data),
     };
 
-    setAuthToken("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbHMiOiJhYm5lcnNhbnRvMjAxNEBnbWFpbC5jb20iLCJuYW1lIjoiQWJuZXIgT2xpdmVpcmEiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA5LzA5L2lkZW50aXR5L2NsYWltcy9hY3RvciI6IjliYWJhYTRlLTIwNmEtNDNhYi1hMGZhLTgyODY5M2FkN2M1YyIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IkFkbWluaXN0cmFkb3IiLCJleHAiOjE3NjQyMTEzMjQsImlzcyI6IlNwaGVyYS5BUEkiLCJhdWQiOiJTcGhlcmFBcHAifQ.OB0BOP5BsNld89BwJaha1whkzLopqLTlYfNRrXKMWRI")
-
-    const res = await http.post<any>("/api/v1/Partners", payload);
+    const res = await http.post<any>("Partners", payload);
     const partner = res.data;
     const partnerId: string = partner.id;
 
@@ -104,7 +102,7 @@ export async function updatePartner(id: string, data: ParceiroFormData, currentS
         status: true,
     };
 
-    await http.put(`/api/v1/Partners/${id}`, payload);
+    await http.put(`Partners/${id}`, payload);
 
     if (typeof currentStatus === "boolean" && currentStatus !== newStatusBool){
         if (newStatusBool) {
@@ -130,7 +128,7 @@ export async function updatePartner(id: string, data: ParceiroFormData, currentS
 }
 
 export async function getPartnerById(id: string) {
-    return http.get<PartnerDetails>(`/api/v1/Partners/${id}`);
+    return http.get<PartnerDetails>(`Partners/${id}`);
 }
 
 export async function getPartners(params?: {
@@ -143,7 +141,7 @@ export async function getPartners(params?: {
 }) {
     const { search, status, cnpj, page, pageSize, includeClients } = params || {};
 
-    const res = await http.get<PartnerDetails[] | { items: PartnerDetails[] }>("/api/v1/Partners", {
+    const res = await http.get<PartnerDetails[] | { items: PartnerDetails[] }>("Partners", {
         params: {
             Search: search,
             Status: status,
@@ -166,13 +164,13 @@ export async function getPartners(params?: {
 }
 
 export async function activatePartner(id: string) {
-    return http.patch(`/api/v1/Partners/${id}/activate`);
+    return http.patch(`Partners/${id}/activate`);
 }
 
 export async function deactivatePartner(id: string) {
-    return http.patch(`/api/v1/Partners/${id}/deactivate`);
+    return http.patch(`Partners/${id}/deactivate`);
 }
 
 export async function deletePartner(id: string) {
-    return http.delete(`/api/v1/Partners/${id}`);
+    return http.delete(`Partners/${id}`);
 }
