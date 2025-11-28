@@ -15,12 +15,13 @@ import {getCurrentUser} from "@/hooks/useCurrentUser";
 
 export interface Arquivo {
     id: string;
-    NomeArquivo: string;
-    Cliente: string;
-    Servico: string;
+    fileName: string;
+    clientName: string;
+    serviceName: string;
     Resposavel: string;
     DataEmissao: string;
-    DataVencimento: string;
+    status: string;
+    dueDate: string;
     Observacao?: string;
     arquivo?: File;
     parceiroId?: string;

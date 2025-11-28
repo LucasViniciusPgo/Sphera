@@ -80,7 +80,7 @@ export default function PastasClientes() {
     );
   }, [clients, searchTerm]);
   const handlePastaClick = (clientId: string) => {
-    navigate(`/home/arquivos/${partnerId}/${clientId}`);
+    navigate(`/home/arquivos/${partnerId}/${clientId}`, { state: { partnerId, clientId } });
   };
 
   return (

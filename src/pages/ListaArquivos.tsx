@@ -21,20 +21,21 @@ import {
 import {useToast} from "@/hooks/use-toast";
 import {Arquivo} from "./CadastroArquivo";
 import {getCurrentUser} from "@/hooks/useCurrentUser";
+import { http } from "@/lib/http";
 
 type StatusType = "vencido" | "a-vencer" | "dentro-prazo";
 
 interface ArquivoComDetalhes extends Arquivo {
-    nomeCliente: string;
-    nomeParceiro: string;
-    nomeServico: string;
+    clientName: string;
+    partnerName: string;
+    serviceName: string;
     status: StatusType;
 }
 
 export default function ListaArquivos() {
     const navigate = useNavigate();
     const {toast} = useToast();
-    const {parceiroId, clienteId} = useParams<{ parceiroId: string; clienteId: string }>();
+    const {partnerId, clientId} = useParams<{ partnerId: string; clientId: string }>();
 
     // Filtros solicitados pelo usuário: apenas busca, serviço e status
     const [searchTerm, setSearchTerm] = useState("");
@@ -71,55 +72,78 @@ export default function ListaArquivos() {
     };
 
     useEffect(() => {
-        const storedArquivos = localStorage.getItem("arquivos");
-        const storedClientes = localStorage.getItem("clientes");
-        const storedParceiros = localStorage.getItem("parceiros");
-        const storedServicos = localStorage.getItem("servicos");
-
-        const clientesData = storedClientes ? JSON.parse(storedClientes) : [];
-        const parceirosData = storedParceiros ? JSON.parse(storedParceiros) : [];
-        const servicosData = storedServicos ? JSON.parse(storedServicos) : [];
-        const arquivosData: Arquivo[] = storedArquivos ? JSON.parse(storedArquivos) : [];
-
-        setClientes(clientesData);
-        setParceiros(parceirosData);
-        setServicos(servicosData);
-
-        if (clienteId) {
-            const cliente = clientesData.find((c: any) => c.id === clienteId);
-            setNomeCliente(cliente?.nomeFantasia || "");
-            if (cliente && parceiroId) {
-                const parceiro = parceirosData.find((p: any) => p.id === parceiroId);
-                setNomeParceiro(parceiro?.razaoSocial || "");
+        const fetchData = async () => {
+            let clientesData = [];
+            let parceirosData = [];
+            let servicosData = [];
+            let arquivosData: Arquivo[] = [];
+            const documentsResponse = await http.get("/documents", { params: { clientId: clientId } });
+            if (documentsResponse.status == 200)
+            {
+                arquivosData = documentsResponse.data;
             }
+            const clientsResponse = await http.get("/clients");
+            if (clientsResponse.status == 200)
+            {
+                clientesData = clientsResponse.data;
+            }
+            const partnersResponse = await http.get("/partners");
+            if (partnersResponse.status == 200)
+            {
+                parceirosData = partnersResponse.data;
+            }
+            const servicesResponse = await http.get("/services");
+            if (servicesResponse.status == 200)
+            {
+                servicosData = servicesResponse.data;
+            }
+
+            setClientes(clientesData);
+            setParceiros(parceirosData);
+            setServicos(servicosData);
+
+            if (clientId) {
+                const cliente = clientesData.find((c: any) => c.id === clientId);
+                setNomeCliente(cliente?.legalName || "");
+                if (cliente && partnerId) {
+                    const parceiro = parceirosData.find((p: any) => p.id === partnerId);
+                    setNomeParceiro(parceiro?.legalName || "");
+                }
+            }
+
+            const arquivosComDetalhes: ArquivoComDetalhes[] = arquivosData.map((arquivo) => {
+                const cliente = clientesData.find((c: any) => c.legalName === arquivo.clientName);
+                const parceiro = cliente ? parceirosData.find((p: any) => p.legalName === cliente.partnerId) : null;
+                const servico = servicosData.find((s: any) => s.name === arquivo.serviceName);
+                const status = calcularStatus(arquivo.status);
+                return {
+                    ...arquivo,
+                    clientName: cliente?.legalName || "Cliente não encontrado",
+                    partnerName: parceiro?.legalName || "Parceiro não encontrado",
+                    serviceName: servico?.name || "Serviço não encontrado",
+                    status,
+                };
+            });
+            setArquivos(arquivosComDetalhes);
         }
 
-        const arquivosComDetalhes: ArquivoComDetalhes[] = arquivosData.map((arquivo) => {
-            const cliente = clientesData.find((c: any) => c.id === arquivo.Cliente);
-            const parceiro = cliente ? parceirosData.find((p: any) => p.id === cliente.parceiroId) : null;
-            const servico = servicosData.find((s: any) => s.id === arquivo.Servico);
-            const status = calcularStatus(arquivo.DataVencimento);
-            return {
-                ...arquivo,
-                nomeCliente: cliente?.nomeFantasia || "Cliente não encontrado",
-                nomeParceiro: parceiro?.razaoSocial || "Parceiro não encontrado",
-                nomeServico: servico?.nomeServico || "Serviço não encontrado",
-                status,
-            };
+        fetchData()
+        .then(() => {})
+        .catch((err) => {
+        console.error(err);
         });
-        setArquivos(arquivosComDetalhes);
-    }, [clienteId, parceiroId]);
+    }, [clientId, partnerId]);
 
     const arquivosFiltrados = useMemo(() => {
         return arquivos.filter((arquivo) => {
             const matchSearch =
                 searchTerm === "" ||
-                arquivo.NomeArquivo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                arquivo.nomeCliente.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                arquivo.nomeParceiro.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                arquivo.nomeServico.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                arquivo.fileName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                arquivo.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                arquivo.partnerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                arquivo.serviceName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 arquivo.Resposavel.toLowerCase().includes(searchTerm.toLowerCase());
-            const matchServico = filtroServico === "todos" || arquivo.Servico === filtroServico;
+            const matchServico = filtroServico === "todos" || arquivo.serviceName === filtroServico;
             const matchStatus = filtroStatus === "todos" || arquivo.status === filtroStatus;
             return matchSearch && matchServico && matchStatus;
         });
@@ -143,7 +167,7 @@ export default function ListaArquivos() {
                 id: `${arquivoId}-delete-${timestamp}`,
                 action: "delete",
                 entityType: "arquivo",
-                entityName: arquivo.NomeArquivo,
+                entityName: arquivo.fileName,
                 entityId: arquivoId,
                 user: getCurrentUser(),
                 timestamp,
@@ -163,11 +187,11 @@ export default function ListaArquivos() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                    {clienteId && parceiroId && (
+                    {clientId && partnerId && (
                         <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => navigate(`/home/arquivos/${parceiroId}`)}
+                            onClick={() => navigate(`/home/arquivos/${partnerId}`)}
                             title="Voltar para clientes"
                         >
                             <ArrowLeft className="h-4 w-4"/>
@@ -175,10 +199,10 @@ export default function ListaArquivos() {
                     )}
                     <div>
                         <h1 className="text-3xl font-bold">
-                            {clienteId ? `Arquivos - ${nomeCliente}` : "Arquivos"}
+                            {clientId ? `Arquivos - ${nomeCliente}` : "Arquivos"}
                         </h1>
                         <p className="text-muted-foreground">
-                            {clienteId && nomeParceiro ? `Parceiro: ${nomeParceiro}` : "Lista completa de arquivos"}
+                            {partnerId && nomeParceiro ? `Parceiro: ${nomeParceiro}` : "Lista completa de arquivos"}
                         </p>
                     </div>
                 </div>
@@ -213,7 +237,7 @@ export default function ListaArquivos() {
                                     <SelectItem value="todos">Todos os Serviços</SelectItem>
                                     {servicos.map((servico) => (
                                         <SelectItem key={servico.id} value={servico.id}>
-                                            {servico.nomeServico}
+                                            {servico.name}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
@@ -238,7 +262,7 @@ export default function ListaArquivos() {
                                 )}
                                 {filtroServico !== 'todos' && (
                                     <span
-                                        className="bg-secondary px-2 py-1 rounded">Serviço: {servicos.find(s => s.id === filtroServico)?.nomeServico || filtroServico}</span>
+                                        className="bg-secondary px-2 py-1 rounded">Serviço: {servicos.find(s => s.id === filtroServico)?.name || filtroServico}</span>
                                 )}
                                 {filtroStatus !== 'todos' && (
                                     <span
@@ -285,12 +309,12 @@ export default function ListaArquivos() {
                                     const statusConfig = getStatusConfig(arquivo.status);
                                     return (
                                         <TableRow key={arquivo.id}>
-                                            <TableCell className="font-medium">{arquivo.NomeArquivo}</TableCell>
-                                            <TableCell>{arquivo.nomeParceiro}</TableCell>
-                                            <TableCell>{arquivo.nomeCliente}</TableCell>
-                                            <TableCell>{arquivo.nomeServico}</TableCell>
+                                            <TableCell className="font-medium">{arquivo.fileName}</TableCell>
+                                            <TableCell>{arquivo.partnerName}</TableCell>
+                                            <TableCell>{arquivo.clientName}</TableCell>
+                                            <TableCell>{arquivo.serviceName}</TableCell>
                                             <TableCell>{arquivo.Resposavel}</TableCell>
-                                            <TableCell>{new Date(arquivo.DataVencimento).toLocaleDateString("pt-BR")}</TableCell>
+                                            <TableCell>{new Date(arquivo.dueDate).toLocaleDateString("pt-BR")}</TableCell>
                                             <TableCell>
                                                 <Badge className={statusConfig.className}>{statusConfig.label}</Badge>
                                             </TableCell>
@@ -322,7 +346,7 @@ export default function ListaArquivos() {
                                                                 <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
                                                                 <AlertDialogDescription>
                                                                     Tem certeza que deseja excluir o arquivo
-                                                                    "{arquivo.NomeArquivo}"? Esta ação não pode ser
+                                                                    "{arquivo.fileName}"? Esta ação não pode ser
                                                                     desfeita.
                                                                 </AlertDialogDescription>
                                                             </AlertDialogHeader>
