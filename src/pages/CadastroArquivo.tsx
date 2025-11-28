@@ -18,6 +18,7 @@ export interface Arquivo {
     fileName: string;
     clientName: string;
     serviceName: string;
+    partnerName?: string;
     Resposavel: string;
     DataEmissao: string;
     status: string;
@@ -171,12 +172,13 @@ export default function CadastroArquivo() {
                 const createdAt = new Date().toISOString();
                 const newArquivo: Arquivo = {
                     id: crypto.randomUUID(),
-                    NomeArquivo: data.NomeArquivo,
-                    Cliente: data.Cliente,
-                    Servico: data.Servico,
+                    fileName: data.NomeArquivo,
+                    clientName: data.Cliente,
+                    serviceName: data.Servico,
                     Resposavel: data.Resposavel,
                     DataEmissao: data.DataEmissao,
-                    DataVencimento: data.DataVencimento,
+                    dueDate: data.DataVencimento,
+                    status: "dentro-prazo",
                     Observacao: data.Observacao || "",
                     arquivo: selectedFile || undefined,
                     createdBy: getCurrentUser(),
@@ -193,7 +195,7 @@ export default function CadastroArquivo() {
                         id: `${newArquivo.id}-upload`,
                         action: "upload",
                         entityType: "arquivo",
-                        entityName: newArquivo.NomeArquivo,
+                        entityName: newArquivo.fileName,
                         entityId: newArquivo.id,
                         user: getCurrentUser(),
                         timestamp: createdAt,

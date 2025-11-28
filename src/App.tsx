@@ -45,8 +45,8 @@ const App = () => (
             <Route path="cadastro-arquivos" element={<CadastroArquivos />} />
             <Route path="cadastro-arquivos/:id" element={<CadastroArquivos />} />
             <Route path="arquivos" element={<PastasArquivos />} />
-            <Route path="arquivos/:parceiroId" element={<PastasClientes />} />
-            <Route path="arquivos/:parceiroId/:clienteId" element={<ListaArquivos />} />
+            <Route path="arquivos/:partnerId" element={<PastasClientes />} />
+            <Route path="arquivos/:partnerId/:clientId" element={<ListaArquivos />} />
           </Route>
           {/* Redirects for backwards compatibility */}
           <Route path="/cadastro-parceiros" element={<CadastroParceiros />} />

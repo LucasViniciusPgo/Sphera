@@ -22,8 +22,8 @@ export default function PastasClientes() {
   const [searchTerm, setSearchTerm] = useState<string>("");
 
   useEffect(() => {
-    const fetchData = async () => {
-      const clientsResponse = await http.get("/clients", { params: { partnerId, includePartner: true } });
+    http.get("/clients", { params: { partnerId, includePartner: true } })
+    .then(async (clientsResponse) => {
       if (clientsResponse.status == 200)
       {
         setClients(clientsResponse.data);
@@ -37,41 +37,22 @@ export default function PastasClientes() {
           }
         }
         setNomeParceiro(legalName);
-      }
 
-      const documentsResponse = await http.get("/documents");
-      if (documentsResponse.status == 200)
-      {
-        const count: Record<string, number> = {};
-        clientsResponse.data.forEach((client: Client) => {
-          count[client.id] = documentsResponse.data.filter(
-            (document: any) => document.clientId === client.id
-          ).length;
-        });
-        setDocumentsPerClient(count);
+        http.get("/documents")
+          .then((documentsResponse) => {
+            if (documentsResponse.status == 200)
+            {
+              const count: Record<string, number> = {};
+              clientsResponse.data.forEach((client: Client) => {
+                count[client.id] = documentsResponse.data.filter(
+                  (document: any) => document.clientId === client.id
+                ).length;
+              });
+              setDocumentsPerClient(count);
+            }
+          });
       }
-    };
-
-    fetchData()
-    .then(() => {})
-    .catch((err) => {
-      console.error(err);
     });
-    
-
-      // if (storedArquivos) {
-      //   const arquivosData = JSON.parse(storedArquivos);
-      //   const contagem: Record<string, number> = {};
-
-      //   clientesDoParceiro.forEach((cliente: Cliente) => {
-      //     contagem[cliente.id] = arquivosData.filter(
-      //       (arquivo: any) => arquivo.Cliente === cliente.id
-      //     ).length;
-      //   });
-
-      //   setArquivosPorCliente(contagem);
-      // }
-    
   }, [ partnerId ]);
 
   const searchClients = useMemo(() => {
@@ -79,6 +60,7 @@ export default function PastasClientes() {
       searchTerm === "" || c.legalName.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [clients, searchTerm]);
+  
   const handlePastaClick = (clientId: string) => {
     navigate(`/home/arquivos/${partnerId}/${clientId}`, { state: { partnerId, clientId } });
   };
@@ -146,7 +128,7 @@ export default function PastasClientes() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {clients.map((client) => (
+          {searchClients.map((client) => (
             <Card
               key={client.id}
               className="cursor-pointer hover:bg-accent transition-colors"

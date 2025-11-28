@@ -26,9 +26,6 @@ import { http } from "@/lib/http";
 type StatusType = "vencido" | "a-vencer" | "dentro-prazo";
 
 interface ArquivoComDetalhes extends Arquivo {
-    clientName: string;
-    partnerName: string;
-    serviceName: string;
     status: StatusType;
 }
 
@@ -43,16 +40,14 @@ export default function ListaArquivos() {
     const [filtroStatus, setFiltroStatus] = useState<string>("todos");
 
     const [arquivos, setArquivos] = useState<ArquivoComDetalhes[]>([]);
-    const [clientes, setClientes] = useState<any[]>([]);
-    const [parceiros, setParceiros] = useState<any[]>([]);
     const [servicos, setServicos] = useState<any[]>([]);
     const [nomeCliente, setNomeCliente] = useState<string>("");
     const [nomeParceiro, setNomeParceiro] = useState<string>("");
 
-    const calcularStatus = (dataVencimento: string): StatusType => {
+    const calcularStatus = (dueDate: string): StatusType => {
         const hoje = new Date();
         hoje.setHours(0, 0, 0, 0);
-        const vencimento = new Date(dataVencimento);
+        const vencimento = new Date(dueDate);
         vencimento.setHours(0, 0, 0, 0);
         const diffDays = Math.ceil((vencimento.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
         if (diffDays < 0) return "vencido";
@@ -73,54 +68,30 @@ export default function ListaArquivos() {
 
     useEffect(() => {
         const fetchData = async () => {
-            let clientesData = [];
-            let parceirosData = [];
-            let servicosData = [];
             let arquivosData: Arquivo[] = [];
             const documentsResponse = await http.get("/documents", { params: { clientId: clientId } });
             if (documentsResponse.status == 200)
             {
                 arquivosData = documentsResponse.data;
             }
-            const clientsResponse = await http.get("/clients");
-            if (clientsResponse.status == 200)
-            {
-                clientesData = clientsResponse.data;
-            }
-            const partnersResponse = await http.get("/partners");
-            if (partnersResponse.status == 200)
-            {
-                parceirosData = partnersResponse.data;
-            }
             const servicesResponse = await http.get("/services");
             if (servicesResponse.status == 200)
             {
-                servicosData = servicesResponse.data;
+                setServicos(servicesResponse.data);
             }
-
-            setClientes(clientesData);
-            setParceiros(parceirosData);
-            setServicos(servicosData);
 
             if (clientId) {
-                const cliente = clientesData.find((c: any) => c.id === clientId);
-                setNomeCliente(cliente?.legalName || "");
-                if (cliente && partnerId) {
-                    const parceiro = parceirosData.find((p: any) => p.id === partnerId);
-                    setNomeParceiro(parceiro?.legalName || "");
+                if (arquivosData.length > 0) {
+                    setNomeCliente(arquivosData[0].clientName || "");
+                    setNomeParceiro(arquivosData[0].partnerName || "");
                 }
+                
             }
-
+            
             const arquivosComDetalhes: ArquivoComDetalhes[] = arquivosData.map((arquivo) => {
-                const cliente = clientesData.find((c: any) => c.legalName === arquivo.clientName);
-                const parceiro = cliente ? parceirosData.find((p: any) => p.legalName === cliente.partnerId) : null;
-                const servico = servicosData.find((s: any) => s.name === arquivo.serviceName);
-                const status = calcularStatus(arquivo.status);
+                const status = calcularStatus(arquivo.dueDate);
                 return {
                     ...arquivo,
-                    clientName: cliente?.legalName || "Cliente não encontrado",
-                    partnerName: parceiro?.legalName || "Parceiro não encontrado",
-                    serviceName: servico?.name || "Serviço não encontrado",
                     status,
                 };
             });
