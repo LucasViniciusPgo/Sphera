@@ -1,16 +1,28 @@
-import { useState, useEffect } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import {useState, useEffect} from "react";
+import {useForm} from "react-hook-form";
+import {zodResolver} from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft } from "lucide-react";
-import { getCurrentUser } from "@/hooks/useCurrentUser";
+import {useLocation, useNavigate, useParams} from "react-router-dom";
+import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card";
+import {Form, FormControl, FormField, FormItem, FormLabel, FormMessage} from "@/components/ui/form";
+import {Input} from "@/components/ui/input";
+import {Button} from "@/components/ui/button";
+import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select";
+import {useToast} from "@/hooks/use-toast";
+import {ArrowLeft} from "lucide-react";
+import {
+    createClient,
+    updateClient,
+    getClientById,
+    type ClientPartnerInfo,
+} from "@/services/clientsService.ts";
+import {
+    EContactRole,
+    EContactType, type PartnerContact,
+} from "@/services/partnersContactsService.ts";
+import type {ClientContact} from "@/services/clientsContactsService.ts";
+import {getPartners, type ApiPartner, type AddressDTO} from "@/services/partnersService.ts";
+import {formatCNPJ, formatPhone, formatCEP} from "@/utils/format.ts";
 
 export interface Cliente {
     id: string;
@@ -27,8 +39,6 @@ export interface Cliente {
     cep: string;
     complemento?: string;
     lote?: string;
-    // Campo composto mantido para compatibilidade com registros antigos
-    endereco: string;
     nomeFinanceiro: string;
     emailFinanceiro: string;
     telefoneFinanceiro: string;
@@ -71,44 +81,39 @@ const clienteSchema = z.object({
     parceiroId: z.string().min(1, "Selecione um parceiro"),
 });
 
-// Helpers de formatação (máscaras simples baseadas em regex)
-function formatCNPJ(value: string) {
-    const digits = value.replace(/\D/g, '').slice(0, 14);
-    // Aplica: XX.XXX.XXX/XXXX-XX
-    return digits
-        .replace(/^(\d{2})(\d)/, '$1.$2')
-        .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
-        .replace(/^(\d{2})\.(\d{3})\.(\d{3})(\d)/, '$1.$2.$3/$4')
-        .replace(/^(\d{2})\.(\d{3})\.(\d{3})\/(\d{4})(\d{2}).*/, '$1.$2.$3/$4-$5');
+function buildDateFromDueDay(dueDay: number | null | undefined): string {
+    if (!dueDay) return "";
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth() + 1;
+    const day = Math.min(dueDay, 28); // evita datas inválidas (fev, etc)
+    return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(
+        2,
+        "0"
+    )}`;
 }
 
-function formatPhone(value: string) {
-    const digits = value.replace(/\D/g, '').slice(0, 11);
-    // Se não há dígitos, retorna string vazia para permitir apagar tudo
-    if (!digits) return '';
-    if (digits.length <= 2) return `(${digits}`; // Exibe parêntese só se houver algum dígito
-    if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
-    if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
-    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7, 11)}`;
+function daysSinceContract(contractDate: string | Date): string {
+    const contractDateObj = new Date(contractDate);
+    const today = new Date();
+    const diffMs = today.getTime() - contractDateObj.getTime();
+    return Math.abs(Math.floor(diffMs / (1000 * 60 * 60 * 24))).toString();
 }
 
-function formatCEP(value: string): string {
-    const digits = value.replace(/\D/g, "").slice(0, 8);
-    if (digits.length <= 5) return digits;
-    return digits.replace(/^(\d{5})(\d{3})$/, "$1-$2");
-}
-
-
-type ClienteFormData = z.infer<typeof clienteSchema>;
+export type ClienteFormData = z.infer<typeof clienteSchema>;
 
 const CadastroClientes = () => {
-    const { toast } = useToast();
+    const {toast} = useToast();
     const navigate = useNavigate();
-    const { id } = useParams();
+    const {id} = useParams();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const isEditing = !!id;
     const location = useLocation();
     const readonly = new URLSearchParams(location.search).get("view") === "readonly";
+
+    const [originalStatus, setOriginalStatus] = useState<boolean | undefined>();
+    const [existingContacts, setExistingContacts] = useState<ClientContact[]>([]);
+    const [parceiros, setParceiros] = useState<ApiPartner[]>([]);
 
     const form = useForm<ClienteFormData>({
         resolver: zodResolver(clienteSchema),
@@ -140,126 +145,138 @@ const CadastroClientes = () => {
     });
 
     useEffect(() => {
-        if (id) {
-            const stored = localStorage.getItem("clientes");
-            if (stored) {
-                const clientes: Cliente[] = JSON.parse(stored);
-                const cliente = clientes.find((c) => c.id === id);
-                if (cliente) {
-                    const c: any = cliente;
-                    form.reset({
-                        nomeFantasia: c.nomeFantasia,
-                        razaoSocial: c.razaoSocial,
-                        cnpj: c.cnpj,
-                        inscricaoEstadual: c.inscricaoEstadual,
-                        inscricaoMunicipal: c.inscricaoMunicipal,
-                        rua: c.rua || "",
-                        bairro: c.bairro || "",
-                        numero: c.numero || "",
-                        cidade: c.cidade || "",
-                        estado: c.estado || "",
-                        cep: c.cep || "",
-                        complemento: c.complemento || "",
-                        lote: c.lote || "",
-                        nomeFinanceiro: c.nomeFinanceiro,
-                        emailFinanceiro: c.emailFinanceiro,
-                        telefoneFinanceiro: c.telefoneFinanceiro,
-                        emailResponsavel: c.emailResponsavel,
-                        nomeResponsavel: c.nomeResponsavel,
-                        telefoneResponsavel: c.telefoneResponsavel,
-                        status: c.status,
-                        vencimentoContrato: c.vencimentoContrato,
-                        dataVencimento: c.dataVencimento,
-                        parceiroId: c.parceiroId,
-                    });
-                }
+        (async () => {
+            try {
+                const {items} = await getPartners();
+                setParceiros(items);
+            } catch (error: any) {
+                console.error(error);
+                toast({
+                    title: "Erro ao carregar parceiros",
+                    description:
+                        error?.data?.message ||
+                        error?.message ||
+                        "Não foi possível carregar a lista de parceiros.",
+                    variant: "destructive",
+                });
             }
-        }
-    }, [id, form]);
+        })();
+    }, [toast]);
 
-    const parceiros = JSON.parse(localStorage.getItem("parceiros") || "[]");
+    useEffect(() => {
+        if (!id) return;
+
+        (async () => {
+            try {
+                const {data: clienteApi} = await getClientById(id);
+                const statusBool = clienteApi.status;
+                const addr : AddressDTO = clienteApi.address || {} as AddressDTO;
+                const contacts: PartnerContact[] = clienteApi.contacts || [];
+                const partner: ApiPartner = clienteApi.partner || {} as ApiPartner;
+                const partners: ApiPartner[] = partner ? [partner] : [];
+
+                setExistingContacts(contacts);
+                setOriginalStatus(statusBool);
+                setParceiros(partners);
+
+                let nomeFinanceiro = "";
+                let emailFinanceiro = "";
+                let telefoneFinanceiro = "";
+
+                let nomeResponsavel = "";
+                let emailResponsavel = "";
+                let telefoneResponsavel = "";
+
+                for (const c of contacts) {
+                    if (c.role === EContactRole.Financial) {
+                        if (!nomeFinanceiro && c.name) nomeFinanceiro = c.name;
+                        if (c.type === EContactType.Email && !emailFinanceiro) {
+                            emailFinanceiro = c.value;
+                        }
+                        if (c.type === EContactType.Phone && !telefoneFinanceiro) {
+                            telefoneFinanceiro = formatPhone(c.value);
+                        }
+                    }
+
+                    if (c.role === EContactRole.Personal) {
+                        if (!nomeResponsavel && c.name) nomeResponsavel = c.name;
+                        if (c.type === EContactType.Email && !emailResponsavel) {
+                            emailResponsavel = c.value;
+                        }
+                        if (c.type === EContactType.Phone && !telefoneResponsavel) {
+                            telefoneResponsavel = formatPhone(c.value);
+                        }
+                    }
+                }
+
+                form.reset({
+                    nomeFantasia: clienteApi.tradeName || "",
+                    razaoSocial: clienteApi.legalName || "",
+                    cnpj: formatCNPJ(clienteApi.cnpj || ""),
+                    inscricaoEstadual: clienteApi.stateRegistration || "",
+                    inscricaoMunicipal: clienteApi.municipalRegistration || "",
+                    rua: addr.street || "",
+                    bairro: addr.neighborhood || "",
+                    numero: addr.number?.toString?.() || "",
+                    cidade: addr.city || "",
+                    estado: addr.state || "",
+                    cep: addr.zipCode || "",
+                    complemento: addr.complement || "",
+                    lote: addr.lot || "",
+                    nomeFinanceiro,
+                    emailFinanceiro,
+                    telefoneFinanceiro,
+                    nomeResponsavel,
+                    emailResponsavel,
+                    telefoneResponsavel,
+                    status: statusBool ? "ativo" : "inativo",
+                    vencimentoContrato: clienteApi.contractDate
+                        ? daysSinceContract(clienteApi.contractDate)
+                        : "",
+                    dataVencimento: buildDateFromDueDay(clienteApi.billingDueDay),
+                    parceiroId: partner?.id || "",
+                });
+            } catch (error: any) {
+                console.error(error);
+                toast({
+                    title: "Erro ao carregar cliente",
+                    description:
+                        error?.data?.message ||
+                        error?.message ||
+                        "Não foi possível carregar os dados do cliente.",
+                    variant: "destructive",
+                });
+                navigate("/home/clientes");
+            }
+        })();
+    }, [id, form, toast, navigate]);
 
     const onSubmit = async (data: ClienteFormData) => {
         setIsSubmitting(true);
         try {
-            const stored = localStorage.getItem("clientes");
-            const clientes: Cliente[] = stored ? JSON.parse(stored) : [];
-
             if (isEditing && id) {
-                const index = clientes.findIndex((c) => c.id === id);
-                if (index !== -1) {
-                    const existing = clientes[index];
-                    const updatedAt = new Date().toISOString();
-                    const enderecoComposto = `${data.rua}, ${data.bairro}, ${data.numero}`;
-                    clientes[index] = {
-                        ...data,
-                        endereco: enderecoComposto,
-                        id,
-                        createdBy: existing.createdBy,
-                        createdAt: existing.createdAt,
-                        updatedBy: getCurrentUser(),
-                        updatedAt
-                    } as Cliente;
-
-                    // Audit log update
-                    const auditLogs = JSON.parse(localStorage.getItem("auditLogs") || "[]");
-                    const updateLog = {
-                        id: `${id}-update-${updatedAt}`,
-                        action: "update",
-                        entityType: "cliente",
-                        entityName: data.nomeFantasia,
-                        entityId: id,
-                        user: getCurrentUser(),
-                        timestamp: updatedAt,
-                    };
-                    auditLogs.push(updateLog);
-                    localStorage.setItem("auditLogs", JSON.stringify(auditLogs));
-                }
+                await updateClient(id, data, originalStatus, existingContacts);
                 toast({
                     title: "Cliente atualizado!",
                     description: "O cliente foi atualizado com sucesso.",
                 });
             } else {
-                const createdAt = new Date().toISOString();
-                const enderecoComposto = `${data.rua}, ${data.bairro}, ${data.numero}`;
-                const newCliente: Cliente = {
-                    ...data,
-                    endereco: enderecoComposto,
-                    id: crypto.randomUUID(),
-                    createdBy: getCurrentUser(),
-                    createdAt,
-                    updatedBy: getCurrentUser(),
-                    updatedAt: createdAt
-                } as Cliente;
-                clientes.push(newCliente);
-
-                // Audit log create
-                const auditLogs = JSON.parse(localStorage.getItem("auditLogs") || "[]");
-                if (!auditLogs.find((l: any) => l.id === `${newCliente.id}-create`)) {
-                    const createLog = {
-                        id: `${newCliente.id}-create`,
-                        action: "create",
-                        entityType: "cliente",
-                        entityName: newCliente.nomeFantasia,
-                        entityId: newCliente.id,
-                        user: getCurrentUser(),
-                        timestamp: createdAt,
-                    };
-                    auditLogs.push(createLog);
-                    localStorage.setItem("auditLogs", JSON.stringify(auditLogs));
-                }
+                await createClient(data);
                 toast({
                     title: "Cliente cadastrado!",
                     description: "O cliente foi cadastrado com sucesso.",
                 });
             }
 
-            localStorage.setItem("clientes", JSON.stringify(clientes));
             navigate("/home/clientes");
-        } catch (error) {
+        } catch (error: any) {
+            console.error(error);
             toast({
                 title: "Erro ao salvar",
-                description: "Ocorreu um erro ao salvar o cliente. Tente novamente.",
+                description:
+                    error?.data?.message ||
+                    error?.message ||
+                    "Ocorreu um erro ao salvar o cliente. Tente novamente.",
                 variant: "destructive",
             });
         } finally {
@@ -274,7 +291,7 @@ const CadastroClientes = () => {
                 onClick={() => navigate("/home/clientes")}
                 className="mb-6"
             >
-                <ArrowLeft className="mr-2 h-4 w-4" />
+                <ArrowLeft className="mr-2 h-4 w-4"/>
                 Voltar
             </Button>
 
@@ -311,13 +328,14 @@ const CadastroClientes = () => {
                                     <FormField
                                         control={form.control}
                                         name="nomeFantasia"
-                                        render={({ field }) => (
+                                        render={({field}) => (
                                             <FormItem>
                                                 <FormLabel>Nome Fantasia *</FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder="Nome do cliente" {...field} readOnly={readonly} />
+                                                    <Input placeholder="Nome do cliente" {...field}
+                                                           readOnly={readonly}/>
                                                 </FormControl>
-                                                <FormMessage />
+                                                <FormMessage/>
                                             </FormItem>
                                         )}
                                     />
@@ -325,13 +343,14 @@ const CadastroClientes = () => {
                                     <FormField
                                         control={form.control}
                                         name="razaoSocial"
-                                        render={({ field }) => (
+                                        render={({field}) => (
                                             <FormItem>
                                                 <FormLabel>Razão Social *</FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder="Razão social completa" {...field} readOnly={readonly} />
+                                                    <Input placeholder="Razão social completa" {...field}
+                                                           readOnly={readonly}/>
                                                 </FormControl>
-                                                <FormMessage />
+                                                <FormMessage/>
                                             </FormItem>
                                         )}
                                     />
@@ -341,7 +360,7 @@ const CadastroClientes = () => {
                                     <FormField
                                         control={form.control}
                                         name="cnpj"
-                                        render={({ field }) => (
+                                        render={({field}) => (
                                             <FormItem>
                                                 <FormLabel>CNPJ *</FormLabel>
                                                 <FormControl>
@@ -353,7 +372,7 @@ const CadastroClientes = () => {
                                                         readOnly={readonly}
                                                     />
                                                 </FormControl>
-                                                <FormMessage />
+                                                <FormMessage/>
                                             </FormItem>
                                         )}
                                     />
@@ -361,13 +380,14 @@ const CadastroClientes = () => {
                                     <FormField
                                         control={form.control}
                                         name="inscricaoEstadual"
-                                        render={({ field }) => (
+                                        render={({field}) => (
                                             <FormItem>
                                                 <FormLabel>Inscrição Estadual</FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder="Número da inscrição" {...field} readOnly={readonly} />
+                                                    <Input placeholder="Número da inscrição" {...field}
+                                                           readOnly={readonly}/>
                                                 </FormControl>
-                                                <FormMessage />
+                                                <FormMessage/>
                                             </FormItem>
                                         )}
                                     />
@@ -375,13 +395,14 @@ const CadastroClientes = () => {
                                     <FormField
                                         control={form.control}
                                         name="inscricaoMunicipal"
-                                        render={({ field }) => (
+                                        render={({field}) => (
                                             <FormItem>
                                                 <FormLabel>Inscrição Municipal *</FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder="Número da inscrição" {...field} readOnly={readonly} />
+                                                    <Input placeholder="Número da inscrição" {...field}
+                                                           readOnly={readonly}/>
                                                 </FormControl>
-                                                <FormMessage />
+                                                <FormMessage/>
                                             </FormItem>
                                         )}
                                     />
@@ -395,26 +416,26 @@ const CadastroClientes = () => {
                                     <FormField
                                         control={form.control}
                                         name="rua"
-                                        render={({ field }) => (
+                                        render={({field}) => (
                                             <FormItem>
                                                 <FormLabel>Rua *</FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder="Nome da rua" {...field} readOnly={readonly} />
+                                                    <Input placeholder="Nome da rua" {...field} readOnly={readonly}/>
                                                 </FormControl>
-                                                <FormMessage />
+                                                <FormMessage/>
                                             </FormItem>
                                         )}
                                     />
                                     <FormField
                                         control={form.control}
                                         name="bairro"
-                                        render={({ field }) => (
+                                        render={({field}) => (
                                             <FormItem>
                                                 <FormLabel>Bairro *</FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder="Nome do bairro" {...field} readOnly={readonly} />
+                                                    <Input placeholder="Nome do bairro" {...field} readOnly={readonly}/>
                                                 </FormControl>
-                                                <FormMessage />
+                                                <FormMessage/>
                                             </FormItem>
                                         )}
                                     />
@@ -422,13 +443,13 @@ const CadastroClientes = () => {
                                     <FormField
                                         control={form.control}
                                         name="numero"
-                                        render={({ field }) => (
+                                        render={({field}) => (
                                             <FormItem>
                                                 <FormLabel>Número *</FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder="Número" {...field} readOnly={readonly} />
+                                                    <Input placeholder="Número" {...field} readOnly={readonly}/>
                                                 </FormControl>
-                                                <FormMessage />
+                                                <FormMessage/>
                                             </FormItem>
                                         )}
                                     />
@@ -436,13 +457,13 @@ const CadastroClientes = () => {
                                     <FormField
                                         control={form.control}
                                         name="cidade"
-                                        render={({ field }) => (
+                                        render={({field}) => (
                                             <FormItem>
                                                 <FormLabel>Cidade *</FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder="Nome da cidade" {...field} readOnly={readonly} />
+                                                    <Input placeholder="Nome da cidade" {...field} readOnly={readonly}/>
                                                 </FormControl>
-                                                <FormMessage />
+                                                <FormMessage/>
                                             </FormItem>
                                         )}
                                     />
@@ -450,13 +471,13 @@ const CadastroClientes = () => {
                                     <FormField
                                         control={form.control}
                                         name="estado"
-                                        render={({ field }) => (
+                                        render={({field}) => (
                                             <FormItem>
                                                 <FormLabel>UF *</FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder="UF" {...field} readOnly={readonly} />
+                                                    <Input placeholder="UF" {...field} readOnly={readonly}/>
                                                 </FormControl>
-                                                <FormMessage />
+                                                <FormMessage/>
                                             </FormItem>
                                         )}
                                     />
@@ -464,7 +485,7 @@ const CadastroClientes = () => {
                                     <FormField
                                         control={form.control}
                                         name="cep"
-                                        render={({ field }) => (
+                                        render={({field}) => (
                                             <FormItem>
                                                 <FormLabel>CEP *</FormLabel>
                                                 <FormControl>
@@ -476,7 +497,7 @@ const CadastroClientes = () => {
                                                         readOnly={readonly}
                                                     />
                                                 </FormControl>
-                                                <FormMessage />
+                                                <FormMessage/>
                                             </FormItem>
                                         )}
                                     />
@@ -484,13 +505,13 @@ const CadastroClientes = () => {
                                     <FormField
                                         control={form.control}
                                         name="complemento"
-                                        render={({ field }) => (
+                                        render={({field}) => (
                                             <FormItem>
                                                 <FormLabel>Complemento </FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder="Complemento" {...field} readOnly={readonly} />
+                                                    <Input placeholder="Complemento" {...field} readOnly={readonly}/>
                                                 </FormControl>
-                                                <FormMessage />
+                                                <FormMessage/>
                                             </FormItem>
                                         )}
                                     />
@@ -498,13 +519,13 @@ const CadastroClientes = () => {
                                     <FormField
                                         control={form.control}
                                         name="lote"
-                                        render={({ field }) => (
+                                        render={({field}) => (
                                             <FormItem>
                                                 <FormLabel>Lote </FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder="Lote" {...field} readOnly={readonly} />
+                                                    <Input placeholder="Lote" {...field} readOnly={readonly}/>
                                                 </FormControl>
-                                                <FormMessage />
+                                                <FormMessage/>
                                             </FormItem>
                                         )}
                                     />
@@ -521,13 +542,13 @@ const CadastroClientes = () => {
                                     <FormField
                                         control={form.control}
                                         name="nomeFinanceiro"
-                                        render={({ field }) => (
+                                        render={({field}) => (
                                             <FormItem>
                                                 <FormLabel>Nome *</FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder="Nome" {...field} readOnly={readonly} />
+                                                    <Input placeholder="Nome" {...field} readOnly={readonly}/>
                                                 </FormControl>
-                                                <FormMessage />
+                                                <FormMessage/>
                                             </FormItem>
                                         )}
                                     />
@@ -535,14 +556,15 @@ const CadastroClientes = () => {
                                     <FormField
                                         control={form.control}
                                         name="emailFinanceiro"
-                                        render={({ field }) => (
+                                        render={({field}) => (
                                             <FormItem>
                                                 <FormLabel>Email *</FormLabel>
                                                 <FormControl>
                                                     <Input type="email"
-                                                        placeholder="financeiro@empresa.com" {...field} readOnly={readonly} />
+                                                           placeholder="financeiro@empresa.com" {...field}
+                                                           readOnly={readonly}/>
                                                 </FormControl>
-                                                <FormMessage />
+                                                <FormMessage/>
                                             </FormItem>
                                         )}
                                     />
@@ -550,7 +572,7 @@ const CadastroClientes = () => {
                                     <FormField
                                         control={form.control}
                                         name="telefoneFinanceiro"
-                                        render={({ field }) => (
+                                        render={({field}) => (
                                             <FormItem>
                                                 <FormLabel>Telefone *</FormLabel>
                                                 <FormControl>
@@ -562,7 +584,7 @@ const CadastroClientes = () => {
                                                         readOnly={readonly}
                                                     />
                                                 </FormControl>
-                                                <FormMessage />
+                                                <FormMessage/>
                                             </FormItem>
                                         )}
                                     />
@@ -578,13 +600,13 @@ const CadastroClientes = () => {
                                     <FormField
                                         control={form.control}
                                         name="nomeResponsavel"
-                                        render={({ field }) => (
+                                        render={({field}) => (
                                             <FormItem>
                                                 <FormLabel>Nome *</FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder="Nome" {...field} readOnly={readonly} />
+                                                    <Input placeholder="Nome" {...field} readOnly={readonly}/>
                                                 </FormControl>
-                                                <FormMessage />
+                                                <FormMessage/>
                                             </FormItem>
                                         )}
                                     />
@@ -592,14 +614,15 @@ const CadastroClientes = () => {
                                     <FormField
                                         control={form.control}
                                         name="emailResponsavel"
-                                        render={({ field }) => (
+                                        render={({field}) => (
                                             <FormItem>
                                                 <FormLabel>Email *</FormLabel>
                                                 <FormControl>
                                                     <Input type="email"
-                                                        placeholder="responsavel@empresa.com" {...field} readOnly={readonly} />
+                                                           placeholder="responsavel@empresa.com" {...field}
+                                                           readOnly={readonly}/>
                                                 </FormControl>
-                                                <FormMessage />
+                                                <FormMessage/>
                                             </FormItem>
                                         )}
                                     />
@@ -607,7 +630,7 @@ const CadastroClientes = () => {
                                     <FormField
                                         control={form.control}
                                         name="telefoneResponsavel"
-                                        render={({ field }) => (
+                                        render={({field}) => (
                                             <FormItem>
                                                 <FormLabel>Telefone *</FormLabel>
                                                 <FormControl>
@@ -619,7 +642,7 @@ const CadastroClientes = () => {
                                                         readOnly={readonly}
                                                     />
                                                 </FormControl>
-                                                <FormMessage />
+                                                <FormMessage/>
                                             </FormItem>
                                         )}
                                     />
@@ -635,13 +658,13 @@ const CadastroClientes = () => {
                                     <FormField
                                         control={form.control}
                                         name="status"
-                                        render={({ field }) => (
+                                        render={({field}) => (
                                             <FormItem>
                                                 <FormLabel>Status </FormLabel>
                                                 <FormControl>
                                                     <Select value={field.value} onValueChange={field.onChange}>
                                                         <SelectTrigger disabled={readonly || !isEditing}>
-                                                            <SelectValue placeholder="Selecione o status" />
+                                                            <SelectValue placeholder="Selecione o status"/>
                                                         </SelectTrigger>
                                                         <SelectContent>
                                                             <SelectItem value="ativo">Ativo</SelectItem>
@@ -649,7 +672,7 @@ const CadastroClientes = () => {
                                                         </SelectContent>
                                                     </Select>
                                                 </FormControl>
-                                                <FormMessage />
+                                                <FormMessage/>
                                             </FormItem>
                                         )}
                                     />
@@ -657,13 +680,13 @@ const CadastroClientes = () => {
                                     <FormField
                                         control={form.control}
                                         name="dataVencimento"
-                                        render={({ field }) => (
+                                        render={({field}) => (
                                             <FormItem>
                                                 <FormLabel>Data de Vencimento da Fatura *</FormLabel>
                                                 <FormControl>
-                                                    <Input type="date" {...field} readOnly={readonly} />
+                                                    <Input type="date" {...field} readOnly={readonly}/>
                                                 </FormControl>
-                                                <FormMessage />
+                                                <FormMessage/>
                                             </FormItem>
                                         )}
                                     />
@@ -671,7 +694,7 @@ const CadastroClientes = () => {
                                     <FormField
                                         control={form.control}
                                         name="vencimentoContrato"
-                                        render={({ field }) => (
+                                        render={({field}) => (
                                             <FormItem>
                                                 <FormLabel>Prazo de Vencimento do Contrato (dias) *</FormLabel>
                                                 <FormControl>
@@ -683,7 +706,7 @@ const CadastroClientes = () => {
                                                         readOnly={readonly}
                                                     />
                                                 </FormControl>
-                                                <FormMessage />
+                                                <FormMessage/>
                                             </FormItem>
                                         )}
                                     />
@@ -697,24 +720,24 @@ const CadastroClientes = () => {
                                 <FormField
                                     control={form.control}
                                     name="parceiroId"
-                                    render={({ field }) => (
+                                    render={({field}) => (
                                         <FormItem>
                                             <FormLabel>Parceiro *</FormLabel>
                                             <Select onValueChange={field.onChange} value={field.value}>
                                                 <FormControl>
                                                     <SelectTrigger disabled={readonly}>
-                                                        <SelectValue placeholder="Selecione um parceiro" />
+                                                        <SelectValue placeholder="Selecione um parceiro"/>
                                                     </SelectTrigger>
                                                 </FormControl>
                                                 <SelectContent>
                                                     {parceiros.map((parceiro: any) => (
                                                         <SelectItem key={parceiro.id} value={parceiro.id}>
-                                                            {parceiro.razaoSocial}
+                                                            {parceiro.legalName}
                                                         </SelectItem>
                                                     ))}
                                                 </SelectContent>
                                             </Select>
-                                            <FormMessage />
+                                            <FormMessage/>
                                         </FormItem>
                                     )}
                                 />
