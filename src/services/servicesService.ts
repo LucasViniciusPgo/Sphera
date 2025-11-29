@@ -1,5 +1,6 @@
 import { http } from "@/lib/http";
 import type { ServicoFormData } from "@/pages/CadastroServico";
+import {Servico} from "@/interfaces/Servico.ts";
 
 export interface CreateServiceCommand {
     name: string;
@@ -10,19 +11,6 @@ export interface CreateServiceCommand {
 export interface UpdateServiceCommand {
     name: string;
     defaultDueInDays?: number | null;
-}
-
-export interface ServiceDetails {
-    id: string;
-    name: string;
-    code: string;
-    dueDate: string | null;
-    remainingDays: number | null;
-    isActive: boolean;
-    createdAt?: string;
-    createdBy?: string;
-    updatedAt?: string | null;
-    updatedBy?: string | null;
 }
 
 function buildCreatePayload(data: ServicoFormData): CreateServiceCommand {
@@ -53,7 +41,7 @@ export type ServicoViewModel = {
     updatedBy: string | null;
 };
 
-export function mapServiceToViewModel(dto: ServiceDetails) : ServicoViewModel {
+export function mapServiceToViewModel(dto: Servico) : ServicoViewModel {
     return {
         id: dto.id,
         nomeServico: dto.name,
@@ -70,18 +58,18 @@ export function mapServiceToViewModel(dto: ServiceDetails) : ServicoViewModel {
 
 export async function createService(data: ServicoFormData) {
     const payload = buildCreatePayload(data);
-    const res = await http.post<ServiceDetails>("Services", payload);
+    const res = await http.post<Servico>("Services", payload);
     return res.data;
 }
 
 export async function updateService(id: string, data: ServicoFormData) {
     const payload = buildUpdatePayload(data);
-    const res = await http.put<ServiceDetails>(`Services/${id}`, payload);
+    const res = await http.put<Servico>(`Services/${id}`, payload);
     return res.data;
 }
 
 export async function getServiceById(id: string) {
-    const res = await http.get<ServiceDetails>(`Services/${id}`);
+    const res = await http.get<Servico>(`Services/${id}`);
     return res.data;
 }
 
@@ -91,26 +79,17 @@ export async function getServices(params?: {
     isActive?: boolean;
 }) {
     const { code, name, isActive } = params || {};
+    const actualParams: Record<string, any> = {};
+    if (code)
+        actualParams.code = code;
+    if (name)
+        actualParams.name = name;
+    if (isActive)
+        actualParams.isActive = isActive;
 
-    const res = await http.get<ServiceDetails[] | { items: ServiceDetails[] }>(
-        "Services",
-        {
-            params: {
-                Code: code,
-                Name: name,
-                IsActive: typeof isActive === "boolean" ? isActive : undefined,
-            },
-        },
-    );
-
-    const raw = res.data as any;
-    const items: ServiceDetails[] = Array.isArray(raw)
-        ? raw
-        : Array.isArray(raw?.items)
-            ? raw.items
-            : [];
-
-    return { items, raw };
+    const response = await http.get<Servico[] | { items: Servico[] }>(
+        "Services", { params: actualParams });
+    return response.data;
 }
 
 export async function activateService(id: string) {
