@@ -23,7 +23,7 @@ export type ApiError = {
 
 const DEFAULT_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL || "";
 
-let authToken: string | null = null;
+let authToken: string | null = localStorage.getItem("authToken");
 
 const client: AxiosInstance = axios.create({
   baseURL: DEFAULT_BASE_URL,
