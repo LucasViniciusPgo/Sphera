@@ -3,49 +3,43 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Folder, Users, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import http from "@/lib/http";
+import { getPartners } from "@/services/partnersService";
 
-interface Parceiro {
+interface Partner {
   id: string;
-  razaoSocial: string;
+  legalName: string;
+  clients: any[];
 }
 
 export default function PastasArquivos() {
   const navigate = useNavigate();
-  const [parceiros, setParceiros] = useState<Parceiro[]>([]);
-  // Quantidade de clientes por parceiro
-  const [clientesPorParceiro, setClientesPorParceiro] = useState<Record<string, number>>({});
+  const [partners, setPartners] = useState<any[]>([]);
+  const [clientsPerPartner, setClientsPerPartner] = useState<Record<string, number>>({});
   const [searchTerm, setSearchTerm] = useState<string>("");
 
   useEffect(() => {
-    const storedParceiros = localStorage.getItem("parceiros");
-    const storedClientes = localStorage.getItem("clientes");
-  // Não precisamos mais dos arquivos para esta tela, apenas parceiros e clientes
-
-    if (!storedParceiros) return;
-    const parceirosData: Parceiro[] = JSON.parse(storedParceiros);
-    setParceiros(parceirosData);
-
-    if (storedClientes) {
-      const clientesData = JSON.parse(storedClientes);
-      const contagem: Record<string, number> = {};
-
-      parceirosData.forEach((parceiro: Parceiro) => {
-        contagem[parceiro.id] = clientesData.filter(
-          (cliente: any) => cliente.parceiroId === parceiro.id
-        ).length;
+    (async () => {
+      const partnersResponse = await getPartners({ includeClients: true });
+    
+      setPartners(partnersResponse.items);
+    
+      const count: Record<string, number> = {};
+      partnersResponse.items.forEach((partner) => {
+        count[partner.id] = partner.clients ? partner.clients.length : 0;
       });
-      setClientesPorParceiro(contagem);
-    }
+      setClientsPerPartner(count);
+    })();
   }, []);
 
-  const parceirosFiltrados = useMemo(() => {
-    return parceiros.filter((p) =>
-      searchTerm === "" || p.razaoSocial.toLowerCase().includes(searchTerm.toLowerCase())
+  const searchPartners = useMemo(() => {
+    return partners.filter((p) =>
+      searchTerm === "" || p.legalName.toLowerCase().includes(searchTerm.toLowerCase())
     );
-  }, [parceiros, searchTerm]);
+  }, [partners, searchTerm]);
 
-  const handlePastaClick = (parceiroId: string) => {
-    navigate(`/home/arquivos/${parceiroId}`);
+  const handleFolderClick = (partnerId: string) => {
+    navigate(`/home/arquivos/${partnerId}`, { state: { partnerId } });
   };
 
   return (
@@ -89,7 +83,7 @@ export default function PastasArquivos() {
         </CardContent>
       </Card>
 
-      {parceiros.length === 0 ? (
+      {partners.length === 0 ? (
         <Card>
           <CardContent className="pt-6">
             <div className="text-center py-12">
@@ -103,24 +97,24 @@ export default function PastasArquivos() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {parceirosFiltrados.map((parceiro) => {
-            const totalClientes = clientesPorParceiro[parceiro.id] || 0;
+          {searchPartners.map((partner) => {
+            const totalClients = clientsPerPartner[partner.id] || 0;
             
             return (
               <Card
-                key={parceiro.id}
+                key={partner.id}
                 className="cursor-pointer hover:shadow-lg transition-shadow"
-                onClick={() => handlePastaClick(parceiro.id)}
+                onClick={() => handleFolderClick(partner.id)}
               >
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-lg font-medium">{parceiro.razaoSocial}</CardTitle>
+                  <CardTitle className="text-lg font-medium">{partner.legalName}</CardTitle>
                   <Folder className="h-8 w-8 text-primary" />
                 </CardHeader>
                 <CardContent>
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <Users className="h-4 w-4" />
                     <span className="text-sm">
-                      {totalClientes} {totalClientes === 1 ? "cliente" : "clientes"}
+                      {totalClients} {totalClients === 1 ? "cliente" : "clientes"}
                     </span>
                   </div>
                 </CardContent>

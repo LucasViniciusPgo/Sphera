@@ -36,8 +36,11 @@ export default function ListaServicos() {
 
     const loadServicos = async () => {
         try {
-            const { items } = await getServices();
-            const viewItems: Servico[] = items.map(mapServiceToViewModel);
+            const data  = await getServices();
+            const itemsRaw = Array.isArray(data)
+                ? data
+                : data?.items ?? [];
+            const viewItems: Servico[] = itemsRaw.map(mapServiceToViewModel);
             setServicos(viewItems);
         } catch (e) {
             toast({

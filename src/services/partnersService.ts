@@ -43,6 +43,7 @@ export interface PartnerDetails {
     updatedAt: string | null;
     updatedBy: string | null;
     contacts: PartnerContact[];
+    clients: any[];
 }
 
 export interface CreatePartnerCommand {
