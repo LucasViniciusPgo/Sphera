@@ -87,6 +87,7 @@ export async function request<T = any>(
       if (refreshResponse.status == 200)
       {
         setAuthToken(refreshResponse.data.token);
+        localStorage.setItem("authToken", refreshResponse.data.token);
         localStorage.setItem("refreshToken", refreshResponse.data.refreshToken);
         if (retryCount < 1)
         {
