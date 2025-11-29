@@ -15,11 +15,11 @@ import ListaClientes from "./pages/ListaClientes";
 import CadastroServico from "./pages/CadastroServico";
 import ListaServico from "./pages/ListaServico";
 import NotFound from "./pages/NotFound";
-import CadastroArquivos from "./pages/CadastroArquivo";
+import CadastroArquivos from "./pages/documents/CadastroArquivo";
 import NovoUsuario from "./pages/NovoUsuario";
-import ListaArquivos from "./pages/ListaArquivos";
-import PastasArquivos from "./pages/PastasArquivos";
-import PastasClientes from "./pages/PastasClientes";
+import ListaArquivos from "./pages/documents/ListaArquivos";
+import PastasArquivos from "./pages/documents/PastasArquivos";
+import PastasClientes from "./pages/documents/PastasClientes";
 
 const queryClient = new QueryClient();
 

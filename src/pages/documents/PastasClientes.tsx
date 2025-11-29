@@ -23,36 +23,36 @@ export default function PastasClientes() {
 
   useEffect(() => {
     http.get("/clients", { params: { partnerId, includePartner: true } })
-    .then(async (clientsResponse) => {
-      if (clientsResponse.status == 200)
-      {
-        setClients(clientsResponse.data);
-        let legalName = "";
-        if (clientsResponse.data.length > 0 && clientsResponse.data[0].partner) {
-          legalName = clientsResponse.data[0].partner.legalName;
-        } else {
-          const partnerResponse = await http.get(`/partners/${partnerId}`);
-          if (partnerResponse.status == 200) {
-            legalName = partnerResponse.data.legalName;
-          }
-        }
-        setNomeParceiro(legalName);
-
-        http.get("/documents")
-          .then((documentsResponse) => {
-            if (documentsResponse.status == 200)
-            {
-              const count: Record<string, number> = {};
-              clientsResponse.data.forEach((client: Client) => {
-                count[client.id] = documentsResponse.data.filter(
-                  (document: any) => document.clientId === client.id
-                ).length;
-              });
-              setDocumentsPerClient(count);
+      .then(async (clientsResponse) => {
+        if (clientsResponse.status == 200)
+        {
+          setClients(clientsResponse.data);
+          let legalName = "";
+          if (clientsResponse.data.length > 0 && clientsResponse.data[0].partner) {
+            legalName = clientsResponse.data[0].partner.legalName;
+          } else {
+            const partnerResponse = await http.get(`/partners/${partnerId}`);
+            if (partnerResponse.status == 200) {
+              legalName = partnerResponse.data.legalName;
             }
-          });
-      }
-    });
+          }
+          setNomeParceiro(legalName);
+
+          http.get("/documents")
+            .then((documentsResponse) => {
+              if (documentsResponse.status == 200)
+              {
+                const count: Record<string, number> = {};
+                clientsResponse.data.forEach((client: Client) => {
+                  count[client.id] = documentsResponse.data.filter(
+                    (document: any) => document.clientId === client.id
+                  ).length;
+                });
+                setDocumentsPerClient(count);
+              }
+            });
+        }
+      });
   }, [ partnerId ]);
 
   const searchClients = useMemo(() => {

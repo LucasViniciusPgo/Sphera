@@ -19,15 +19,9 @@ import {
     AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
 import {useToast} from "@/hooks/use-toast";
-import {Arquivo} from "./CadastroArquivo";
 import {getCurrentUser} from "@/hooks/useCurrentUser";
 import { http } from "@/lib/http";
-
-type StatusType = "vencido" | "a-vencer" | "dentro-prazo";
-
-interface ArquivoComDetalhes extends Arquivo {
-    status: StatusType;
-}
+import { Arquivo, StatusType } from "@/interfaces/Arquivo";
 
 export default function ListaArquivos() {
     const navigate = useNavigate();
@@ -39,7 +33,7 @@ export default function ListaArquivos() {
     const [filtroServico, setFiltroServico] = useState<string>("todos");
     const [filtroStatus, setFiltroStatus] = useState<string>("todos");
 
-    const [arquivos, setArquivos] = useState<ArquivoComDetalhes[]>([]);
+    const [arquivos, setArquivos] = useState<Arquivo[]>([]);
     const [servicos, setServicos] = useState<any[]>([]);
     const [nomeCliente, setNomeCliente] = useState<string>("");
     const [nomeParceiro, setNomeParceiro] = useState<string>("");
@@ -88,14 +82,11 @@ export default function ListaArquivos() {
                 
             }
             
-            const arquivosComDetalhes: ArquivoComDetalhes[] = arquivosData.map((arquivo) => {
+            arquivosData.forEach((arquivo) => {
                 const status = calcularStatus(arquivo.dueDate);
-                return {
-                    ...arquivo,
-                    status,
-                };
+                arquivo.status = status;
             });
-            setArquivos(arquivosComDetalhes);
+            setArquivos(arquivosData);
         }
 
         fetchData()
@@ -113,7 +104,7 @@ export default function ListaArquivos() {
                 arquivo.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 arquivo.partnerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 arquivo.serviceName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                arquivo.Resposavel.toLowerCase().includes(searchTerm.toLowerCase());
+                arquivo.responsibleName.toLowerCase().includes(searchTerm.toLowerCase());
             const matchServico = filtroServico === "todos" || arquivo.serviceName === filtroServico;
             const matchStatus = filtroStatus === "todos" || arquivo.status === filtroStatus;
             return matchSearch && matchServico && matchStatus;
@@ -125,33 +116,24 @@ export default function ListaArquivos() {
     };
 
     const handleDelete = (arquivoId: string) => {
-        const arquivo = arquivos.find(a => a.id === arquivoId);
         const updatedArquivos = arquivos.filter((a) => a.id !== arquivoId);
-        const storedArquivos = JSON.parse(localStorage.getItem("arquivos") || "[]");
-        const filteredStored = storedArquivos.filter((a: any) => a.id !== arquivoId);
-        localStorage.setItem("arquivos", JSON.stringify(filteredStored));
         setArquivos(updatedArquivos);
 
-        if (arquivo) {
-            const timestamp = new Date().toISOString();
-            const deleteLog = {
-                id: `${arquivoId}-delete-${timestamp}`,
-                action: "delete",
-                entityType: "arquivo",
-                entityName: arquivo.fileName,
-                entityId: arquivoId,
-                user: getCurrentUser(),
-                timestamp,
-            };
-            const auditLogs = JSON.parse(localStorage.getItem("auditLogs") || "[]");
-            auditLogs.push(deleteLog);
-            localStorage.setItem("auditLogs", JSON.stringify(auditLogs));
-        }
-
-        toast({
-            title: "Arquivo excluído",
-            description: "O arquivo foi excluído com sucesso.",
-        });
+        http.delete(`/documents/${arquivoId}`)
+        .then((response) => {
+            if (response.status != 204) {
+                toast({
+                    title: "Erro ao excluir",
+                    description: "Não foi possível excluir o arquivo. Tente novamente.",
+                    variant: "destructive",
+                });
+            } else {
+                toast({
+                    title: "Arquivo excluído",
+                    description: "O arquivo foi excluído com sucesso.",
+                });
+            }
+        })
     };
 
     return (
@@ -284,7 +266,7 @@ export default function ListaArquivos() {
                                             <TableCell>{arquivo.partnerName}</TableCell>
                                             <TableCell>{arquivo.clientName}</TableCell>
                                             <TableCell>{arquivo.serviceName}</TableCell>
-                                            <TableCell>{arquivo.Resposavel}</TableCell>
+                                            <TableCell>{arquivo.responsibleName}</TableCell>
                                             <TableCell>{new Date(arquivo.dueDate).toLocaleDateString("pt-BR")}</TableCell>
                                             <TableCell>
                                                 <Badge className={statusConfig.className}>{statusConfig.label}</Badge>
