@@ -8,15 +8,20 @@ import { Badge } from "@/components/ui/badge";
 import {ArrowLeft, Search, Edit, Plus, Trash2, Eye} from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { getCurrentUser } from "@/hooks/useCurrentUser";
+import { getServices, deleteService, mapServiceToViewModel } from "@/services/servicesService";
+import {ApiError, ApiResponse} from "@/lib/http.ts";
 
 export type Servico = {
     id: string;
     nomeServico: string;
     codigo: string;
-    // Pode ser número de dias, string (legado data antiga) ou null (sem prazo)
     vencimentoDoc: number | string | null;
-    status: "ativo" | "inativo";
+    status: string;
+    dueDate: string | null;
+    createdBy: string;
+    createdAt: string;
+    updatedBy: string;
+    updatedAt: string;
 };
 
 export default function ListaServicos() {
@@ -29,52 +34,61 @@ export default function ListaServicos() {
         loadServicos();
     }, []);
 
-    const loadServicos = () => {
-        const stored = localStorage.getItem("servicos");
-        if (stored) {
-            const parsed = JSON.parse(stored).map((s: any) => {
-                const raw = s.vencimentoDoc;
-                let venc: number | string | null;
-                if (raw === null || raw === undefined || raw === "") {
-                    venc = null;
-                } else if (!isNaN(Number(raw))) {
-                    venc = Number(raw);
-                } else {
-                    venc = raw; // manter data string legado
-                }
-                return { ...s, vencimentoDoc: venc };
+    const loadServicos = async () => {
+        try {
+            const { items } = await getServices();
+            const viewItems: Servico[] = items.map(mapServiceToViewModel);
+            setServicos(viewItems);
+        } catch (e) {
+            toast({
+                title: "Erro ao carregar serviços",
+                description: "Não foi possível carregar a lista de serviços.",
+                variant: "destructive",
             });
-            setServicos(parsed);
         }
     };
 
-    const handleDelete = (servicoId: string) => {
-        const servico = servicos.find(s => s.id === servicoId);
-        const updatedServicos = servicos.filter(s => s.id !== servicoId);
-        localStorage.setItem("servicos", JSON.stringify(updatedServicos));
-        setServicos(updatedServicos);
+    useEffect(() => {
+        loadServicos();
+    }, []);
 
-        if (servico) {
-            const timestamp = new Date().toISOString();
-            const deleteLog = {
-                id: `${servicoId}-delete-${timestamp}`,
-                action: "delete",
-                entityType: "servico",
-                entityName: servico.nomeServico,
-                entityId: servicoId,
-                user: getCurrentUser(),
-                timestamp,
-            };
-            const auditLogs = JSON.parse(localStorage.getItem("auditLogs") || "[]");
-            auditLogs.push(deleteLog);
-            localStorage.setItem("auditLogs", JSON.stringify(auditLogs));
+
+    const handleDelete = async (servicoId: string) => {
+        try {
+            const res = await deleteService(servicoId);
+            const status = (res as ApiResponse<any> | ApiError).status;
+
+            if (!status || status < 200 || status >= 300) {
+                const err = res as ApiError;
+                const msgApi =
+                    (err.data as any)?.message ||
+                    (err.data as any)?.title ||
+                    err.message ||
+                    "Não foi possível excluir o serviço.";
+
+                toast({
+                    title: "Erro ao excluir serviço",
+                    description: msgApi,
+                    variant: "destructive",
+                });
+                return;
+            }
+
+            setServicos((prev) => prev.filter((s) => s.id !== servicoId));
+
+            toast({
+                title: "Serviço excluído",
+                description: "O serviço foi excluído com sucesso.",
+            });
+        } catch (e) {
+            toast({
+                title: "Erro inesperado ao excluir",
+                description: "Não foi possível excluir o serviço.",
+                variant: "destructive",
+            });
         }
-
-        toast({
-            title: "Serviço excluído",
-            description: "O serviço foi excluído com sucesso.",
-        });
     };
+
 
     const filteredServicos = servicos.filter((servico) => {
         const term = searchTerm.trim().toLowerCase();
@@ -85,9 +99,8 @@ export default function ListaServicos() {
         if (typeof servico.vencimentoDoc === 'number') {
             prazoMatch = String(servico.vencimentoDoc).includes(term);
         } else if (servico.vencimentoDoc === null) {
-            prazoMatch = 'sem prazo'.includes(term); // permitir buscar "sem"
+            prazoMatch = 'sem prazo'.includes(term);
         } else {
-            // data antiga: permitir busca por partes da data locale ou ISO
             const dateObj = new Date(servico.vencimentoDoc);
             if (!isNaN(dateObj.getTime())) {
                 const iso = dateObj.toISOString().split('T')[0];
