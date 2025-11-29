@@ -1,3 +1,4 @@
+import { getCurrentUser } from "@/hooks/useCurrentUser";
 import axios, {
   AxiosError,
   AxiosInstance,
@@ -72,12 +73,28 @@ function normalizeError(err: unknown): ApiError {
 }
 
 export async function request<T = any>(
-  cfg: AxiosRequestConfig
+  cfg: AxiosRequestConfig,
+  retryCount = 0
 ): Promise<ApiResponse<T> | ApiError> {
   try {
     const res: AxiosResponse<T> = await client.request<T>(cfg);
+    
     return { data: res.data, status: res.status, headers: res.headers };
   } catch (e) {
+    if (e.status == 401) 
+    {
+      const refreshResponse = await client.request({method: "POST", url: "/auths/refresh", data: { email: getCurrentUser(), refreshToken: localStorage.getItem("refreshToken") }});
+      if (refreshResponse.status == 200)
+      {
+        setAuthToken(refreshResponse.data.token);
+        localStorage.setItem("authToken", refreshResponse.data.token);
+        localStorage.setItem("refreshToken", refreshResponse.data.refreshToken);
+        if (retryCount < 1)
+        {
+          return await request<T>(cfg, retryCount + 1);
+        }
+      }
+    }  
     return normalizeError(e);
   }
 }
