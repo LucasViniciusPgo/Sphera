@@ -5,6 +5,9 @@ import { Folder, FileText, ArrowLeft, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { http } from "@/lib/http";
+import { getClients } from "@/services/clientsService";
+import { getPartnerById } from "@/services/partnersService";
+import { getDocuments } from "@/services/documentsService";
 
 interface Client {
   id: string;
@@ -16,43 +19,33 @@ interface Client {
 export default function PastasClientes() {
   const navigate = useNavigate();
   const { partnerId } = useParams<{ partnerId: string }>();
-  const [clients, setClients] = useState<Client[]>([]);
+  const [clients, setClients] = useState<any[]>([]);
   const [documentsPerClient, setDocumentsPerClient] = useState<Record<string, number>>({});
   const [nomeParceiro, setNomeParceiro] = useState<string>("");
   const [searchTerm, setSearchTerm] = useState<string>("");
 
   useEffect(() => {
-    http.get("/clients", { params: { partnerId, includePartner: true } })
-      .then(async (clientsResponse) => {
-        if (clientsResponse.status == 200)
-        {
-          setClients(clientsResponse.data);
-          let legalName = "";
-          if (clientsResponse.data.length > 0 && clientsResponse.data[0].partner) {
-            legalName = clientsResponse.data[0].partner.legalName;
-          } else {
-            const partnerResponse = await http.get(`/partners/${partnerId}`);
-            if (partnerResponse.status == 200) {
-              legalName = partnerResponse.data.legalName;
-            }
-          }
-          setNomeParceiro(legalName);
+    (async () => {
+      const clientsResponse = (await getClients({ partnerId, includePartner: true })).items;
+      setClients(clientsResponse);
+      let legalName = "";
+      if (clientsResponse.length > 0 && clientsResponse[0].partner) {
+        legalName = clientsResponse[0].partner.legalName;
+      } else {
+        const partnerResponse = await getPartnerById(partnerId);
+        legalName = partnerResponse.data.legalName;
+      }
+      setNomeParceiro(legalName);
 
-          http.get("/documents")
-            .then((documentsResponse) => {
-              if (documentsResponse.status == 200)
-              {
-                const count: Record<string, number> = {};
-                clientsResponse.data.forEach((client: Client) => {
-                  count[client.id] = documentsResponse.data.filter(
-                    (document: any) => document.clientId === client.id
-                  ).length;
-                });
-                setDocumentsPerClient(count);
-              }
-            });
-        }
+      const documentsResponse = await getDocuments({ partnerId });
+      const count: Record<string, number> = {};
+      clientsResponse.forEach((client) => {
+        count[client.id] = documentsResponse.filter(
+          (document: any) => document.clientId === client.id
+        ).length;
       });
+      setDocumentsPerClient(count);
+    })();
   }, [ partnerId ]);
 
   const searchClients = useMemo(() => {

@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Folder, Users, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import http from "@/lib/http";
+import { getPartners } from "@/services/partnersService";
 
 interface Partner {
   id: string;
@@ -13,30 +14,22 @@ interface Partner {
 
 export default function PastasArquivos() {
   const navigate = useNavigate();
-  const [partners, setPartners] = useState<Partner[]>([]);
+  const [partners, setPartners] = useState<any[]>([]);
   const [clientsPerPartner, setClientsPerPartner] = useState<Record<string, number>>({});
   const [searchTerm, setSearchTerm] = useState<string>("");
 
   useEffect(() => {
-    const fetchData = async () => {
-      const partnersResponse = await http.get("/partners", { params: { includeClients: true } });
-      if (partnersResponse.status == 200)
-      {
-        setPartners(partnersResponse.data);
-      
-        const count: Record<string, number> = {};
-        partnersResponse.data.forEach((partner: Partner) => {
-          count[partner.id] = partner.clients ? partner.clients.length : 0;
-        });
-        setClientsPerPartner(count);
-      }
-    };
-
-    fetchData()
-    .then(() => {})
-    .catch((err) => {
-      console.error(err);
-    });
+    (async () => {
+      const partnersResponse = await getPartners({ includeClients: true });
+    
+      setPartners(partnersResponse.items);
+    
+      const count: Record<string, number> = {};
+      partnersResponse.items.forEach((partner) => {
+        count[partner.id] = partner.clients ? partner.clients.length : 0;
+      });
+      setClientsPerPartner(count);
+    })();
   }, []);
 
   const searchPartners = useMemo(() => {

@@ -14,6 +14,10 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { getCurrentUser } from "@/hooks/useCurrentUser";
 import { Arquivo } from "@/interfaces/Arquivo";
 import http from "@/lib/http";
+import { createDocument, getDocumentById, updateDocument } from "@/services/documentsService";
+import { getClients } from "@/services/clientsService";
+import { getUsers } from "@/services/usersServices";
+import { getServices } from "@/services/servicesServices";
 
 const arquivoSchema = z.object({
   fileName: z.string().min(1, "Nome do Arquivo é obrigatório").max(100),
@@ -33,7 +37,7 @@ function addDaysISO(baseDate: string, days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-type ArquivoFormData = z.infer<typeof arquivoSchema>;
+export type ArquivoFormData = z.infer<typeof arquivoSchema>;
 
 export default function CadastroArquivo() {
   const { toast } = useToast();
@@ -42,9 +46,9 @@ export default function CadastroArquivo() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [clients, setClients] = useState<any[]>([]);
-  const [servicos, setServicos] = useState<any[]>([]);
+  const [services, setServices] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
-  const [editingArquivo, setEditingArquivo] = useState<Arquivo | null>(null);
+  const [editingDocument, setEditingDocument] = useState<Arquivo | null>(null);
   const [manualDue, setManualDue] = useState(false); // usuário editou manualmente DataVencimento
   // Removido vínculo automático entre serviço e data de vencimento
   const isEditing = !!id;
@@ -64,51 +68,31 @@ export default function CadastroArquivo() {
     },
   });
 
-  // Primeiro efeito: carrega listas e guarda arquivo bruto
   useEffect(() => {
-    http.get("/clients")
-      .then((clientsResponse) => {
-        if (clientsResponse.status == 200) {
-          setClients(clientsResponse.data);
-        }
-      });
+    (async () => {
+      setClients((await getClients()).items);
 
-    http.get("/services")
-      .then((servicesResponse) => {
-        if (servicesResponse.status == 200) {
-          const parsed = servicesResponse.data
-            .map((s: any) => ({ ...s, vencimentoDoc: Number(s.vencimentoDoc) }));
-          setServicos(parsed);
-        }
-      });
+      setServices(await getServices());
 
-    http.get("/users")
-      .then((usersResponse) => {
-        if (usersResponse.status == 200) {
-          setUsers(usersResponse.data);
-        }
-      });
+      setUsers(await getUsers())
 
-    if (id) {
-      http.get(`/documents/${id}`)
-      .then((documentsResponse) => {
-        if (documentsResponse.status == 200) {
-          setEditingArquivo({
-            ...documentsResponse.data,
-            issueDate: documentsResponse.data.issueDate.slice(0, 10),
-            dueDate: documentsResponse.data.dueDate.slice(0, 10),
-          });
-        }
-      });
-    }
+      if (id) {
+        const existingDocument = await getDocumentById(id);
+        setEditingDocument({
+          ...existingDocument,
+          issueDate: existingDocument.issueDate.slice(0, 10),
+          dueDate: existingDocument.dueDate.slice(0, 10),
+        });
+      }
+    })();
   }, [id]);
 
   // Segundo efeito: somente reseta quando listas já carregadas para garantir selects preenchidos
   useEffect(() => {
-    if (editingArquivo && clients.length > 0 && servicos.length > 0) {
-      form.reset(editingArquivo);
+    if (editingDocument && clients.length > 0 && services.length > 0) {
+      form.reset(editingDocument);
     }
-  }, [editingArquivo, clients, servicos, form]);
+  }, [editingDocument, clients, services, form]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -136,74 +120,38 @@ export default function CadastroArquivo() {
   const onSubmit = async (data: ArquivoFormData) => {
     setIsSubmitting(true);
     try {
-      const formData = new FormData();
-      if (selectedFile) {
-        formData.append("file", selectedFile);
-      }
       if (isEditing && id) {
-        const updatedAt = new Date().toISOString();
-        const arquivo = {
-          ...data,
-          id,
-          createdBy: editingArquivo.createdBy,
-          createdAt: editingArquivo.createdAt,
-          updatedBy: getCurrentUser(),
-          updatedAt
-        } as Arquivo;
-
-        http.put(`/documents/${id}`, arquivo)
-          .then((response) => {
-            if (response.status == 201) {
-              http.post(`/documents/${id}/upload`, formData, {headers: {'Content-Type': 'multipart/form-data'}})
-              .then(() => {
-                if (response.status == 201) {
-                  toast({
-                    title: "Arquivo atualizado!",
-                    description: "O arquivo foi atualizado com sucesso.",
-                  });
-                  setTimeout(() => navigate("/home"), 800);
-                }
-              });
-            }
+        const { success, document } = await updateDocument(id, editingDocument!, data, selectedFile!)
+        if (success) {
+          toast({
+            title: "Arquivo atualizado!",
+            description: "O arquivo foi atualizado com sucesso.",
           });
-
-        
+          setTimeout(() => navigate("/home"), 800);
+        }
+        else {
+          toast({
+            title: "Erro ao atualizar arquivo",
+            description: "Ocorreu um erro ao atualizar o arquivo.",
+            variant: "destructive",
+          });
+        }
       }
-      
       else {
-        const createdAt = new Date().toISOString();
-        const newArquivo: Arquivo = {
-          id: crypto.randomUUID(),
-          fileName: data.fileName,
-          clientId: data.clientId,
-          serviceId: data.serviceId,
-          responsibleId: data.responsibleId,
-          issueDate: data.issueDate,
-          dueDate: data.dueDate,
-          notes: data.notes || "",
-          file: selectedFile || undefined,
-          createdBy: getCurrentUser(),
-          createdAt,
-          updatedBy: getCurrentUser(),
-          updatedAt: createdAt
-        };
-
-
-        http.post("/documents", newArquivo)
-          .then((response) => {
-            if (response.status == 201) {
-              http.post(`/documents/${response.data.id}/upload`, formData,  {headers: {'Content-Type': 'multipart/form-data'}})
-              .then(() => {
-                if (response.status == 201) {
-                  toast({
-                    title: "Arquivo cadastrado!",
-                    description: "O arquivo foi cadastrado com sucesso.",
-                  });
-                  setTimeout(() => navigate("/home"), 800);
-                }
-              });
-            }
+        const { success, document } = await createDocument(data, selectedFile!);
+        if (success) {
+          toast({
+            title: "Arquivo cadastrado!",
+            description: "O arquivo foi cadastrado com sucesso.",
           });
+          setTimeout(() => navigate("/home"), 800);
+        } else {
+          toast({
+            title: "Erro ao cadastrar arquivo",
+            description: "Ocorreu um erro ao cadastrar o arquivo.",
+            variant: "destructive",
+          });
+        }
       }    
     } catch (error) {
       toast({
@@ -340,7 +288,7 @@ export default function CadastroArquivo() {
                           onValueChange={(value) => {
                             field.onChange(value);
                             // ao selecionar serviço, se tiver prazo, recalcula vencimento
-                            const servicoSel = servicos.find(s => s.id === value);
+                            const servicoSel = services.find(s => s.id === value);
                             if (servicoSel && servicoSel.dueDate) {
                               const emissao = form.getValues('issueDate');
                               const base = emissao || new Date().toISOString().slice(0, 10);
@@ -361,7 +309,7 @@ export default function CadastroArquivo() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {servicos.map((servico) => (
+                            {services.map((servico) => (
                               <SelectItem key={servico.id} value={servico.id}>
                                 {servico.name}
                               </SelectItem>
@@ -414,7 +362,7 @@ export default function CadastroArquivo() {
                               field.onChange(e.target.value);
                               // Recalcula vencimento se serviço com prazo e não manual
                               const servicoId = form.getValues('serviceId');
-                              const servicoSel = servicos.find(s => s.id === servicoId);
+                              const servicoSel = services.find(s => s.id === servicoId);
                               if (servicoSel && servicoSel.dueDate && !manualDue) {
                                 const nova = addDaysISO(e.target.value, servicoSel.dueDate);
                                 form.setValue('dueDate', nova);
