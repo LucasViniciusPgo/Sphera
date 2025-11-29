@@ -11,13 +11,20 @@ import {useToast} from "@/hooks/use-toast";
 import {ArrowLeft} from "lucide-react";
 import {useLocation, useNavigate, useParams} from "react-router-dom";
 import {getCurrentUser} from "@/hooks/useCurrentUser";
+import {
+    createService,
+    updateService,
+    getServiceById,
+    activateService,
+    deactivateService,
+    mapServiceToViewModel,
+} from "@/services/servicesService";
 
 export interface Servico {
     id: string;
     nomeServico: string;
     codigo: string;
-    // Número de dias de validade do documento (agora opcional). Null indica sem prazo definido.
-    vencimentoDoc: number | null; // dias ou null
+    vencimentoDoc: number | null;
     status: "ativo" | "inativo";
     createdBy: string;
     createdAt: string;
@@ -25,22 +32,30 @@ export interface Servico {
     updatedAt: string;
 }
 
-// Campo vencimentoDoc agora opcional. Pode ser deixado em branco para "sem prazo".
 const servicoSchema = z.object({
     nomeServico: z.string().min(1, "Nome do Serviço é obrigatório").max(100),
     codigo: z.string().min(1, "Código do Serviço é obrigatório").max(100),
     vencimentoDoc: z
-        .string()
+        .union([z.string(), z.number(), z.null()])
         .optional()
         .refine(
-            (val) => val === undefined || val === "" || (!isNaN(Number(val)) && Number(val) > 0),
+            (val) => {
+                if (val === undefined || val === null || val === "") return true;
+
+                const num = typeof val === "number" ? val : Number(val);
+                return !isNaN(num) && num > 0;
+            },
             "Informe dias > 0 ou deixe em branco"
         )
-        .transform((val) => (val === undefined || val === "" ? null : Number(val))),
+        .transform((val) => {
+            // saída do schema: number | null
+            if (val === undefined || val === null || val === "") return null;
+            return typeof val === "number" ? val : Number(val);
+        }),
     status: z.enum(["ativo", "inativo"])
 });
 
-type ServicoFormData = z.infer<typeof servicoSchema>;
+export type ServicoFormData = z.infer<typeof servicoSchema>;
 
 export default function CadastroServico() {
     const {toast} = useToast();
@@ -62,113 +77,70 @@ export default function CadastroServico() {
     });
 
     useEffect(() => {
-        if (id) {
-            const stored = localStorage.getItem("servicos");
-            if (stored) {
-                const servicosRaw = JSON.parse(stored);
-                const servicos: Servico[] = servicosRaw.map((s: any) => {
-                    const raw = s.vencimentoDoc;
-                    let venc: number | null;
-                    if (raw === null || raw === undefined || raw === "") {
-                        venc = null;
-                    } else {
-                        const num = Number(raw);
-                        venc = isNaN(num) ? null : num;
-                    }
-                    return {...s, vencimentoDoc: venc};
+        async function load() {
+            if (!id) return;
+            try {
+                const apiService = await getServiceById(id);
+                const servicoView = mapServiceToViewModel(apiService);
+
+                form.reset({
+                    nomeServico: servicoView.nomeServico,
+                    codigo: servicoView.codigo,
+                    vencimentoDoc: servicoView.vencimentoDoc,
+                    status: servicoView.status === "ativo" ? "ativo" : "inativo",
                 });
-                const servico = servicos.find((p) => p.id === id);
-                if (servico) {
-                    form.reset(servico);
-                }
+            } catch (e) {
+                toast({
+                    title: "Erro ao carregar serviço",
+                    description: "Não foi possível buscar os dados do serviço.",
+                    variant: "destructive",
+                });
             }
         }
-    }, [id, form]);
+
+        load();
+    }, [id]);
+
 
     const onSubmit = async (data: ServicoFormData) => {
         setIsSubmitting(true);
         try {
-            const stored = localStorage.getItem("servicos");
-            const servicos: Servico[] = stored ? JSON.parse(stored) : [];
-
             if (isEditing && id) {
-                const index = servicos.findIndex((p) => p.id === id);
-                if (index !== -1) {
-                    const existing = servicos[index];
-                    const updatedAt = new Date().toISOString();
-                    servicos[index] = {
-                        ...data,
-                        id,
-                        createdBy: existing.createdBy,
-                        createdAt: existing.createdAt,
-                        updatedBy: getCurrentUser(),
-                        updatedAt
-                    } as Servico;
+                const updated = await updateService(id, data);
 
-                    // Audit log update
-                    const auditLogs = JSON.parse(localStorage.getItem("auditLogs") || "[]");
-                    const updateLog = {
-                        id: `${id}-update-${updatedAt}`,
-                        action: "update",
-                        entityType: "servico",
-                        entityName: data.nomeServico,
-                        entityId: id,
-                        user: getCurrentUser(),
-                        timestamp: updatedAt,
-                    };
-                    auditLogs.push(updateLog);
-                    localStorage.setItem("auditLogs", JSON.stringify(auditLogs));
+                const isActiveForm = data.status === "ativo";
+                if (typeof updated.isActive === "boolean" && updated.isActive !== isActiveForm) {
+                    if (isActiveForm) {
+                        await activateService(id);
+                    } else {
+                        await deactivateService(id);
+                    }
                 }
+
                 toast({
-                    title: "Serviço atualizado!",
-                    description: "O serviço foi atualizado com sucesso.",
+                    title: "Serviço atualizado",
+                    description: "Os dados do serviço foram salvos com sucesso.",
                 });
             } else {
-                const createdAt = new Date().toISOString();
-                const newServico: Servico = {
-                    ...data,
-                    vencimentoDoc: data.vencimentoDoc === null ? null : Number(data.vencimentoDoc),
-                    id: crypto.randomUUID(),
-                    createdBy: getCurrentUser(),
-                    createdAt,
-                    updatedBy: getCurrentUser(),
-                    updatedAt: createdAt
-                } as Servico;
-                servicos.push(newServico);
-
-                // Audit log create
-                const auditLogs = JSON.parse(localStorage.getItem("auditLogs") || "[]");
-                if (!auditLogs.find((l: any) => l.id === `${newServico.id}-create`)) {
-                    const createLog = {
-                        id: `${newServico.id}-create`,
-                        action: "create",
-                        entityType: "servico",
-                        entityName: newServico.nomeServico,
-                        entityId: newServico.id,
-                        user: getCurrentUser(),
-                        timestamp: createdAt,
-                    };
-                    auditLogs.push(createLog);
-                    localStorage.setItem("auditLogs", JSON.stringify(auditLogs));
-                }
+                await createService(data);
                 toast({
-                    title: "Serviço cadastrado!",
+                    title: "Serviço criado",
                     description: "O serviço foi cadastrado com sucesso.",
                 });
             }
 
-            localStorage.setItem("servicos", JSON.stringify(servicos));
             navigate("/home/servicos");
-        } catch (error) {
+        } catch (err) {
             toast({
-                title: "Erro ao salvar",
-                description: "Ocorreu um erro ao salvar o serviço. Tente novamente.",
+                title: "Erro ao salvar serviço",
+                description: "Verifique os dados e tente novamente.",
                 variant: "destructive",
             });
         } finally {
             setIsSubmitting(false);
         }
     };
+
 
     return (
         <div className="max-w-4xl mx-auto">
@@ -216,7 +188,8 @@ export default function CadastroServico() {
                                             <FormItem>
                                                 <FormLabel>Nome do Serviço *</FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder="Nome do serviço" {...field} readOnly={readonly} />
+                                                    <Input placeholder="Nome do serviço" {...field}
+                                                           readOnly={readonly}/>
                                                 </FormControl>
                                                 <FormMessage/>
                                             </FormItem>
@@ -230,7 +203,8 @@ export default function CadastroServico() {
                                             <FormItem>
                                                 <FormLabel>Código do Serviço *</FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder="Código do serviço" {...field} readOnly={readonly} />
+                                                    <Input placeholder="Código do serviço" {...field}
+                                                           readOnly={readonly}/>
                                                 </FormControl>
                                                 <FormMessage/>
                                             </FormItem>
@@ -267,13 +241,13 @@ export default function CadastroServico() {
                                     <FormField
                                         control={form.control}
                                         name="status"
-                                        render={({ field }) => (
+                                        render={({field}) => (
                                             <FormItem>
                                                 <FormLabel>Status </FormLabel>
                                                 <FormControl>
                                                     <Select value={field.value} onValueChange={field.onChange}>
                                                         <SelectTrigger disabled={readonly || !isEditing}>
-                                                            <SelectValue placeholder="Selecione o status" />
+                                                            <SelectValue placeholder="Selecione o status"/>
                                                         </SelectTrigger>
                                                         <SelectContent>
                                                             <SelectItem value="ativo">Ativo</SelectItem>
