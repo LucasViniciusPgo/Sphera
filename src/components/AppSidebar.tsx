@@ -11,6 +11,7 @@ import {
     SidebarMenuButton,
     useSidebar,
 } from "@/components/ui/sidebar";
+import { useAuthRole } from "@/hooks/useAuthRole";
 
 const parceirosItems = [
     {title: "Cadastrar Parceiros", url: "/home/cadastro-parceiros", icon: Users},
@@ -40,9 +41,18 @@ const agendaItems = [
     {title: "Agenda", url: "/home/agenda", icon: CalendarDays},
 ];
 
+const usuarioAdminItemsBase = [
+    { title: "Cadastro de Usuário", url: "/home/novo-usuario", icon: UserPlus },
+    { title: "Lista de Usuários", url: "/home/usuarios", icon: Users },
+];
+
 export function AppSidebar() {
     const {state} = useSidebar();
     const collapsed = state === "collapsed";
+
+    const { hasAnyRole } = useAuthRole();
+
+    const canSeeUsuarios = hasAnyRole(["Administrador"]);
 
     // Classes base para NavLink + variação ativa/inativa
     const getNavCls = ({isActive}: { isActive: boolean }) => {
@@ -98,6 +108,26 @@ export function AppSidebar() {
             </SidebarGroup>
 
             <SidebarContent className="pt-2">
+                {canSeeUsuarios && (
+                    <SidebarGroup>
+                        <SidebarGroupLabel className="text-xs font-semibold tracking-wide uppercase text-muted-foreground/80 px-3">Usuários</SidebarGroupLabel>
+                        <SidebarGroupContent>
+                            <SidebarMenu>
+                                {usuarioAdminItemsBase.map((item) => (
+                                    <SidebarMenuItem key={item.url}>
+                                        <SidebarMenuButton asChild>
+                                            <NavLink to={item.url} /* ... */>
+                                                <item.icon className="h-5 w-5 text-white/80 group-hover:text-white transition-transform group-hover:scale-110"/>
+                                                {!collapsed && <span>{item.title}</span>}
+                                            </NavLink>
+                                        </SidebarMenuButton>
+                                    </SidebarMenuItem>
+                                ))}
+                            </SidebarMenu>
+                        </SidebarGroupContent>
+                    </SidebarGroup>
+                )}
+
                 <SidebarGroup>
                     <SidebarGroupLabel
                         className="text-xs font-semibold tracking-wide uppercase text-muted-foreground/80 px-3">

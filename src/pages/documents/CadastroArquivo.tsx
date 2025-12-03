@@ -11,13 +11,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Upload, FileText } from "lucide-react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { getCurrentUser } from "@/hooks/useCurrentUser";
 import { Arquivo } from "@/interfaces/Arquivo";
-import http from "@/lib/http";
 import { createDocument, getDocumentById, updateDocument } from "@/services/documentsService";
 import { getClients } from "@/services/clientsService";
 import { getUsers } from "@/services/usersServices";
-import { getServices } from "@/services/servicesServices";
+import { getServices } from "@/services/servicesService";
 
 const arquivoSchema = z.object({
   fileName: z.string().min(1, "Nome do Arquivo é obrigatório").max(100),

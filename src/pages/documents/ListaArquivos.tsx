@@ -21,7 +21,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { http } from "@/lib/http";
 import { Arquivo, StatusType } from "@/interfaces/Arquivo";
-import { getServices } from "@/services/servicesServices";
+import { getServices } from "@/services/servicesService";
 import { getDocuments } from "@/services/documentsService";
 
 export default function ListaArquivos() {
@@ -63,7 +63,7 @@ export default function ListaArquivos() {
 
   useEffect(() => {
     (async () => {
-      let arquivosData: Arquivo[] = await getDocuments({ clientId: clientId });
+      const arquivosData: Arquivo[] = await getDocuments({ clientId: clientId });
       arquivosData.forEach((arquivo) => {
         const status = calcularStatus(arquivo.dueDate);
         arquivo.status = status;
