@@ -1,6 +1,6 @@
 import {http, setAuthToken} from "@/lib/http";
 import type { ParceiroFormData } from "@/pages/CadastroParceiros";
-import { cleanCNPJ } from "@/utils/format.ts";
+import {cleanCEP, cleanCNPJ} from "@/utils/format.ts";
 import {
     addContactToPartner,
     removeContactFromPartner,
@@ -66,7 +66,7 @@ function buildAddressFromForm(data: ParceiroFormData): AddressDTO | null {
         neighborhood: data.bairro || "",
         city: data.cidade || "",
         state: (data.estado || "").toUpperCase(),
-        zipCode: data.cep || "",
+        zipCode: cleanCEP(data.cep) || "",
         lot: data.lote || null,
     };
 }
