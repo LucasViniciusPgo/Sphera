@@ -125,7 +125,7 @@ export default function CadastroArquivo() {
             title: "Arquivo atualizado!",
             description: "O arquivo foi atualizado com sucesso.",
           });
-          setTimeout(() => navigate("/home"), 800);
+          setTimeout(() => navigate("/home/arquivos"), 800);
         }
         else {
           toast({
@@ -142,7 +142,7 @@ export default function CadastroArquivo() {
             title: "Arquivo cadastrado!",
             description: "O arquivo foi cadastrado com sucesso.",
           });
-          setTimeout(() => navigate("/home"), 800);
+          setTimeout(() => navigate("/home/arquivos"), 800);
         } else {
           toast({
             title: "Erro ao cadastrar arquivo",
@@ -443,7 +443,7 @@ export default function CadastroArquivo() {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => navigate("/home")}
+                    onClick={() => navigate("/home/arquivos")}
                     disabled={isSubmitting}
                   >
                     Cancelar

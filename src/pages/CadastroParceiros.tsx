@@ -11,7 +11,7 @@ import {useToast} from "@/hooks/use-toast";
 import {ArrowLeft} from "lucide-react";
 import {useLocation, useNavigate, useParams} from "react-router-dom";
 import {createPartner, updatePartner, getPartnerById, type AddressDTO} from "@/services/partnersService.ts";
-import {formatCNPJ} from "@/utils/format.ts";
+import {formatCNPJ, formatCEP, formatPhone} from "@/utils/format.ts";
 import {
     EContactRole,
     EContactType,
@@ -60,23 +60,6 @@ const parceiroSchema = z.object({
     ),
     status: z.enum(["ativo", "inativo"]),
 });
-
-// Helpers de formatação (máscaras simples baseadas em regex)
-function formatPhone(value: string) {
-    const digits = value.replace(/\D/g, '').slice(0, 11);
-    // Se não há dígitos, retorna string vazia para permitir apagar tudo
-    if (!digits) return '';
-    if (digits.length <= 2) return `(${digits}`; // Exibe parêntese só se houver algum dígito
-    if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
-    if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
-    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7, 11)}`;
-}
-
-function formatCEP(value: string): string {
-    const digits = value.replace(/\D/g, "").slice(0, 8);
-    if (digits.length <= 5) return digits;
-    return digits.replace(/^(\d{5})(\d{3})$/, "$1-$2");
-}
 
 export type ParceiroFormData = z.infer<typeof parceiroSchema>;
 
@@ -210,7 +193,7 @@ export default function CadastroParceiros() {
                     numero: addr.number?.toString?.() || "",
                     cidade: addr.city || "",
                     estado: addr.state || "",
-                    cep: addr.zipCode || "",
+                    cep: formatCEP(addr.zipCode) || "",
                     complemento: addr.complement || "",
                     lote: addr.lot || "",
                     emailFinanceiro,
