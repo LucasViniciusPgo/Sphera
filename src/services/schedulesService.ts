@@ -3,8 +3,8 @@ import { http } from "@/lib/http";
 export interface ScheduleEvent {
     id: string;
     occurredAt: string;
-    userId: string;
-    clientId: string;
+    userId?: string;
+    clientId?: string;
     notes?: string | null;
     createdAt: string;
     createdBy: string;
@@ -13,16 +13,14 @@ export interface ScheduleEvent {
 }
 
 export interface CreateScheduleEventCommand {
-    occurredAt: string; // ISO string
-    userId: string;     // GUID do usuário
-    clientId: string;   // GUID do cliente
+    occurredAt: string;
+    userId?: string;
+    clientId?: string;
     notes?: string | null;
 }
 
-// mesma estrutura do CreateScheduleEventCommand na API :contentReference[oaicite:2]{index=2}
 export type UpdateScheduleEventCommand = CreateScheduleEventCommand;
 
-// GET /api/v1/Schedules/user/{userId}?StartAt=&EndAt=
 export async function getUserScheduleEvents(
     userId: string,
     params?: { startAt?: string; endAt?: string }
@@ -37,7 +35,23 @@ export async function getUserScheduleEvents(
     return res.data;
 }
 
-// POST /api/v1/Schedules
+export async function getScheduleEvents(params?: {
+    startAt?: string;
+    endAt?: string;
+}) {
+    const { startAt, endAt } = params || {};
+    const query: Record<string, any> = {};
+
+    if (startAt) query.StartAt = startAt;
+    if (endAt) query.EndAt = endAt;
+
+    const res = await http.get<ScheduleEvent[]>("Schedules", {
+        params: query,
+    });
+
+    return res.data;
+}
+
 export async function createScheduleEvent(
     payload: CreateScheduleEventCommand
 ) {
@@ -45,7 +59,6 @@ export async function createScheduleEvent(
     return res.data;
 }
 
-// PUT /api/v1/Schedules/{id}
 export async function updateScheduleEvent(
     id: string,
     payload: UpdateScheduleEventCommand
@@ -54,7 +67,6 @@ export async function updateScheduleEvent(
     return res.data;
 }
 
-// DELETE /api/v1/Schedules/{id}
 export async function deleteScheduleEvent(id: string) {
     await http.delete(`Schedules/${id}`);
 }
