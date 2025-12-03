@@ -1,176 +1,435 @@
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card } from "@/components/ui/card";
-import { Mail, UserPlus, Phone, Smartphone } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import {FormControl, FormField, FormItem, FormLabel, FormMessage} from "@/components/ui/form.tsx";
-import * as z from "zod";
-import { useForm } from "react-hook-form";
+// src/pages/NovoUsuario.tsx
+import {useEffect, useState} from "react";
+import {useLocation, useNavigate, useParams} from "react-router-dom";
+import {useForm} from "react-hook-form";
 import {zodResolver} from "@hookform/resolvers/zod";
+import * as z from "zod";
 
-// Tela de cadastro simples: apenas nome de usuário e email conforme solicitado.
+import {Button} from "@/components/ui/button";
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from "@/components/ui/card";
+import {Form, FormControl, FormField, FormItem, FormLabel, FormMessage} from "@/components/ui/form";
+import {Input} from "@/components/ui/input";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+
+import {ArrowLeft, Phone, Smartphone} from "lucide-react";
+import {useToast} from "@/hooks/use-toast";
+import {createUser, updateUser, getUserById} from "@/services/usersServices";
+import {getRoles, Role} from "@/services/rolesService";
+import {formatPhone} from "@/utils/format.ts";
+import {Usuario} from "@/interfaces/Usuario.ts";
+import {EContactRole, EContactType, EPhoneType} from "@/services/partnersContactsService.ts";
+
+const userSchema = z.object({
+    username: z
+        .string()
+        .min(3, "Nome de usuário deve ter no mínimo 3 caracteres")
+        .max(100),
+    email: z.string().email("E-mail inválido"),
+    roleId: z.string().min(1, "Selecione um perfil"),
+    telefoneFixo: z
+        .string()
+        .min(10, "Telefone inválido")
+        .max(20)
+        .optional()
+        .or(z.literal("")),
+    celular: z.string().min(10, "Celular é obrigatório").max(20),
+    telefoneReserva: z
+        .string()
+        .min(10, "Telefone inválido")
+        .max(20)
+        .optional()
+        .or(z.literal("")),
+});
+
+export type UsuarioFormData = z.infer<typeof userSchema>;
+
 const NovoUsuario = () => {
     const navigate = useNavigate();
-    const [email, setEmail] = useState("");
-    const [username, setUsername] = useState("");
-    const [telefoneFixo, setTelefoneFixo] = useState("");
-    const [celular, setCelular] = useState("");
-    const [telefoneReserva, setTelefoneReserva] = useState("");
+    const location = useLocation();
+    const {id} = useParams<{ id: string }>();
+    const {toast} = useToast();
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        // Aqui futuramente poderia chamar uma API de criação de usuário.
-        console.log("Novo usuário:", { username, email });
-        // Após cadastrar, você pode redirecionar. Mantive volta para /home por enquanto.
-        navigate("/");
-    };
+    const readonly =
+        new URLSearchParams(location.search).get("view") === "readonly";
+    const isEditing = !!id;
 
-    const userSchema = z.object({
-        username: z.string().min(3, "Nome de usuário deve ter no mínimo 3 caracteres").max(100),
-        email: z.string().email(),
-        telefoneFixo: z.string().optional(),
-        celular: z.string().min(14, "Celular é obrigatório").max(15),
-        telefoneReserva: z.string().optional(),
-    });
+    const [roles, setRoles] = useState<Role[]>([]);
+    const [loadingRoles, setLoadingRoles] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-    type ParceiroFormData = z.infer<typeof userSchema>;
+    const [originalStatus, setOriginalStatus] = useState<boolean | undefined>(undefined);
 
-    const form = useForm<ParceiroFormData>({
+    const form = useForm<UsuarioFormData>({
         resolver: zodResolver(userSchema),
         defaultValues: {
-            username: '',
-            email: '',
-            telefoneFixo: '',
-            celular: '',
-            telefoneReserva: '',
+            username: "",
+            email: "",
+            roleId: "",
+            telefoneFixo: "",
+            celular: "",
+            telefoneReserva: "",
         },
     });
 
-    function formatPhone(value: string) {
-        const digits = value.replace(/\D/g, '').slice(0, 11);
-        // Se não há dígitos, retorna string vazia para permitir apagar tudo
-        if (!digits) return '';
-        if (digits.length <= 2) return `(${digits}`; // Exibe parêntese só se houver algum dígito
-        if (digits.length <= 6) return `(${digits.slice(0,2)}) ${digits.slice(2)}`;
-        if (digits.length <= 10) return `(${digits.slice(0,2)}) ${digits.slice(2,6)}-${digits.slice(6)}`;
-        return `(${digits.slice(0,2)}) ${digits.slice(2,7)}-${digits.slice(7,11)}`;
-    }
+    useEffect(() => {
+        const loadRoles = async () => {
+            try {
+                setLoadingRoles(true);
+                const data = await getRoles();
+                setRoles(data);
+            } catch (error) {
+                toast({
+                    title: "Erro ao carregar perfis",
+                    description:
+                        "Não foi possível carregar a lista de perfis. Tente novamente mais tarde.",
+                    variant: "destructive",
+                });
+            } finally {
+                setLoadingRoles(false);
+            }
+        };
+
+        loadRoles();
+    }, [toast]);
+
+    useEffect(() => {
+        if (!id) return;
+
+        (async () => {
+            try {
+                const response = await getUserById(id);
+                const userData = response.data;
+                const contacts = userData.contacts;
+
+                let telefoneFixo = "";
+                let celular = "";
+                let telefoneReserva = "";
+
+                for (const c of contacts) {
+                    // TELEFONE FIXO (geral + fixo)
+                    if (
+                        c.type === EContactType.Phone &&
+                        c.role === EContactRole.General &&
+                        c.phoneType === EPhoneType.Landline &&
+                        !telefoneFixo
+                    ) {
+                        telefoneFixo = formatPhone(c.value);
+                    }
+
+                    // CELULAR (geral + mobile)
+                    if (
+                        c.type === EContactType.Phone &&
+                        c.role === EContactRole.General &&
+                        c.phoneType === EPhoneType.Mobile &&
+                        !celular
+                    ) {
+                        celular = formatPhone(c.value);
+                    }
+
+                    // TELEFONE RESERVA (geral + reserva)
+                    if (
+                        c.type === EContactType.Phone &&
+                        c.role === EContactRole.General &&
+                        c.phoneType === EPhoneType.Backup &&
+                        !telefoneReserva
+                    ) {
+                        telefoneReserva = formatPhone(c.value);
+                    }
+                }
+
+                form.reset({
+                    username: userData.name,
+                    email: userData.email,
+                    roleId: String(userData.roleId),
+                    telefoneFixo: telefoneFixo,
+                    celular: celular,
+                    telefoneReserva: telefoneReserva,
+                });
+            } catch (e) {
+                console.error(e);
+                toast({
+                    title: "Erro ao carregar usuário",
+                    description:
+                        "Não foi possível carregar os dados do usuário. Tente novamente.",
+                    variant: "destructive",
+                });
+                navigate("/home/usuarios");
+            }
+        })();
+
+    }, [id, form, navigate, toast]);
+
+    const handleSubmit = async (values: UsuarioFormData) => {
+        try {
+            setIsSubmitting(true);
+
+            if (isEditing && id) {
+                await updateUser(id, {
+                    name: values.username.trim(),
+                    roleId: Number(values.roleId),
+                });
+
+                toast({
+                    title: "Usuário atualizado com sucesso!",
+                });
+            } else {
+                await createUser({
+                    username: values.username.trim(),
+                    email: values.email.trim(),
+                    roleId: values.roleId,
+                    telefoneFixo: values.telefoneFixo,
+                    celular: values.celular,
+                    telefoneReserva: values.telefoneReserva,
+                });
+
+                toast({
+                    title: "Usuário criado com sucesso!",
+                });
+            }
+
+            navigate("/home/usuarios");
+        } catch (error: any) {
+            console.error(error);
+            toast({
+                title: isEditing ? "Erro ao atualizar usuário" : "Erro ao criar usuário",
+                description:
+                    error?.response?.data?.message ||
+                    "Não foi possível salvar o usuário. Tente novamente.",
+                variant: "destructive",
+            });
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const titulo = readonly
+        ? "Visualizar Usuário"
+        : isEditing
+            ? "Editar Usuário"
+            : "Cadastrar Usuário";
+
+    const descricao = readonly
+        ? "Detalhes do usuário."
+        : isEditing
+            ? "Atualize as informações do usuário."
+            : "Informe os dados do novo usuário.";
 
     return (
-        <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
-            {/* Elementos decorativos */}
-            <div className="absolute inset-0 overflow-hidden">
-                <div className="absolute top-0 right-0 w-96 h-96 bg-primary/10 rounded-full blur-3xl" />
-                <div className="absolute bottom-0 left-0 w-96 h-96 bg-secondary/10 rounded-full blur-3xl" />
-            </div>
+        <div className="max-w-4xl mx-auto">
+            <Button
+                variant="ghost"
+                className="mb-6"
+                onClick={() => navigate("/home/usuarios")}
+                type="button"
+            >
+                <ArrowLeft className="mr-2 h-4 w-4"/>
+                Voltar
+            </Button>
 
-            <Card className="w-full max-w-md relative z-10 bg-card/80 backdrop-blur-sm border-border shadow-2xl">
-                <div className="p-8 space-y-6">
-                    {/* Cabeçalho */}
-                        <div className="text-center space-y-2">
-                            <div className="mx-auto w-16 h-16 bg-gradient-to-br from-primary to-secondary rounded-2xl flex items-center justify-center shadow-lg">
-                                <UserPlus className="w-8 h-8 text-primary-foreground" />
-                            </div>
-                            <h1 className="text-3xl font-bold text-foreground">Cadastrar novo usuário</h1>
-                        </div>
+            <Card>
+                <CardHeader>
+                    <CardTitle>{titulo}</CardTitle>
+                    <CardDescription>{descricao}</CardDescription>
+                </CardHeader>
 
-                        {/* Formulário */}
-                        <form onSubmit={handleSubmit} className="space-y-5">
-                            <div className="space-y-2">
-                                <Label htmlFor="username" className="text-foreground">Nome de usuário</Label>
-                                <Input
-                                    id="username"
-                                    type="text"
-                                    placeholder="Digite o nome de usuário"
-                                    value={username}
-                                    onChange={(e) => setUsername(e.target.value)}
-                                    className="bg-input border-border text-foreground placeholder:text-muted-foreground focus:ring-primary focus:border-primary transition-all"
-                                    required
-                                />
-                            </div>
+                <CardContent>
+                    <Form {...form}>
+                        <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
 
-                            <div className="space-y-2">
-                                <Label htmlFor="email" className="text-foreground">Email</Label>
-                                <div className="relative">
-                                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                                    <Input
-                                        id="email"
-                                        type="email"
-                                        placeholder="seu@email.com"
-                                        value={email}
-                                        onChange={(e) => setEmail(e.target.value)}
-                                        className="pl-10 bg-input border-border text-foreground placeholder:text-muted-foreground focus:ring-primary focus:border-primary transition-all"
-                                        required
+                            {/* Dados do Usuário */}
+                            <div className="space-y-4">
+                                <h3 className="text-lg font-semibold">Dados do Usuário</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <FormField
+                                        control={form.control}
+                                        name="username"
+                                        render={({field}) => (
+                                            <FormItem>
+                                                <FormLabel>Nome *</FormLabel>
+                                                <FormControl>
+                                                    <Input placeholder="Nome do usuário" {...field}
+                                                           readOnly={readonly}/>
+                                                </FormControl>
+                                                <FormMessage/>
+                                            </FormItem>
+                                        )}
+                                    />
+
+                                    <FormField
+                                        control={form.control}
+                                        name="email"
+                                        render={({field}) => (
+                                            <FormItem>
+                                                <FormLabel>E-mail *</FormLabel>
+                                                <FormControl>
+                                                    <Input placeholder="email@empresa.com.br" {...field}
+                                                           readOnly={readonly}/>
+                                                </FormControl>
+                                                <FormMessage/>
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <FormField
+                                        control={form.control}
+                                        name="roleId"
+                                        render={({field}) => (
+                                            <FormItem>
+                                                <FormLabel>Perfil *</FormLabel>
+                                                <FormControl>
+                                                    <Select
+                                                        value={field.value}
+                                                        onValueChange={field.onChange}
+                                                        disabled={loadingRoles || readonly}
+                                                    >
+                                                        <SelectTrigger>
+                                                            <SelectValue
+                                                                placeholder={
+                                                                    loadingRoles ? "Carregando perfis..." : "Selecione um perfil"
+                                                                }
+                                                            />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {roles.map((role) => (
+                                                                <SelectItem key={role.id} value={String(role.id)}>
+                                                                    {role.name}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </FormControl>
+                                                <FormMessage/>
+                                            </FormItem>
+                                        )}
                                     />
                                 </div>
                             </div>
 
-                            <div className="space-y-2">
-                                <Label htmlFor="telefoneFixo" className="text-foreground">Telefone Fixo</Label>
-                                <div className="relative">
-                                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                                    <Input
-                                        id="telefoneFixo"
-                                        type="text"
-                                        placeholder="(00) 00000-0000"
-                                        value={telefoneFixo}
-                                        onChange={(e) => setTelefoneFixo(formatPhone(e.target.value))}
-                                        className="pl-10 bg-input border-border text-foreground placeholder:text-muted-foreground focus:ring-primary focus:border-primary transition-all"
+                            {/* Contato */}
+                            <div className="space-y-4">
+                                <h3 className="text-lg font-semibold">Contato</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {/* Telefone fixo */}
+                                    <FormField
+                                        control={form.control}
+                                        name="telefoneFixo"
+                                        render={({field}) => (
+                                            <FormItem>
+                                                <FormLabel>Telefone fixo</FormLabel>
+                                                <FormControl>
+                                                    <div className="relative">
+                                                        <Phone
+                                                            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground"/>
+                                                        <Input
+                                                            placeholder="(00) 0000-0000"
+                                                            className="pl-9"
+                                                            value={field.value || ""}
+                                                            readOnly={readonly}
+                                                            onChange={(e) =>
+                                                                field.onChange(formatPhone(e.target.value))
+                                                            }
+                                                        />
+                                                    </div>
+                                                </FormControl>
+                                                <FormMessage/>
+                                            </FormItem>
+                                        )}
+                                    />
+
+                                    {/* Celular (obrigatório) */}
+                                    <FormField
+                                        control={form.control}
+                                        name="celular"
+                                        render={({field}) => (
+                                            <FormItem>
+                                                <FormLabel>Celular *</FormLabel>
+                                                <FormControl>
+                                                    <div className="relative">
+                                                        <Smartphone
+                                                            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground"/>
+                                                        <Input
+                                                            placeholder="(00) 00000-0000"
+                                                            className="pl-9"
+                                                            value={field.value || ""}
+                                                            readOnly={readonly}
+                                                            onChange={(e) =>
+                                                                field.onChange(formatPhone(e.target.value))
+                                                            }
+                                                        />
+                                                    </div>
+                                                </FormControl>
+                                                <FormMessage/>
+                                            </FormItem>
+                                        )}
+                                    />
+
+                                    {/* Telefone reserva */}
+                                    <FormField
+                                        control={form.control}
+                                        name="telefoneReserva"
+                                        render={({field}) => (
+                                            <FormItem>
+                                                <FormLabel>Telefone reserva</FormLabel>
+                                                <FormControl>
+                                                    <div className="relative">
+                                                        <Phone
+                                                            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground"/>
+                                                        <Input
+                                                            placeholder="(00) 00000-0000"
+                                                            className="pl-9"
+                                                            value={field.value || ""}
+                                                            readOnly={readonly}
+                                                            onChange={(e) =>
+                                                                field.onChange(formatPhone(e.target.value))
+                                                            }
+                                                        />
+                                                    </div>
+                                                </FormControl>
+                                                <FormMessage/>
+                                            </FormItem>
+                                        )}
                                     />
                                 </div>
                             </div>
 
-                            <div className="space-y-2">
-                                <Label htmlFor="celular" className="text-foreground">Celular *</Label>
-                                <div className="relative">
-                                    <Smartphone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                                    <Input
-                                        id="celular"
-                                        type="text"
-                                        placeholder="(00) 00000-0000"
-                                        value={celular}
-                                        onChange={(e) => setCelular(formatPhone(e.target.value))}
-                                        className="pl-10 bg-input border-border text-foreground placeholder:text-muted-foreground focus:ring-primary focus:border-primary transition-all"
-                                        required
-                                    />
+                            {!readonly && (
+                                <div className="flex justify-end gap-3">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() => navigate("/home/usuarios")}
+                                        disabled={isSubmitting}
+                                    >
+                                        Cancelar
+                                    </Button>
+                                    <Button type="submit" disabled={isSubmitting || loadingRoles}>
+                                        {isSubmitting
+                                            ? isEditing
+                                                ? "Atualizando..."
+                                                : "Salvando..."
+                                            : isEditing
+                                                ? "Atualizar Usuário"
+                                                : "Salvar Usuário"}
+                                    </Button>
                                 </div>
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="telefoneReserva" className="text-foreground">Telefone Reserva</Label>
-                                <div className="relative">
-                                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                                    <Input
-                                        id="telefoneReserva"
-                                        type="text"
-                                        placeholder="(00) 00000-0000"
-                                        value={telefoneReserva}
-                                        onChange={(e) => setTelefoneReserva(formatPhone(e.target.value))}
-                                        className="pl-10 bg-input border-border text-foreground placeholder:text-muted-foreground focus:ring-primary focus:border-primary transition-all"
-                                        required
-                                    />
-                                </div>
-                            </div>
-
-                            <Button
-                                type="submit"
-                                className="w-full bg-gradient-to-r from-primary to-secondary hover:opacity-90 text-primary-foreground font-semibold py-6 shadow-lg hover:shadow-xl transition-all duration-300"
-                            >
-                                Cadastrar
-                            </Button>
-
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                onClick={() => navigate(-1)}
-                                className="w-full text-sm text-muted-foreground hover:text-foreground"
-                            >
-                                Voltar
-                            </Button>
+                            )}
                         </form>
-                </div>
+                    </Form>
+                </CardContent>
             </Card>
         </div>
     );

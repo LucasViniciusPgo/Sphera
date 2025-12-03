@@ -14,13 +14,14 @@ import CadastroClientes from "./pages/CadastroClientes";
 import ListaClientes from "./pages/ListaClientes";
 import CadastroServico from "./pages/CadastroServico";
 import ListaServico from "./pages/ListaServico";
-import NotFound from "./pages/NotFound";
 import CadastroArquivos from "./pages/documents/CadastroArquivo";
 import NovoUsuario from "./pages/NovoUsuario";
 import ListaArquivos from "./pages/documents/ListaArquivos";
 import PastasArquivos from "./pages/documents/PastasArquivos";
 import PastasClientes from "./pages/documents/PastasClientes";
 import Agenda from "./pages/Agenda";
+import { RequireRole } from "./components/RequireRole";
+import ListaUsuarios from "./pages/ListaUsuarios";
 
 const queryClient = new QueryClient();
 
@@ -34,6 +35,30 @@ const App = () => (
                     <Route path="/" element={<Index/>}/>
                     <Route path="/home" element={<Home/>}>
                         <Route index element={<Dashboard/>}/>
+                        <Route
+                            path="novo-usuario"
+                            element={
+                                <RequireRole allowed={["Administrador"]}>
+                                    <NovoUsuario/>
+                                </RequireRole>
+                            }
+                        />
+                        <Route
+                            path="novo-usuario/:id"
+                            element={
+                                <RequireRole allowed={["Administrador"]}>
+                                    <NovoUsuario />
+                                </RequireRole>
+                            }
+                        />
+                        <Route
+                            path="usuarios"
+                            element={
+                                <RequireRole allowed={["Administrador"]}>
+                                    <ListaUsuarios/>
+                                </RequireRole>
+                            }
+                        />
                         <Route path="cadastro-parceiros" element={<CadastroParceiros/>}/>
                         <Route path="cadastro-parceiros/:id" element={<CadastroParceiros/>}/>
                         <Route path="parceiros" element={<ListaParceiros/>}/>
@@ -51,7 +76,7 @@ const App = () => (
                         <Route path="agenda" element={<Agenda/>}/>
                     </Route>
                     {/* Redirects for backwards compatibility */}
-                    <Route path="/agenda" element={<Agenda />} />
+                    <Route path="/agenda" element={<Agenda/>}/>
                     <Route path="/cadastro-parceiros" element={<CadastroParceiros/>}/>
                     <Route path="/cadastro-parceiros/:id" element={<CadastroParceiros/>}/>
                     <Route path="/parceiros" element={<ListaParceiros/>}/>
@@ -62,7 +87,30 @@ const App = () => (
                     <Route path="/cadastro-servicos/:id" element={<CadastroServico/>}/>
                     <Route path="/servicos" element={<ListaServico/>}/>
                     <Route path="/cadastro-arquivos" element={<CadastroArquivos/>}/>
-                    <Route path="/novo-usuario" element={<NovoUsuario/>}/>
+                    <Route
+                        path="/novo-usuario"
+                        element={
+                            <RequireRole allowed={["Administrador"]}>
+                                <NovoUsuario/>
+                            </RequireRole>
+                        }
+                    />
+                    <Route
+                        path="/novo-usuario/:id"
+                        element={
+                            <RequireRole allowed={["Administrador"]}>
+                                <NovoUsuario />
+                            </RequireRole>
+                        }
+                    />
+                    <Route
+                        path="/usuarios"
+                        element={
+                            <RequireRole allowed={["Administrador"]}>
+                                <ListaUsuarios/>
+                            </RequireRole>
+                        }
+                    />
                     <Route path="/cadastro-arquivos/:id" element={<CadastroArquivos/>}/>
                     <Route path="/arquivos" element={<ListaArquivos/>}/>
                     <Route path="/primeiro-acesso" element={<PrimeiroAcesso/>}/>
