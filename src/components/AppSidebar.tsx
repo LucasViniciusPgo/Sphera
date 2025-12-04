@@ -1,5 +1,5 @@
 import {Users, List, UserPlus, Briefcase, ArchiveX, Archive, TrendingUp, CalendarDays} from "lucide-react";
-import {NavLink} from "react-router-dom";
+import {NavLink, useMatch} from "react-router-dom";
 import {
     Sidebar,
     SidebarContent,
@@ -42,8 +42,8 @@ const agendaItems = [
 ];
 
 const usuarioAdminItemsBase = [
-    { title: "Cadastro de Usuário", url: "/home/novo-usuario", icon: UserPlus },
-    { title: "Lista de Usuários", url: "/home/usuarios", icon: Users },
+    { title: "Cadastrar Usuários", url: "/home/novo-usuario", icon: UserPlus },
+    { title: "Listar Usuários", url: "/home/usuarios", icon: Users },
 ];
 
 export function AppSidebar() {
@@ -54,27 +54,29 @@ export function AppSidebar() {
 
     const canSeeUsuarios = hasAnyRole(["Administrador"]);
 
-    // Classes base para NavLink + variação ativa/inativa
-    const getNavCls = ({isActive}: { isActive: boolean }) => {
-        const base = [
-            // layout
-            "relative w-full flex items-center gap-3 px-4 py-2",
-            // shape & typography (slightly bigger font)
-            "rounded-md text-[18px] font-medium",
-            // transitions & group for icon scaling
-            "transition-colors duration-150 ease-out group"
+    function SideBarItem({ item, collapsed }: { item: any; collapsed: boolean }) {
+        const match = useMatch({ path: item.url, end: true });
+        const isActive = !!match;
+
+        const classes = [
+            "relative w-full flex items-center gap-3 px-4 py-2 rounded-md text-[18px] font-medium transition-colors duration-150 ease-out group/navItem hover:bg-primary/30 group",
+            isActive
+                ? "bg-primary/50 text-white shadow-inner after:absolute after:left-0 after:top-0 after:h-full after:w-1 after:bg-white/80 rounded-l-none"
+                : "text-white/80 hover:text-white",
         ].join(" ");
 
-        const hoverFill = "hover:bg-primary/30"; // fill background on hover
-        const inactiveText = "text-white/80 hover:text-white";
-        const activeStyles = [
-            "bg-primary/50 text-white shadow-inner",
-            "after:absolute after:left-0 after:top-0 after:h-full after:w-1 after:bg-white/80",
-            "rounded-l-none"
-        ].join(" ");
+        return (
+            <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                    <NavLink to={item.url} end className={classes}>
+                        <item.icon className="h-5 w-5 text-white/80 group-hover/navItem:text-white transition-transform group-hover/navItem:scale-110" />
+                        {!collapsed && <span>{item.title}</span>}
+                    </NavLink>
+                </SidebarMenuButton>
+            </SidebarMenuItem>
+        );
+    }
 
-        return [base, hoverFill, isActive ? activeStyles : inactiveText].join(" ");
-    };
 
     return (
         <Sidebar
@@ -92,17 +94,7 @@ export function AppSidebar() {
                 </SidebarGroupLabel>
                 <SidebarGroupContent>
                     <SidebarMenu>
-                        {dashboardItem.map((item) => (
-                            <SidebarMenuItem key={item.title}>
-                                <SidebarMenuButton asChild>
-                                    <NavLink to={item.url} end className={getNavCls}>
-                                        <item.icon
-                                            className="h-5 w-5 text-white/80 group-hover:text-white transition-transform group-hover:scale-110"/>
-                                        {!collapsed && <span>{item.title}</span>}
-                                    </NavLink>
-                                </SidebarMenuButton>
-                            </SidebarMenuItem>
-                        ))}
+                        {dashboardItem.map((item) => <SideBarItem key={item.title} item={item} collapsed={collapsed} />)}
                     </SidebarMenu>
                 </SidebarGroupContent>
             </SidebarGroup>
@@ -113,16 +105,7 @@ export function AppSidebar() {
                         <SidebarGroupLabel className="text-xs font-semibold tracking-wide uppercase text-muted-foreground/80 px-3">Usuários</SidebarGroupLabel>
                         <SidebarGroupContent>
                             <SidebarMenu>
-                                {usuarioAdminItemsBase.map((item) => (
-                                    <SidebarMenuItem key={item.url}>
-                                        <SidebarMenuButton asChild>
-                                            <NavLink to={item.url} /* ... */>
-                                                <item.icon className="h-5 w-5 text-white/80 group-hover:text-white transition-transform group-hover:scale-110"/>
-                                                {!collapsed && <span>{item.title}</span>}
-                                            </NavLink>
-                                        </SidebarMenuButton>
-                                    </SidebarMenuItem>
-                                ))}
+                                {usuarioAdminItemsBase.map((item) => <SideBarItem key={item.title} item={item} collapsed={collapsed} />)}
                             </SidebarMenu>
                         </SidebarGroupContent>
                     </SidebarGroup>
@@ -135,17 +118,7 @@ export function AppSidebar() {
                     </SidebarGroupLabel>
                     <SidebarGroupContent>
                         <SidebarMenu>
-                            {parceirosItems.map((item) => (
-                                <SidebarMenuItem key={item.title}>
-                                    <SidebarMenuButton asChild>
-                                        <NavLink to={item.url} end className={getNavCls}>
-                                            <item.icon
-                                                className="h-5 w-5 text-white/80 group-hover:text-white transition-transform group-hover:scale-110"/>
-                                            {!collapsed && <span>{item.title}</span>}
-                                        </NavLink>
-                                    </SidebarMenuButton>
-                                </SidebarMenuItem>
-                            ))}
+                            {parceirosItems.map((item) => <SideBarItem key={item.title} item={item} collapsed={collapsed} />)}
                         </SidebarMenu>
                     </SidebarGroupContent>
                 </SidebarGroup>
@@ -157,17 +130,7 @@ export function AppSidebar() {
                     </SidebarGroupLabel>
                     <SidebarGroupContent>
                         <SidebarMenu>
-                            {clientesItems.map((item) => (
-                                <SidebarMenuItem key={item.title}>
-                                    <SidebarMenuButton asChild>
-                                        <NavLink to={item.url} end className={getNavCls}>
-                                            <item.icon
-                                                className="h-5 w-5 text-white/80 group-hover:text-white transition-transform group-hover:scale-110"/>
-                                            {!collapsed && <span>{item.title}</span>}
-                                        </NavLink>
-                                    </SidebarMenuButton>
-                                </SidebarMenuItem>
-                            ))}
+                            {clientesItems.map((item) => <SideBarItem key={item.title} item={item} collapsed={collapsed} />)}
                         </SidebarMenu>
                     </SidebarGroupContent>
                 </SidebarGroup>
@@ -179,17 +142,7 @@ export function AppSidebar() {
                     </SidebarGroupLabel>
                     <SidebarGroupContent>
                         <SidebarMenu>
-                            {serviceItems.map((item) => (
-                                <SidebarMenuItem key={item.title}>
-                                    <SidebarMenuButton asChild>
-                                        <NavLink to={item.url} end className={getNavCls}>
-                                            <item.icon
-                                                className="h-5 w-5 text-white/80 group-hover:text-white transition-transform group-hover:scale-110"/>
-                                            {!collapsed && <span>{item.title}</span>}
-                                        </NavLink>
-                                    </SidebarMenuButton>
-                                </SidebarMenuItem>
-                            ))}
+                            {serviceItems.map((item) => <SideBarItem key={item.title} item={item} collapsed={collapsed} />)}
                         </SidebarMenu>
                     </SidebarGroupContent>
                 </SidebarGroup>
@@ -201,17 +154,7 @@ export function AppSidebar() {
                     </SidebarGroupLabel>
                     <SidebarGroupContent>
                         <SidebarMenu>
-                            {cadastroArquivosItems.map((item) => (
-                                <SidebarMenuItem key={item.title}>
-                                    <SidebarMenuButton asChild>
-                                        <NavLink to={item.url} end className={getNavCls}>
-                                            <item.icon
-                                                className="h-5 w-5 text-white/80 group-hover:text-white transition-transform group-hover:scale-110"/>
-                                            {!collapsed && <span>{item.title}</span>}
-                                        </NavLink>
-                                    </SidebarMenuButton>
-                                </SidebarMenuItem>
-                            ))}
+                            {cadastroArquivosItems.map((item) => <SideBarItem key={item.title} item={item} collapsed={collapsed} />)}
                         </SidebarMenu>
                     </SidebarGroupContent>
                 </SidebarGroup>
@@ -222,16 +165,7 @@ export function AppSidebar() {
                     </SidebarGroupLabel>
                     <SidebarGroupContent>
                         <SidebarMenu>
-                            {agendaItems.map((item) => (
-                                <SidebarMenuItem key={item.title}>
-                                    <SidebarMenuButton asChild>
-                                        <NavLink to={item.url} end className={getNavCls}>
-                                            <item.icon className="h-5 w-5 text-white/80 group-hover:text-white transition-transform group-hover:scale-110" />
-                                            {!collapsed && <span>{item.title}</span>}
-                                        </NavLink>
-                                    </SidebarMenuButton>
-                                </SidebarMenuItem>
-                            ))}
+                            {agendaItems.map((item) => <SideBarItem key={item.title} item={item} collapsed={collapsed} />)}
                         </SidebarMenu>
                     </SidebarGroupContent>
                 </SidebarGroup>
