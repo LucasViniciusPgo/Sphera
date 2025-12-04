@@ -1,5 +1,5 @@
-import {Users, List, UserPlus, Briefcase, ArchiveX, Archive, TrendingUp, CalendarDays} from "lucide-react";
-import {NavLink, useMatch} from "react-router-dom";
+import { Users, List, UserPlus, Briefcase, ArchiveX, Archive, TrendingUp, CalendarDays, LogOut } from "lucide-react";
+import { NavLink, useMatch } from "react-router-dom";
 import {
     Sidebar,
     SidebarContent,
@@ -12,33 +12,45 @@ import {
     useSidebar,
 } from "@/components/ui/sidebar";
 import { useAuthRole } from "@/hooks/useAuthRole";
+import { useLogout } from "@/hooks/useLogout";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const parceirosItems = [
-    {title: "Cadastrar Parceiros", url: "/home/cadastro-parceiros", icon: Users},
-    {title: "Listar Parceiros", url: "/home/parceiros", icon: List},
+    { title: "Cadastrar Parceiros", url: "/home/cadastro-parceiros", icon: Users },
+    { title: "Listar Parceiros", url: "/home/parceiros", icon: List },
 ];
 
 const clientesItems = [
-    {title: "Cadastrar Clientes", url: "/home/cadastro-clientes", icon: UserPlus},
-    {title: "Listar Clientes", url: "/home/clientes", icon: List},
+    { title: "Cadastrar Clientes", url: "/home/cadastro-clientes", icon: UserPlus },
+    { title: "Listar Clientes", url: "/home/clientes", icon: List },
 ];
 
 const serviceItems = [
-    {title: "Cadastrar Serviços", url: "/home/cadastro-servicos", icon: Briefcase},
-    {title: "Listar Serviços", url: "/home/servicos", icon: Briefcase},
+    { title: "Cadastrar Serviços", url: "/home/cadastro-servicos", icon: Briefcase },
+    { title: "Listar Serviços", url: "/home/servicos", icon: Briefcase },
 ];
 
 const cadastroArquivosItems = [
-    {title: "Cadastrar Arquivos", url: "/home/cadastro-arquivos", icon: Archive},
-    {title: "Listar Arquivos", url: "/home/arquivos", icon: ArchiveX},
+    { title: "Cadastrar Arquivos", url: "/home/cadastro-arquivos", icon: Archive },
+    { title: "Listar Arquivos", url: "/home/arquivos", icon: ArchiveX },
 ];
 
 const dashboardItem = [
-    {title: "Dashboard", url: "/home", icon: TrendingUp},
+    { title: "Dashboard", url: "/home", icon: TrendingUp },
 ];
 
 const agendaItems = [
-    {title: "Agenda", url: "/home/agenda", icon: CalendarDays},
+    { title: "Agenda", url: "/home/agenda", icon: CalendarDays },
 ];
 
 const usuarioAdminItemsBase = [
@@ -47,10 +59,11 @@ const usuarioAdminItemsBase = [
 ];
 
 export function AppSidebar() {
-    const {state} = useSidebar();
+    const { state } = useSidebar();
     const collapsed = state === "collapsed";
 
     const { hasAnyRole } = useAuthRole();
+    const { logout } = useLogout();
 
     const canSeeUsuarios = hasAnyRole(["Administrador"]);
 
@@ -166,6 +179,42 @@ export function AppSidebar() {
                     <SidebarGroupContent>
                         <SidebarMenu>
                             {agendaItems.map((item) => <SideBarItem key={item.title} item={item} collapsed={collapsed} />)}
+                        </SidebarMenu>
+                    </SidebarGroupContent>
+                </SidebarGroup>
+
+                {/* Logout Section */}
+                <SidebarGroup className="mt-auto">
+                    <SidebarGroupContent>
+                        <SidebarMenu>
+                            <SidebarMenuItem>
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <SidebarMenuButton asChild>
+                                            <button
+                                                className="relative w-full flex items-center gap-3 px-4 py-2 rounded-md text-[18px] font-medium transition-colors duration-150 ease-out group/navItem hover:bg-destructive/30 text-white/80 hover:text-white"
+                                            >
+                                                <LogOut className="h-5 w-5 text-white/80 group-hover/navItem:text-white transition-transform group-hover/navItem:scale-110" />
+                                                {!collapsed && <span>Sair</span>}
+                                            </button>
+                                        </SidebarMenuButton>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>Confirmar saída</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                Você realmente deseja sair do sistema?
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                            <AlertDialogAction onClick={logout}>
+                                                Sair
+                                            </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                            </SidebarMenuItem>
                         </SidebarMenu>
                     </SidebarGroupContent>
                 </SidebarGroup>
