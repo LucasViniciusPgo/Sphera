@@ -42,8 +42,8 @@ const agendaItems = [
 ];
 
 const usuarioAdminItemsBase = [
-    { title: "Cadastro de Usuário", url: "/home/novo-usuario", icon: UserPlus },
-    { title: "Lista de Usuários", url: "/home/usuarios", icon: Users },
+    { title: "Cadastrar Usuários", url: "/home/novo-usuario", icon: UserPlus },
+    { title: "Listar Usuários", url: "/home/usuarios", icon: Users },
 ];
 
 export function AppSidebar() {
