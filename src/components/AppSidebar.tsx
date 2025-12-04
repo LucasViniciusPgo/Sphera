@@ -59,7 +59,7 @@ export function AppSidebar() {
         const isActive = !!match;
 
         const classes = [
-            "relative w-full flex items-center gap-3 px-4 py-2 rounded-md text-[18px] font-medium transition-colors duration-150 ease-out group hover:bg-primary/30",
+            "relative w-full flex items-center gap-3 px-4 py-2 rounded-md text-[18px] font-medium transition-colors duration-150 ease-out group/navItem hover:bg-primary/30 group",
             isActive
                 ? "bg-primary/50 text-white shadow-inner after:absolute after:left-0 after:top-0 after:h-full after:w-1 after:bg-white/80 rounded-l-none"
                 : "text-white/80 hover:text-white",
@@ -69,7 +69,7 @@ export function AppSidebar() {
             <SidebarMenuItem>
                 <SidebarMenuButton asChild>
                     <NavLink to={item.url} end className={classes}>
-                        <item.icon className="h-5 w-5 text-white/80 group-hover:text-white transition-transform group-hover:scale-110" />
+                        <item.icon className="h-5 w-5 text-white/80 group-hover/navItem:text-white transition-transform group-hover/navItem:scale-110" />
                         {!collapsed && <span>{item.title}</span>}
                     </NavLink>
                 </SidebarMenuButton>
