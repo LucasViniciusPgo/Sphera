@@ -104,3 +104,8 @@ export async function getDocuments(params?: {
 export async function deleteDocument(id: string) {
   return await (http.delete(`/documents/${id}`));
 }
+
+export async function downloadDocumentFile(id: string) {
+  const response = await http.get<Blob>(`/documents/${id}/download`, { responseType: 'blob' });
+  return response.data;
+}
