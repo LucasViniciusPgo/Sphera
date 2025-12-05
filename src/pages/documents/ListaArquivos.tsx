@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FileText, Search, Edit, ArrowLeft, Trash2, Eye } from "lucide-react";
+import { FileText, Search, Edit, ArrowLeft, Trash2, Eye, FileDown } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,7 +22,7 @@ import { useToast } from "@/hooks/use-toast";
 import { http } from "@/lib/http";
 import { Arquivo, StatusType } from "@/interfaces/Arquivo";
 import { getServices } from "@/services/servicesService";
-import { getDocuments } from "@/services/documentsService";
+import { downloadDocumentFile, getDocuments } from "@/services/documentsService";
 
 export default function ListaArquivos() {
   const navigate = useNavigate();
@@ -256,6 +256,24 @@ export default function ListaArquivos() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex gap-2 justify-end">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={async () => {
+                              var content = await downloadDocumentFile(arquivo.id);
+                              const blob = new Blob([content], { type: 'application/octet-stream' });
+                              const url = window.URL.createObjectURL(blob);
+                              const link = document.createElement('a');
+                              link.href = url;
+                              link.setAttribute('download', arquivo.fileName);
+                              document.body.appendChild(link);
+                              link.click();
+                              document.body.removeChild(link);
+                              window.URL.revokeObjectURL(url);
+                            }}
+                          >
+                            <FileDown className="h-4 w-4" />
+                          </Button>
                           <Button
                             variant="ghost"
                             size="sm"
