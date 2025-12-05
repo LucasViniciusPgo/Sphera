@@ -18,10 +18,10 @@ import {
     startOfMonth,
     startOfWeek,
 } from "date-fns";
-import {ptBR} from "date-fns/locale";
-import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
-import {Button} from "@/components/ui/button";
-import {Tabs, TabsList, TabsTrigger} from "@/components/ui/tabs";
+import { ptBR } from "date-fns/locale";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
     Dialog,
     DialogContent,
@@ -29,8 +29,8 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
-import {Input} from "@/components/ui/input";
-import {Textarea} from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
     Select,
     SelectContent,
@@ -54,13 +54,13 @@ import {
     type CreateScheduleEventCommand,
 } from "@/services/schedulesService";
 
-import {getClients, type ClientDetails} from "@/services/clientsService";
-import {getUsers} from "@/services/usersServices";
-import type {Usuario} from "@/interfaces/Usuario";
+import { getClients, type ClientDetails } from "@/services/clientsService";
+import { getUsers } from "@/services/usersServices";
+import type { Usuario } from "@/interfaces/Usuario";
 
 type CalendarView = "day" | "week" | "month";
 
-const HOURS_RANGE = {start: 7, end: 20}; // 7h às 20h
+const HOURS_RANGE = { start: 7, end: 20 }; // 7h às 20h
 
 const ALL_CLIENTS = "all_clients";
 const ALL_USERS = "all_users";
@@ -71,16 +71,16 @@ function getRangeForView(view: CalendarView, baseDate: Date) {
     if (view === "day") {
         const start = startOfDay(baseDate);
         const end = endOfDay(baseDate);
-        return {start, end};
+        return { start, end };
     }
     if (view === "week") {
-        const start = startOfWeek(baseDate, {weekStartsOn: 1});
-        const end = endOfWeek(baseDate, {weekStartsOn: 1});
-        return {start, end};
+        const start = startOfWeek(baseDate, { weekStartsOn: 1 });
+        const end = endOfWeek(baseDate, { weekStartsOn: 1 });
+        return { start, end };
     }
     const start = startOfMonth(baseDate);
     const end = endOfMonth(baseDate);
-    return {start, end};
+    return { start, end };
 }
 
 function addMonthsSafe(date: Date, amount: number) {
@@ -117,7 +117,7 @@ const Agenda = () => {
     const [users, setUsers] = useState<Usuario[]>([]);
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
     const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
-    
+
     const [filterClientId, setFilterClientId] =
         useState<string>(ALL_CLIENTS);
     const [filterUserId, setFilterUserId] = useState<string>(ALL_USERS);
@@ -138,23 +138,23 @@ const Agenda = () => {
 
 
     const weekDays = useMemo(() => {
-        const {start} = getRangeForView("week", currentDate);
-        return Array.from({length: 7}).map((_, idx) => addDays(start, idx));
+        const { start } = getRangeForView("week", currentDate);
+        return Array.from({ length: 7 }).map((_, idx) => addDays(start, idx));
     }, [currentDate]);
 
-    const {start, end} = useMemo(
+    const { start, end } = useMemo(
         () => getRangeForView(view, currentDate),
         [view, currentDate]
     );
 
     useEffect(() => {
-        getClients({pageSize: 100})
+        getClients({ pageSize: 100 })
             .then((res) => setClients(res.items))
             .catch(() => {
                 setClients([]);
             });
 
-        getUsers({isActive: true, pageSize: 100})
+        getUsers({ isActive: true, pageSize: 100 })
             .then((items) => setUsers(items))
             .catch(() => {
                 setUsers([]);
@@ -269,10 +269,10 @@ const Agenda = () => {
             clientId: schedule.clientId ?? null,
             notes: schedule.notes ?? null,
         };
-        
+
         setEvents((prev) =>
             prev.map((ev) =>
-                ev.id === schedule.id ? {...ev, occurredAt} : ev
+                ev.id === schedule.id ? { ...ev, occurredAt } : ev
             )
         );
 
@@ -336,62 +336,165 @@ const Agenda = () => {
             });
         }
         if (view === "week") {
-            const {start, end} = getRangeForView("week", currentDate);
+            const { start, end } = getRangeForView("week", currentDate);
             return `${format(start, "dd MMM", {
                 locale: ptBR,
-            })} - ${format(end, "dd MMM yyyy", {locale: ptBR})}`;
+            })} - ${format(end, "dd MMM yyyy", { locale: ptBR })}`;
         }
-        return format(currentDate, "MMMM 'de' yyyy", {locale: ptBR});
+        return format(currentDate, "MMMM 'de' yyyy", { locale: ptBR });
     }
 
     function renderWeekGrid() {
         const hours = Array.from(
-            {length: HOURS_RANGE.end - HOURS_RANGE.start + 1},
+            { length: HOURS_RANGE.end - HOURS_RANGE.start + 1 },
             (_, idx) => HOURS_RANGE.start + idx
         );
 
         return (
-            <div className="border rounded-lg overflow-hidden">
-                {/* Cabeçalho com dias da semana */}
-                <div className="grid grid-cols-[64px_repeat(7,1fr)] bg-muted text-xs">
-                    <div className="border-r border-border flex items-center justify-center py-2">
-                        <Clock className="h-4 w-4"/>
+            <div className="border rounded-lg overflow-hidden flex flex-col">
+                <div className="overflow-x-auto">
+                    <div className="min-w-[800px]">
+                        {/* Cabeçalho com dias da semana */}
+                        <div className="grid grid-cols-[64px_repeat(7,1fr)] bg-muted text-xs sticky top-0 z-10">
+                            <div className="border-r border-border flex items-center justify-center py-2 sticky left-0 bg-muted z-20">
+                                <Clock className="h-4 w-4" />
+                            </div>
+                            {weekDays.map((day) => {
+                                const isToday = isSameDay(day, new Date());
+                                return (
+                                    <div
+                                        key={day.toISOString()}
+                                        className="border-r border-border text-center py-2"
+                                    >
+                                        <div className="uppercase text-[0.7rem] text-muted-foreground">
+                                            {format(day, "EEE", { locale: ptBR })}
+                                        </div>
+                                        <div
+                                            className={`inline-flex w-7 h-7 items-center justify-center rounded-full text-sm ${isToday
+                                                ? "bg-primary text-primary-foreground"
+                                                : "text-foreground"
+                                                }`}
+                                        >
+                                            {format(day, "d")}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {/* Corpo: grades por hora x dia */}
+                        <div className="grid grid-cols-[64px_repeat(7,1fr)] text-xs">
+                            {hours.map((hour) => (
+                                <Fragment key={hour}>
+                                    {/* coluna da hora */}
+                                    <div className="border-t border-border border-r px-1 py-2 text-right text-muted-foreground sticky left-0 bg-background z-10">
+                                        {hour.toString().padStart(2, "0")}:00
+                                    </div>
+
+                                    {/* colunas dos dias */}
+                                    {weekDays.map((day) => {
+                                        const slotDate = setHourSafe(day, hour);
+                                        const slotEvents = filteredEvents.filter((event) => {
+                                            const date = parseISO(event.occurredAt);
+                                            return (
+                                                isSameDay(date, slotDate) &&
+                                                isSameHour(date, slotDate)
+                                            );
+                                        });
+
+                                        return (
+                                            <div
+                                                key={day.toISOString() + hour}
+                                                className="border-t border-r border-border h-16 hover:bg-muted/50 cursor-pointer px-1 py-0.5 flex flex-col gap-1 min-w-0"
+                                                onDoubleClick={() =>
+                                                    openCreateDialog(slotDate)
+                                                }
+                                                onDragOver={handleSlotDragOver}
+                                                onDrop={(e) =>
+                                                    handleSlotDrop(e, slotDate)
+                                                }
+                                            >
+                                                {slotEvents.map((event) => {
+                                                    const client = clients.find((c) => c.id === event.clientId);
+                                                    const user = users.find((u) => u.id === event.userId);
+
+                                                    return (
+                                                        <button
+                                                            key={event.id}
+                                                            type="button"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                openEditDialog(event);
+                                                            }}
+                                                            draggable
+                                                            onDragStart={(e) =>
+                                                                handleEventDragStart(e, event)
+                                                            }
+                                                            className="w-full rounded-md bg-primary/10 border border-primary/50 px-1 py-0.5 text-[0.7rem] text-left overflow-hidden hover:bg-primary/20"
+                                                        >
+                                                            {client && (
+                                                                <div className="font-medium truncate">
+                                                                    {client.legalName}
+                                                                </div>
+                                                            )}
+
+                                                            {user && (
+                                                                <div className="font-medium truncate">
+                                                                    {user.name}
+                                                                </div>
+                                                            )}
+
+                                                            {event.notes && (
+                                                                <div className="truncate opacity-80">
+                                                                    {event.notes}
+                                                                </div>
+                                                            )}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        );
+                                    })}
+                                </Fragment>
+                            ))}
+                        </div>
                     </div>
-                    {weekDays.map((day) => {
-                        const isToday = isSameDay(day, new Date());
-                        return (
-                            <div
-                                key={day.toISOString()}
-                                className="border-r border-border text-center py-2"
-                            >
+                </div>
+            </div>
+        );
+    }
+
+    function renderDayGrid() {
+        const hours = Array.from(
+            { length: HOURS_RANGE.end - HOURS_RANGE.start + 1 },
+            (_, idx) => HOURS_RANGE.start + idx
+        );
+
+        const day = currentDate;
+
+        return (
+            <div className="border rounded-lg overflow-hidden flex flex-col">
+                <div className="overflow-x-auto">
+                    <div className="min-w-[400px]">
+                        {/* Cabeçalho com o dia */}
+                        <div className="grid grid-cols-[64px_1fr] bg-muted text-xs sticky top-0 z-10">
+                            <div className="border-r border-border flex items-center justify-center py-2 sticky left-0 bg-muted z-20">
+                                <Clock className="h-4 w-4" />
+                            </div>
+                            <div className="text-center py-2">
                                 <div className="uppercase text-[0.7rem] text-muted-foreground">
-                                    {format(day, "EEE", {locale: ptBR})}
+                                    {format(day, "EEEE", { locale: ptBR })}
                                 </div>
                                 <div
-                                    className={`inline-flex w-7 h-7 items-center justify-center rounded-full text-sm ${
-                                        isToday
-                                            ? "bg-primary text-primary-foreground"
-                                            : "text-foreground"
-                                    }`}
-                                >
+                                    className="inline-flex w-7 h-7 items-center justify-center rounded-full text-sm bg-primary text-primary-foreground">
                                     {format(day, "d")}
                                 </div>
                             </div>
-                        );
-                    })}
-                </div>
+                        </div>
 
-                {/* Corpo: grades por hora x dia */}
-                <div className="grid grid-cols-[64px_repeat(7,1fr)] text-xs">
-                    {hours.map((hour) => (
-                        <Fragment key={hour}>
-                            {/* coluna da hora */}
-                            <div className="border-t border-border border-r px-1 py-2 text-right text-muted-foreground">
-                                {hour.toString().padStart(2, "0")}:00
-                            </div>
-
-                            {/* colunas dos dias */}
-                            {weekDays.map((day) => {
+                        {/* Corpo: grades por hora no dia */}
+                        <div className="grid grid-cols-[64px_1fr] text-xs">
+                            {hours.map((hour) => {
                                 const slotDate = setHourSafe(day, hour);
                                 const slotEvents = filteredEvents.filter((event) => {
                                     const date = parseISO(event.occurredAt);
@@ -402,161 +505,65 @@ const Agenda = () => {
                                 });
 
                                 return (
-                                    <div
-                                        key={day.toISOString() + hour}
-                                        className="border-t border-r border-border h-16 hover:bg-muted/50 cursor-pointer px-1 py-0.5 flex flex-col gap-1"
-                                        onDoubleClick={() =>
-                                            openCreateDialog(slotDate)
-                                        }
-                                        onDragOver={handleSlotDragOver}
-                                        onDrop={(e) =>
-                                            handleSlotDrop(e, slotDate)
-                                        }
-                                    >
-                                        {slotEvents.map((event) => {
-                                            const client = clients.find((c) => c.id === event.clientId);
-                                            const user = users.find((u) => u.id === event.userId);
+                                    <Fragment key={hour}>
+                                        <div
+                                            className="border-t border-border border-r px-1 py-2 text-right text-muted-foreground sticky left-0 bg-background z-10">
+                                            {hour.toString().padStart(2, "0")}:00
+                                        </div>
+                                        <div
+                                            className="border-t border-border h-16 hover:bg-muted/50 cursor-pointer px-1 py-0.5 flex flex-col gap-1 min-w-0"
+                                            onDoubleClick={() =>
+                                                openCreateDialog(slotDate)
+                                            }
+                                            onDragOver={handleSlotDragOver}
+                                            onDrop={(e) =>
+                                                handleSlotDrop(e, slotDate)
+                                            }
+                                        >
+                                            {slotEvents.map((event) => {
+                                                const client = clients.find((c) => c.id === event.clientId);
+                                                const user = users.find((u) => u.id === event.userId);
 
-                                            return (
-                                                <button
-                                                    key={event.id}
-                                                    type="button"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        openEditDialog(event);
-                                                    }}
-                                                    draggable
-                                                    onDragStart={(e) =>
-                                                        handleEventDragStart(e, event)
-                                                    }
-                                                    className="w-full rounded-md bg-primary/10 border border-primary/50 px-1 py-0.5 text-[0.7rem] text-left overflow-hidden hover:bg-primary/20"
-                                                >
-                                                    {client && (
-                                                        <div className="font-medium truncate">
-                                                            {client.legalName}
-                                                        </div>
-                                                    )}
+                                                return (
+                                                    <button
+                                                        key={event.id}
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            openEditDialog(event);
+                                                        }}
+                                                        draggable
+                                                        onDragStart={(e) =>
+                                                            handleEventDragStart(e, event)
+                                                        }
+                                                        className="w-full rounded-md bg-primary/10 border border-primary/50 px-1 py-0.5 text-[0.7rem] text-left overflow-hidden hover:bg-primary/20"
+                                                    >
+                                                        {client && (
+                                                            <div className="font-medium truncate">
+                                                                {client.legalName}
+                                                            </div>
+                                                        )}
 
-                                                    {user && (
-                                                        <div className="font-medium truncate">
-                                                            {user.name}
-                                                        </div>
-                                                    )}
+                                                        {user && (
+                                                            <div className="font-medium truncate">
+                                                                {user.name}
+                                                            </div>
+                                                        )}
 
-                                                    {event.notes && (
-                                                        <div className="truncate opacity-80">
-                                                            {event.notes}
-                                                        </div>
-                                                    )}
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
+                                                        {event.notes && (
+                                                            <div className="truncate opacity-80">
+                                                                {event.notes}
+                                                            </div>
+                                                        )}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </Fragment>
                                 );
                             })}
-                        </Fragment>
-                    ))}
-                </div>
-            </div>
-        );
-    }
-
-    function renderDayGrid() {
-        const hours = Array.from(
-            {length: HOURS_RANGE.end - HOURS_RANGE.start + 1},
-            (_, idx) => HOURS_RANGE.start + idx
-        );
-
-        const day = currentDate;
-
-        return (
-            <div className="border rounded-lg overflow-hidden">
-                {/* Cabeçalho com o dia */}
-                <div className="grid grid-cols-[64px_1fr] bg-muted text-xs">
-                    <div className="border-r border-border flex items-center justify-center py-2">
-                        <Clock className="h-4 w-4"/>
-                    </div>
-                    <div className="text-center py-2">
-                        <div className="uppercase text-[0.7rem] text-muted-foreground">
-                            {format(day, "EEEE", {locale: ptBR})}
-                        </div>
-                        <div
-                            className="inline-flex w-7 h-7 items-center justify-center rounded-full text-sm bg-primary text-primary-foreground">
-                            {format(day, "d")}
                         </div>
                     </div>
-                </div>
-
-                {/* Corpo: grades por hora no dia */}
-                <div className="grid grid-cols-[64px_1fr] text-xs">
-                    {hours.map((hour) => {
-                        const slotDate = setHourSafe(day, hour);
-                        const slotEvents = filteredEvents.filter((event) => {
-                            const date = parseISO(event.occurredAt);
-                            return (
-                                isSameDay(date, slotDate) &&
-                                isSameHour(date, slotDate)
-                            );
-                        });
-
-                        return (
-                            <Fragment key={hour}>
-                                <div
-                                    className="border-t border-border border-r px-1 py-2 text-right text-muted-foreground">
-                                    {hour.toString().padStart(2, "0")}:00
-                                </div>
-                                <div
-                                    className="border-t border-border h-16 hover:bg-muted/50 cursor-pointer px-1 py-0.5 flex flex-col gap-1"
-                                    onDoubleClick={() =>
-                                        openCreateDialog(slotDate)
-                                    }
-                                    onDragOver={handleSlotDragOver}
-                                    onDrop={(e) =>
-                                        handleSlotDrop(e, slotDate)
-                                    }
-                                >
-                                    {slotEvents.map((event) => {
-                                        const client = clients.find((c) => c.id === event.clientId);
-                                        const user = users.find((u) => u.id === event.userId);
-
-                                        return (
-                                            <button
-                                                key={event.id}
-                                                type="button"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    openEditDialog(event);
-                                                }}
-                                                draggable
-                                                onDragStart={(e) =>
-                                                    handleEventDragStart(e, event)
-                                                }
-                                                className="w-full rounded-md bg-primary/10 border border-primary/50 px-1 py-0.5 text-[0.7rem] text-left overflow-hidden hover:bg-primary/20"
-                                            >
-                                                {client && (
-                                                    <div className="font-medium truncate">
-                                                        {client.legalName}
-                                                    </div>
-                                                )}
-
-                                                {user && (
-                                                    <div className="font-medium truncate">
-                                                        {user.name}
-                                                    </div>
-                                                )}
-
-                                                {event.notes && (
-                                                    <div className="truncate opacity-80">
-                                                        {event.notes}
-                                                    </div>
-                                                )}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            </Fragment>
-                        );
-                    })}
                 </div>
             </div>
         );
@@ -565,8 +572,8 @@ const Agenda = () => {
     function renderMonthGrid() {
         const monthStart = startOfMonth(currentDate);
         const monthEnd = endOfMonth(currentDate);
-        const gridStart = startOfWeek(monthStart, {weekStartsOn: 1});
-        const gridEnd = endOfWeek(monthEnd, {weekStartsOn: 1});
+        const gridStart = startOfWeek(monthStart, { weekStartsOn: 1 });
+        const gridEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
 
         const days: Date[] = [];
         let d = gridStart;
@@ -575,8 +582,8 @@ const Agenda = () => {
             d = addDays(d, 1);
         }
 
-        const weekDayLabels = Array.from({length: 7}).map((_, idx) =>
-            addDays(startOfWeek(new Date(), {weekStartsOn: 1}), idx)
+        const weekDayLabels = Array.from({ length: 7 }).map((_, idx) =>
+            addDays(startOfWeek(new Date(), { weekStartsOn: 1 }), idx)
         );
 
         return (
@@ -588,7 +595,7 @@ const Agenda = () => {
                             key={day.toISOString()}
                             className="border-r last:border-r-0 border-border text-center py-2 uppercase text-[0.7rem] text-muted-foreground"
                         >
-                            {format(day, "EEE", {locale: ptBR})}
+                            {format(day, "EEE", { locale: ptBR })}
                         </div>
                     ))}
                 </div>
@@ -615,11 +622,10 @@ const Agenda = () => {
                         return (
                             <div
                                 key={day.toISOString()}
-                                className={`border border-border min-h-[96px] p-1 align-top cursor-pointer hover:bg-muted/40 ${
-                                    !isCurrentMonth
-                                        ? "bg-muted/10"
-                                        : "bg-background"
-                                }`}
+                                className={`border border-border min-h-[96px] p-1 align-top cursor-pointer hover:bg-muted/40 ${!isCurrentMonth
+                                    ? "bg-muted/10"
+                                    : "bg-background"
+                                    }`}
                                 onDoubleClick={() =>
                                     openCreateDialog(defaultCreateDate)
                                 }
@@ -628,11 +634,10 @@ const Agenda = () => {
                             >
                                 <div className="flex items-center justify-between mb-1">
                                     <div
-                                        className={`inline-flex w-6 h-6 items-center justify-center rounded-full text-xs ${
-                                            isToday
-                                                ? "bg-primary text-primary-foreground"
-                                                : "text-foreground"
-                                        }`}
+                                        className={`inline-flex w-6 h-6 items-center justify-center rounded-full text-xs ${isToday
+                                            ? "bg-primary text-primary-foreground"
+                                            : "text-foreground"
+                                            }`}
                                     >
                                         {format(day, "d")}
                                     </div>
@@ -697,7 +702,7 @@ const Agenda = () => {
         <Card className="w-full h-full flex flex-col">
             <CardHeader className="flex flex-row items-center justify-between gap-4">
                 <div className="flex items-center gap-2">
-                    <CalendarDays className="h-5 w-5 text-primary"/>
+                    <CalendarDays className="h-5 w-5 text-primary" />
                     <div>
                         <CardTitle className="text-xl">Agenda</CardTitle>
                         <p className="text-xs text-muted-foreground">
@@ -722,13 +727,13 @@ const Agenda = () => {
 
                     <div className="flex items-center border rounded-md overflow-hidden">
                         <Button variant="ghost" size="icon" onClick={goPrev}>
-                            <ChevronLeft className="h-4 w-4"/>
+                            <ChevronLeft className="h-4 w-4" />
                         </Button>
                         <div className="px-3 text-sm font-medium whitespace-nowrap">
                             {renderHeaderTitle()}
                         </div>
                         <Button variant="ghost" size="icon" onClick={goNext}>
-                            <ChevronRight className="h-4 w-4"/>
+                            <ChevronRight className="h-4 w-4" />
                         </Button>
                     </div>
 
@@ -758,7 +763,7 @@ const Agenda = () => {
                             onValueChange={setFilterClientId}
                         >
                             <SelectTrigger className="w-[220px]">
-                                <SelectValue/>
+                                <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value={ALL_CLIENTS}>
@@ -785,7 +790,7 @@ const Agenda = () => {
                             onValueChange={setFilterUserId}
                         >
                             <SelectTrigger className="w-[220px]">
-                                <SelectValue/>
+                                <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value={ALL_USERS}>
@@ -841,7 +846,7 @@ const Agenda = () => {
                                 onValueChange={setFormClientId}
                             >
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Nenhum cliente"/>
+                                    <SelectValue placeholder="Nenhum cliente" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value={NONE_CLIENT}>
@@ -869,7 +874,7 @@ const Agenda = () => {
                                 onValueChange={setFormUserId}
                             >
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Nenhum usuário"/>
+                                    <SelectValue placeholder="Nenhum usuário" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value={NONE_USER}>
