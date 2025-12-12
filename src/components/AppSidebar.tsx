@@ -1,4 +1,4 @@
-import { Users, List, UserPlus, Briefcase, ArchiveX, Archive, TrendingUp, CalendarDays, LogOut } from "lucide-react";
+import { Users, List, UserPlus, Briefcase, ArchiveX, Archive, TrendingUp, CalendarDays, LogOut, DollarSign } from "lucide-react";
 import { NavLink, useMatch } from "react-router-dom";
 import {
     Sidebar,
@@ -51,6 +51,10 @@ const dashboardItem = [
 
 const agendaItems = [
     { title: "Agenda", url: "/home/agenda", icon: CalendarDays },
+];
+
+const faturamentoItems = [
+    { title: "Preços por Cliente", url: "/home/precos", icon: DollarSign },
 ];
 
 const usuarioAdminItemsBase = [
@@ -179,6 +183,18 @@ export function AppSidebar() {
                     <SidebarGroupContent>
                         <SidebarMenu>
                             {agendaItems.map((item) => <SideBarItem key={item.title} item={item} collapsed={collapsed} />)}
+                        </SidebarMenu>
+                    </SidebarGroupContent>
+                </SidebarGroup>
+
+                <SidebarGroup>
+                    <SidebarGroupLabel
+                        className="text-xs font-semibold tracking-wide uppercase text-muted-foreground/80 px-3">
+                        Faturamento
+                    </SidebarGroupLabel>
+                    <SidebarGroupContent>
+                        <SidebarMenu>
+                            {faturamentoItems.map((item) => <SideBarItem key={item.title} item={item} collapsed={collapsed} />)}
                         </SidebarMenu>
                     </SidebarGroupContent>
                 </SidebarGroup>
