@@ -24,6 +24,8 @@ import { RequireRole } from "./components/RequireRole";
 import ListaUsuarios from "./pages/ListaUsuarios";
 import ListaPrecos from "./pages/ListaPrecos";
 import CadastroPreco from "./pages/CadastroPreco";
+import ListaLancamentos from "./pages/ListaLancamentos";
+import CadastroLancamento from "./pages/CadastroLancamento";
 
 const queryClient = new QueryClient();
 
@@ -79,6 +81,9 @@ const App = () => (
                         <Route path="precos" element={<ListaPrecos />} />
                         <Route path="cadastro-precos" element={<CadastroPreco />} />
                         <Route path="cadastro-precos/:id" element={<CadastroPreco />} />
+                        <Route path="lancamentos" element={<ListaLancamentos />} />
+                        <Route path="cadastro-lancamentos" element={<CadastroLancamento />} />
+                        <Route path="cadastro-lancamentos/:id" element={<CadastroLancamento />} />
                     </Route>
                     {/* Redirects for backwards compatibility */}
                     <Route path="/agenda" element={<Agenda />} />
@@ -121,6 +126,9 @@ const App = () => (
                     <Route path="/precos" element={<ListaPrecos />} />
                     <Route path="/cadastro-precos" element={<CadastroPreco />} />
                     <Route path="/cadastro-precos/:id" element={<CadastroPreco />} />
+                    <Route path="/lancamentos" element={<ListaLancamentos />} />
+                    <Route path="/cadastro-lancamentos" element={<CadastroLancamento />} />
+                    <Route path="/cadastro-lancamentos/:id" element={<CadastroLancamento />} />
                     <Route path="/primeiro-acesso" element={<PrimeiroAcesso />} />
                     <Route path="/login" element={<Login />} />
                 </Routes>

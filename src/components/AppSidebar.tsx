@@ -55,6 +55,7 @@ const agendaItems = [
 
 const faturamentoItems = [
     { title: "Preços por Cliente", url: "/home/precos", icon: DollarSign },
+    { title: "Lançamentos", url: "/home/lancamentos", icon: DollarSign },
 ];
 
 const usuarioAdminItemsBase = [
