@@ -77,12 +77,20 @@ export async function addContactToClient(
     clientId: string,
     body: AddContactToClientCommand
 ) {
-    return http.post(`Clients/${clientId}/Contacts`, body);
+    const res = await http.post(`Clients/${clientId}/Contacts`, body);
+    if ("message" in res && !("headers" in res)) {
+        throw res;
+    }
+    return res;
 }
 
 export async function removeContactFromClient(
     clientId: string,
     contactId: string
 ) {
-    return http.delete(`Clients/${clientId}/Contacts/${contactId}`);
+    const res = await http.delete(`Clients/${clientId}/Contacts/${contactId}`);
+    if ("message" in res && !("headers" in res)) {
+        throw res;
+    }
+    return res;
 }

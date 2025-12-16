@@ -1,17 +1,18 @@
-import {useState, useEffect} from "react";
-import {useForm} from "react-hook-form";
-import {zodResolver} from "@hookform/resolvers/zod";
+import { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import {Button} from "@/components/ui/button";
-import {Select, SelectTrigger, SelectContent, SelectItem, SelectValue} from "@/components/ui/select";
-import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card";
-import {Form, FormControl, FormField, FormItem, FormLabel, FormMessage} from "@/components/ui/form";
-import {Input} from "@/components/ui/input";
-import {useToast} from "@/hooks/use-toast";
-import {ArrowLeft} from "lucide-react";
-import {useLocation, useNavigate, useParams} from "react-router-dom";
-import {createPartner, updatePartner, getPartnerById, type AddressDTO} from "@/services/partnersService.ts";
-import {formatCNPJ, formatCEP, formatPhone} from "@/utils/format.ts";
+import { Button } from "@/components/ui/button";
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
+import { ArrowLeft } from "lucide-react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { createPartner, updatePartner, getPartnerById, type AddressDTO } from "@/services/partnersService.ts";
+import { formatCNPJ, formatCEP, formatPhone } from "@/utils/format.ts";
+import { validateCNPJ } from "@/utils/validators";
 import {
     EContactRole,
     EContactType,
@@ -24,7 +25,15 @@ const emptyToUndefined = (val: unknown) =>
 
 const parceiroSchema = z.object({
     razaoSocial: z.string().min(1, "Razão Social é obrigatória").max(100),
-    cnpj: z.preprocess(emptyToUndefined, z.string().min(14, "CNPJ inválido").max(18).optional()),
+    cnpj: z.preprocess(
+        emptyToUndefined,
+        z.string()
+            .optional()
+            .refine((val) => {
+                if (!val) return true;
+                return validateCNPJ(val);
+            }, "CNPJ inválido")
+    ),
     rua: z.string().max(120).optional(),
     bairro: z.string().max(80).optional(),
     numero: z.string().max(20).optional(),
@@ -64,9 +73,9 @@ const parceiroSchema = z.object({
 export type ParceiroFormData = z.infer<typeof parceiroSchema>;
 
 export default function CadastroParceiros() {
-    const {toast} = useToast();
+    const { toast } = useToast();
     const navigate = useNavigate();
-    const {id} = useParams();
+    const { id } = useParams();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const isEditing = !!id;
     const location = useLocation();
@@ -102,7 +111,7 @@ export default function CadastroParceiros() {
 
         (async () => {
             try {
-                const {data: parceiroApi} = await getPartnerById(id);
+                const { data: parceiroApi } = await getPartnerById(id);
 
                 const statusBool: boolean = parceiroApi.status;
 
@@ -239,12 +248,23 @@ export default function CadastroParceiros() {
             navigate("/home/parceiros");
         } catch (error: any) {
             console.error(error);
+            let description = "Ocorreu um erro ao salvar o parceiro. Tente novamente.";
+
+            if (error?.data?.errors) {
+                const errors = error.data.errors;
+                const firstErrorKey = Object.keys(errors)[0];
+                if (firstErrorKey && errors[firstErrorKey]?.length > 0) {
+                    description = errors[firstErrorKey][0];
+                }
+            } else if (error?.data?.message) {
+                description = error.data.message;
+            } else if (error?.message) {
+                description = error.message;
+            }
+
             toast({
                 title: "Erro ao salvar",
-                description:
-                    error?.data?.message ||
-                    error?.message ||
-                    "Ocorreu um erro ao salvar o parceiro. Tente novamente.",
+                description,
                 variant: "destructive",
             });
         } finally {
@@ -259,7 +279,7 @@ export default function CadastroParceiros() {
                 onClick={() => navigate("/home/parceiros")}
                 className="mb-6"
             >
-                <ArrowLeft className="mr-2 h-4 w-4"/>
+                <ArrowLeft className="mr-2 h-4 w-4" />
                 Voltar
             </Button>
 
@@ -292,14 +312,14 @@ export default function CadastroParceiros() {
                                     <FormField
                                         control={form.control}
                                         name="razaoSocial"
-                                        render={({field}) => (
+                                        render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Razão Social *</FormLabel>
                                                 <FormControl>
                                                     <Input placeholder="Razão social completa" {...field}
-                                                           readOnly={readonly}/>
+                                                        readOnly={readonly} />
                                                 </FormControl>
-                                                <FormMessage/>
+                                                <FormMessage />
                                             </FormItem>
                                         )}
                                     />
@@ -307,7 +327,7 @@ export default function CadastroParceiros() {
                                     <FormField
                                         control={form.control}
                                         name="cnpj"
-                                        render={({field}) => (
+                                        render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>CNPJ </FormLabel>
                                                 <FormControl>
@@ -319,7 +339,7 @@ export default function CadastroParceiros() {
                                                         readOnly={readonly}
                                                     />
                                                 </FormControl>
-                                                <FormMessage/>
+                                                <FormMessage />
                                             </FormItem>
                                         )}
                                     />
@@ -327,39 +347,39 @@ export default function CadastroParceiros() {
                                     <FormField
                                         control={form.control}
                                         name="rua"
-                                        render={({field}) => (
+                                        render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Rua </FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder="Nome da rua" {...field} readOnly={readonly}/>
+                                                    <Input placeholder="Nome da rua" {...field} readOnly={readonly} />
                                                 </FormControl>
-                                                <FormMessage/>
+                                                <FormMessage />
                                             </FormItem>
                                         )}
                                     />
                                     <FormField
                                         control={form.control}
                                         name="bairro"
-                                        render={({field}) => (
+                                        render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Bairro </FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder="Nome do bairro" {...field} readOnly={readonly}/>
+                                                    <Input placeholder="Nome do bairro" {...field} readOnly={readonly} />
                                                 </FormControl>
-                                                <FormMessage/>
+                                                <FormMessage />
                                             </FormItem>
                                         )}
                                     />
                                     <FormField
                                         control={form.control}
                                         name="numero"
-                                        render={({field}) => (
+                                        render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Número </FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder="Número" {...field} readOnly={readonly}/>
+                                                    <Input placeholder="Número" {...field} readOnly={readonly} />
                                                 </FormControl>
-                                                <FormMessage/>
+                                                <FormMessage />
                                             </FormItem>
                                         )}
                                     />
@@ -368,13 +388,13 @@ export default function CadastroParceiros() {
                                     <FormField
                                         control={form.control}
                                         name="cidade"
-                                        render={({field}) => (
+                                        render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Cidade </FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder="Nome da cidade" {...field} readOnly={readonly}/>
+                                                    <Input placeholder="Nome da cidade" {...field} readOnly={readonly} />
                                                 </FormControl>
-                                                <FormMessage/>
+                                                <FormMessage />
                                             </FormItem>
                                         )}
                                     />
@@ -382,13 +402,13 @@ export default function CadastroParceiros() {
                                     <FormField
                                         control={form.control}
                                         name="estado"
-                                        render={({field}) => (
+                                        render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>UF </FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder="UF" {...field} readOnly={readonly}/>
+                                                    <Input placeholder="UF" {...field} readOnly={readonly} />
                                                 </FormControl>
-                                                <FormMessage/>
+                                                <FormMessage />
                                             </FormItem>
                                         )}
                                     />
@@ -396,7 +416,7 @@ export default function CadastroParceiros() {
                                     <FormField
                                         control={form.control}
                                         name="cep"
-                                        render={({field}) => (
+                                        render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>CEP </FormLabel>
                                                 <FormControl>
@@ -408,7 +428,7 @@ export default function CadastroParceiros() {
                                                         readOnly={readonly}
                                                     />
                                                 </FormControl>
-                                                <FormMessage/>
+                                                <FormMessage />
                                             </FormItem>
                                         )}
                                     />
@@ -416,13 +436,13 @@ export default function CadastroParceiros() {
                                     <FormField
                                         control={form.control}
                                         name="complemento"
-                                        render={({field}) => (
+                                        render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Complemento </FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder="Complemento" {...field} readOnly={readonly}/>
+                                                    <Input placeholder="Complemento" {...field} readOnly={readonly} />
                                                 </FormControl>
-                                                <FormMessage/>
+                                                <FormMessage />
                                             </FormItem>
                                         )}
                                     />
@@ -430,13 +450,13 @@ export default function CadastroParceiros() {
                                     <FormField
                                         control={form.control}
                                         name="lote"
-                                        render={({field}) => (
+                                        render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Lote </FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder="Lote" {...field} readOnly={readonly}/>
+                                                    <Input placeholder="Lote" {...field} readOnly={readonly} />
                                                 </FormControl>
-                                                <FormMessage/>
+                                                <FormMessage />
                                             </FormItem>
                                         )}
                                     />
@@ -451,14 +471,14 @@ export default function CadastroParceiros() {
                                     <FormField
                                         control={form.control}
                                         name="emailFinanceiro"
-                                        render={({field}) => (
+                                        render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Email </FormLabel>
                                                 <FormControl>
                                                     <Input type="email"
-                                                           placeholder="financeiro@empresa.com" {...field} />
+                                                        placeholder="financeiro@empresa.com" {...field} />
                                                 </FormControl>
-                                                <FormMessage/>
+                                                <FormMessage />
                                             </FormItem>
                                         )}
                                     />
@@ -466,7 +486,7 @@ export default function CadastroParceiros() {
                                     <FormField
                                         control={form.control}
                                         name="telefoneFinanceiro"
-                                        render={({field}) => (
+                                        render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Telefone </FormLabel>
                                                 <FormControl>
@@ -477,7 +497,7 @@ export default function CadastroParceiros() {
                                                         onChange={(e) => field.onChange(formatPhone(e.target.value))}
                                                     />
                                                 </FormControl>
-                                                <FormMessage/>
+                                                <FormMessage />
                                             </FormItem>
                                         )}
                                     />
@@ -492,14 +512,14 @@ export default function CadastroParceiros() {
                                     <FormField
                                         control={form.control}
                                         name="emailResponsavel"
-                                        render={({field}) => (
+                                        render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Email </FormLabel>
                                                 <FormControl>
                                                     <Input type="email"
-                                                           placeholder="responsavel@empresa.com" {...field} />
+                                                        placeholder="responsavel@empresa.com" {...field} />
                                                 </FormControl>
-                                                <FormMessage/>
+                                                <FormMessage />
                                             </FormItem>
                                         )}
                                     />
@@ -507,7 +527,7 @@ export default function CadastroParceiros() {
                                     <FormField
                                         control={form.control}
                                         name="telefoneResponsavel"
-                                        render={({field}) => (
+                                        render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Telefone </FormLabel>
                                                 <FormControl>
@@ -518,7 +538,7 @@ export default function CadastroParceiros() {
                                                         onChange={(e) => field.onChange(formatPhone(e.target.value))}
                                                     />
                                                 </FormControl>
-                                                <FormMessage/>
+                                                <FormMessage />
                                             </FormItem>
                                         )}
                                     />
@@ -534,7 +554,7 @@ export default function CadastroParceiros() {
                                     <FormField
                                         control={form.control}
                                         name="telefoneFixo"
-                                        render={({field}) => (
+                                        render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Telefone Fixo</FormLabel>
                                                 <FormControl>
@@ -545,7 +565,7 @@ export default function CadastroParceiros() {
                                                         onChange={(e) => field.onChange(formatPhone(e.target.value))}
                                                     />
                                                 </FormControl>
-                                                <FormMessage/>
+                                                <FormMessage />
                                             </FormItem>
                                         )}
                                     />
@@ -553,7 +573,7 @@ export default function CadastroParceiros() {
                                     <FormField
                                         control={form.control}
                                         name="celular"
-                                        render={({field}) => (
+                                        render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Celular *</FormLabel>
                                                 <FormControl>
@@ -564,7 +584,7 @@ export default function CadastroParceiros() {
                                                         onChange={(e) => field.onChange(formatPhone(e.target.value))}
                                                     />
                                                 </FormControl>
-                                                <FormMessage/>
+                                                <FormMessage />
                                             </FormItem>
                                         )}
                                     />
@@ -572,7 +592,7 @@ export default function CadastroParceiros() {
                                     <FormField
                                         control={form.control}
                                         name="telefoneReserva"
-                                        render={({field}) => (
+                                        render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Telefone Reserva </FormLabel>
                                                 <FormControl>
@@ -583,7 +603,7 @@ export default function CadastroParceiros() {
                                                         onChange={(e) => field.onChange(formatPhone(e.target.value))}
                                                     />
                                                 </FormControl>
-                                                <FormMessage/>
+                                                <FormMessage />
                                             </FormItem>
                                         )}
                                     />
@@ -599,13 +619,13 @@ export default function CadastroParceiros() {
                                     <FormField
                                         control={form.control}
                                         name="status"
-                                        render={({field}) => (
+                                        render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Status </FormLabel>
                                                 <FormControl>
                                                     <Select value={field.value} onValueChange={field.onChange}>
                                                         <SelectTrigger disabled={readonly || !isEditing}>
-                                                            <SelectValue placeholder="Selecione o status"/>
+                                                            <SelectValue placeholder="Selecione o status" />
                                                         </SelectTrigger>
                                                         <SelectContent>
                                                             <SelectItem value="ativo">Ativo</SelectItem>
@@ -613,7 +633,7 @@ export default function CadastroParceiros() {
                                                         </SelectContent>
                                                     </Select>
                                                 </FormControl>
-                                                <FormMessage/>
+                                                <FormMessage />
                                             </FormItem>
                                         )}
                                     />
