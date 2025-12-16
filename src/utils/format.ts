@@ -25,9 +25,9 @@ export function formatPhone(value: string) {
     const digits = value.replace(/\D/g, '').slice(0, 11);
     if (!digits) return '';
     if (digits.length <= 2) return `(${digits}`;
-    if (digits.length <= 6) return `(${digits.slice(0,2)}) ${digits.slice(2)}`;
-    if (digits.length <= 10) return `(${digits.slice(0,2)}) ${digits.slice(2,6)}-${digits.slice(6)}`;
-    return `(${digits.slice(0,2)}) ${digits.slice(2,7)}-${digits.slice(7,11)}`;
+    if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+    if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7, 11)}`;
 }
 
 
@@ -37,7 +37,8 @@ export function cleanPhone(value?: string | null): string | null {
     return digits.length > 0 ? digits : null;
 }
 
-export function formatCEP(value: string): string {
+export function formatCEP(value?: string | null): string {
+    if (!value) return "";
     const digits = value.replace(/\D/g, "").slice(0, 8);
     if (digits.length <= 5) return digits;
     return digits.replace(/^(\d{5})(\d{3})$/, "$1-$2");

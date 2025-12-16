@@ -6,7 +6,6 @@ import {
     buildContactsFromUserForm,
     addContactToUser,
 } from "./usersContactsService.ts";
-import {PartnerDetails} from "@/services/partnersService.ts";
 
 
 export async function getUsers(params?: {
@@ -36,7 +35,11 @@ export async function getUsers(params?: {
 }
 
 export async function getUserById(id: string) {
-    return http.get<PartnerDetails>(`users/${id}`);
+    const res = await http.get<Usuario>(`users/${id}`);
+    if ("message" in res && !("headers" in res)) {
+        throw res;
+    }
+    return res;
 }
 
 
@@ -55,13 +58,24 @@ export async function createUser(data: UsuarioFormData) {
     };
 
     const res = await http.post<Usuario>("users", payload);
+
+    if ("message" in res && !("headers" in res)) {
+        throw res;
+    }
+
     const user = res.data;
     const userId = user.id;
 
     const contacts = buildContactsFromUserForm(data);
 
     if (contacts.length > 0) {
-        await Promise.all(contacts.map((c) => addContactToUser(userId, c)));
+        try {
+            await Promise.all(contacts.map((c) => addContactToUser(userId, c)));
+        } catch (error) {
+            // Rollback: remove usuário incompleto
+            await deleteUser(userId);
+            throw error;
+        }
     }
 
     return user;
@@ -78,17 +92,32 @@ export async function updateUser(id: string, payload: {
     };
 
     const res = await http.put(`users/${id}`, body);
+    if ("message" in res && !("headers" in res)) {
+        throw res;
+    }
     return res.data;
 }
 
 export async function deleteUser(id: string) {
-    return http.delete(`users/${id}`);
+    const res = await http.delete(`users/${id}`);
+    if ("message" in res && !("headers" in res)) {
+        throw res;
+    }
+    return res;
 }
 
 export async function activateUser(id: string) {
-    return http.patch(`users/${id}/activate`);
+    const res = await http.patch(`users/${id}/activate`);
+    if ("message" in res && !("headers" in res)) {
+        throw res;
+    }
+    return res;
 }
 
 export async function deactivateUser(id: string) {
-    return http.patch(`users/${id}/deactivate`);
+    const res = await http.patch(`users/${id}/deactivate`);
+    if ("message" in res && !("headers" in res)) {
+        throw res;
+    }
+    return res;
 }

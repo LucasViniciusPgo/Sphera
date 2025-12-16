@@ -1,6 +1,6 @@
-import {http, setAuthToken} from "@/lib/http";
+import { http, setAuthToken } from "@/lib/http";
 import type { ParceiroFormData } from "@/pages/CadastroParceiros";
-import {cleanCEP, cleanCNPJ} from "@/utils/format.ts";
+import { cleanCEP, cleanCNPJ } from "@/utils/format.ts";
 import {
     addContactToPartner,
     removeContactFromPartner,
@@ -79,15 +79,26 @@ export async function createPartner(data: ParceiroFormData) {
     };
 
     const res = await http.post<any>("Partners", payload);
+
+    if ("message" in res && !("headers" in res)) {
+        throw res;
+    }
+
     const partner = res.data;
     const partnerId: string = partner.id;
 
     const contacts = buildContactsFromForm(data);
 
     if (contacts.length > 0) {
-        await Promise.all(
-            contacts.map((c) => addContactToPartner(partnerId, c))
-        );
+        try {
+            await Promise.all(
+                contacts.map((c) => addContactToPartner(partnerId, c))
+            );
+        } catch (error) {
+            // Rollback: remove parceiro incompleto
+            await deletePartner(partnerId);
+            throw error;
+        }
     }
 
     return partner;
@@ -103,9 +114,13 @@ export async function updatePartner(id: string, data: ParceiroFormData, currentS
         status: true,
     };
 
-    await http.put(`Partners/${id}`, payload);
+    const res = await http.put(`Partners/${id}`, payload);
 
-    if (typeof currentStatus === "boolean" && currentStatus !== newStatusBool){
+    if ("message" in res && !("headers" in res)) {
+        throw res;
+    }
+
+    if (typeof currentStatus === "boolean" && currentStatus !== newStatusBool) {
         if (newStatusBool) {
             await activatePartner(id);
         } else {
@@ -165,13 +180,25 @@ export async function getPartners(params?: {
 }
 
 export async function activatePartner(id: string) {
-    return http.patch(`Partners/${id}/activate`);
+    const res = await http.patch(`Partners/${id}/activate`);
+    if ("message" in res && !("headers" in res)) {
+        throw res;
+    }
+    return res;
 }
 
 export async function deactivatePartner(id: string) {
-    return http.patch(`Partners/${id}/deactivate`);
+    const res = await http.patch(`Partners/${id}/deactivate`);
+    if ("message" in res && !("headers" in res)) {
+        throw res;
+    }
+    return res;
 }
 
 export async function deletePartner(id: string) {
-    return http.delete(`Partners/${id}`);
+    const res = await http.delete(`Partners/${id}`);
+    if ("message" in res && !("headers" in res)) {
+        throw res;
+    }
+    return res;
 }
