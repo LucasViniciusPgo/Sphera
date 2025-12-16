@@ -1,11 +1,11 @@
-import {useState, useEffect, useCallback} from "react";
-import {useNavigate} from "react-router-dom";
-import {Button} from "@/components/ui/button";
-import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card";
-import {Input} from "@/components/ui/input";
-import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from "@/components/ui/table";
-import {Badge} from "@/components/ui/badge";
-import {ArrowLeft, Search, Edit, Plus, Trash2, Eye} from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { ArrowLeft, Search, Edit, Plus, Trash2, Eye } from "lucide-react";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -17,14 +17,14 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
-import {useToast} from "@/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import {
     getPartners,
     deletePartner,
     getPartnerById,
     type PartnerDetails,
 } from "@/services/partnersService.ts";
-import {formatCNPJ, formatPhone} from "@/utils/format.ts";
+import { formatCNPJ, formatPhone } from "@/utils/format.ts";
 
 import {
     EContactRole,
@@ -198,7 +198,7 @@ function mapApiPartnerToParceiro(api: PartnerDetails): Parceiro {
 
 export default function ListaParceiros() {
     const navigate = useNavigate();
-    const {toast} = useToast();
+    const { toast } = useToast();
     const [parceiros, setParceiros] = useState<Parceiro[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
     const [isLoading, setIsLoading] = useState(false);
@@ -207,7 +207,7 @@ export default function ListaParceiros() {
     const loadParceiros = useCallback(async () => {
         setIsLoading(true);
         try {
-            const {items} = await getPartners();
+            const { items } = await getPartners();
             const mapped = items.map(mapApiPartnerToParceiro);
             setParceiros(mapped);
         } catch (error: any) {
@@ -262,12 +262,23 @@ export default function ListaParceiros() {
             });
         } catch (error: any) {
             console.error(error);
+            let description = "Não foi possível excluir o parceiro.";
+
+            if (error?.data?.errors) {
+                const errors = error.data.errors;
+                const firstErrorKey = Object.keys(errors)[0];
+                if (firstErrorKey && errors[firstErrorKey]?.length > 0) {
+                    description = errors[firstErrorKey][0];
+                }
+            } else if (error?.data?.message) {
+                description = error.data.message;
+            } else if (error?.message) {
+                description = error.message;
+            }
+
             toast({
                 title: "Erro ao excluir",
-                description:
-                    error?.data?.message ||
-                    error?.message ||
-                    "Não foi possível excluir o parceiro.",
+                description,
                 variant: "destructive",
             });
         }
@@ -288,12 +299,12 @@ export default function ListaParceiros() {
                     variant="ghost"
                     onClick={() => navigate("/home")}
                 >
-                    <ArrowLeft className="mr-2 h-4 w-4"/>
+                    <ArrowLeft className="mr-2 h-4 w-4" />
                     Voltar
                 </Button>
 
                 <Button onClick={() => navigate("/home/cadastro-parceiros")}>
-                    <Plus className="mr-2 h-4 w-4"/>
+                    <Plus className="mr-2 h-4 w-4" />
                     Novo Parceiro
                 </Button>
             </div>
@@ -310,7 +321,7 @@ export default function ListaParceiros() {
                         <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
                             <div className="relative">
                                 <Search
-                                    className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground"/>
+                                    className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                 <Input
                                     placeholder="Buscar por nome, razão social ou CNPJ..."
                                     value={searchTerm}
@@ -367,7 +378,7 @@ export default function ListaParceiros() {
                                                         size="sm"
                                                         onClick={() => navigate(`/home/cadastro-parceiros/${parceiro.id}?view=readonly`)}
                                                     >
-                                                        <Eye className="h-4 w-4"/>
+                                                        <Eye className="h-4 w-4" />
                                                     </Button>
 
                                                     <Button
@@ -375,12 +386,12 @@ export default function ListaParceiros() {
                                                         size="sm"
                                                         onClick={() => navigate(`/home/cadastro-parceiros/${parceiro.id}`)}
                                                     >
-                                                        <Edit className="h-4 w-4"/>
+                                                        <Edit className="h-4 w-4" />
                                                     </Button>
                                                     <AlertDialog>
                                                         <AlertDialogTrigger asChild>
                                                             <Button variant="ghost" size="sm">
-                                                                <Trash2 className="h-4 w-4"/>
+                                                                <Trash2 className="h-4 w-4" />
                                                             </Button>
                                                         </AlertDialogTrigger>
                                                         <AlertDialogContent>
