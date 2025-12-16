@@ -119,9 +119,17 @@ export async function addContactToPartner(
     partnerId: string,
     body: AddContactToPartnerCommand
 ) {
-    return http.post(`Partners/${partnerId}/Contacts`, body);
+    const res = await http.post(`Partners/${partnerId}/Contacts`, body);
+    if ("message" in res && !("headers" in res)) {
+        throw res;
+    }
+    return res;
 }
 
 export async function removeContactFromPartner(partnerId: string, contactId: string) {
-    return http.delete(`Partners/${partnerId}/Contacts/${contactId}`);
+    const res = await http.delete(`Partners/${partnerId}/Contacts/${contactId}`);
+    if ("message" in res && !("headers" in res)) {
+        throw res;
+    }
+    return res;
 }

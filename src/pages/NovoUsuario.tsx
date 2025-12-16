@@ -1,11 +1,11 @@
 // src/pages/NovoUsuario.tsx
-import {useEffect, useState} from "react";
-import {useLocation, useNavigate, useParams} from "react-router-dom";
-import {useForm} from "react-hook-form";
-import {zodResolver} from "@hookform/resolvers/zod";
+import { useEffect, useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 
-import {Button} from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import {
     Card,
     CardContent,
@@ -13,8 +13,8 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
-import {Form, FormControl, FormField, FormItem, FormLabel, FormMessage} from "@/components/ui/form";
-import {Input} from "@/components/ui/input";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
 import {
     Select,
     SelectContent,
@@ -23,13 +23,13 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 
-import {ArrowLeft, Phone, Smartphone} from "lucide-react";
-import {useToast} from "@/hooks/use-toast";
-import {createUser, updateUser, getUserById} from "@/services/usersServices";
-import {getRoles, Role} from "@/services/rolesService";
-import {formatPhone} from "@/utils/format.ts";
-import {Usuario} from "@/interfaces/Usuario.ts";
-import {EContactRole, EContactType, EPhoneType} from "@/services/partnersContactsService.ts";
+import { ArrowLeft, Phone, Smartphone } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { createUser, updateUser, getUserById } from "@/services/usersServices";
+import { getRoles, Role } from "@/services/rolesService";
+import { formatPhone } from "@/utils/format.ts";
+import { Usuario } from "@/interfaces/Usuario.ts";
+import { EContactRole, EContactType, EPhoneType } from "@/services/partnersContactsService.ts";
 
 const userSchema = z.object({
     username: z
@@ -58,8 +58,8 @@ export type UsuarioFormData = z.infer<typeof userSchema>;
 const NovoUsuario = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    const {id} = useParams<{ id: string }>();
-    const {toast} = useToast();
+    const { id } = useParams<{ id: string }>();
+    const { toast } = useToast();
 
     const readonly =
         new URLSearchParams(location.search).get("view") === "readonly";
@@ -111,6 +111,7 @@ const NovoUsuario = () => {
             try {
                 const response = await getUserById(id);
                 const userData = response.data;
+                console.log("DEBUG UserData:", JSON.stringify(userData, null, 2)); // Debug log
                 const contacts = userData.contacts;
 
                 let telefoneFixo = "";
@@ -152,7 +153,15 @@ const NovoUsuario = () => {
                 form.reset({
                     username: userData.name,
                     email: userData.email,
-                    roleId: String(userData.roleId),
+                    // Check for roleId (camel), RoleId (Pascal), or nested role object
+                    roleId: String(
+                        userData.roleId ??
+                        (userData as any).RoleId ??
+                        (userData as any).role?.id ??
+                        (userData as any).Role?.id ??
+                        (userData as any).Role?.Id ??
+                        ""
+                    ),
                     telefoneFixo: telefoneFixo,
                     celular: celular,
                     telefoneReserva: telefoneReserva,
@@ -202,11 +211,23 @@ const NovoUsuario = () => {
             navigate("/home/usuarios");
         } catch (error: any) {
             console.error(error);
+            let description = "Não foi possível salvar o usuário. Tente novamente.";
+
+            if (error?.data?.errors) {
+                const errors = error.data.errors;
+                const firstErrorKey = Object.keys(errors)[0];
+                if (firstErrorKey && errors[firstErrorKey]?.length > 0) {
+                    description = errors[firstErrorKey][0];
+                }
+            } else if (error?.data?.message) {
+                description = error.data.message;
+            } else if (error?.message) {
+                description = error.message;
+            }
+
             toast({
                 title: isEditing ? "Erro ao atualizar usuário" : "Erro ao criar usuário",
-                description:
-                    error?.response?.data?.message ||
-                    "Não foi possível salvar o usuário. Tente novamente.",
+                description,
                 variant: "destructive",
             });
         } finally {
@@ -234,7 +255,7 @@ const NovoUsuario = () => {
                 onClick={() => navigate("/home/usuarios")}
                 type="button"
             >
-                <ArrowLeft className="mr-2 h-4 w-4"/>
+                <ArrowLeft className="mr-2 h-4 w-4" />
                 Voltar
             </Button>
 
@@ -255,14 +276,14 @@ const NovoUsuario = () => {
                                     <FormField
                                         control={form.control}
                                         name="username"
-                                        render={({field}) => (
+                                        render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Nome *</FormLabel>
                                                 <FormControl>
                                                     <Input placeholder="Nome do usuário" {...field}
-                                                           readOnly={readonly}/>
+                                                        readOnly={readonly} />
                                                 </FormControl>
-                                                <FormMessage/>
+                                                <FormMessage />
                                             </FormItem>
                                         )}
                                     />
@@ -270,14 +291,14 @@ const NovoUsuario = () => {
                                     <FormField
                                         control={form.control}
                                         name="email"
-                                        render={({field}) => (
+                                        render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>E-mail *</FormLabel>
                                                 <FormControl>
                                                     <Input placeholder="email@empresa.com.br" {...field}
-                                                           readOnly={readonly}/>
+                                                        readOnly={readonly} />
                                                 </FormControl>
-                                                <FormMessage/>
+                                                <FormMessage />
                                             </FormItem>
                                         )}
                                     />
@@ -287,7 +308,7 @@ const NovoUsuario = () => {
                                     <FormField
                                         control={form.control}
                                         name="roleId"
-                                        render={({field}) => (
+                                        render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Perfil *</FormLabel>
                                                 <FormControl>
@@ -312,7 +333,7 @@ const NovoUsuario = () => {
                                                         </SelectContent>
                                                     </Select>
                                                 </FormControl>
-                                                <FormMessage/>
+                                                <FormMessage />
                                             </FormItem>
                                         )}
                                     />
@@ -327,13 +348,13 @@ const NovoUsuario = () => {
                                     <FormField
                                         control={form.control}
                                         name="telefoneFixo"
-                                        render={({field}) => (
+                                        render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Telefone fixo</FormLabel>
                                                 <FormControl>
                                                     <div className="relative">
                                                         <Phone
-                                                            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground"/>
+                                                            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                                                         <Input
                                                             placeholder="(00) 0000-0000"
                                                             className="pl-9"
@@ -345,7 +366,7 @@ const NovoUsuario = () => {
                                                         />
                                                     </div>
                                                 </FormControl>
-                                                <FormMessage/>
+                                                <FormMessage />
                                             </FormItem>
                                         )}
                                     />
@@ -354,13 +375,13 @@ const NovoUsuario = () => {
                                     <FormField
                                         control={form.control}
                                         name="celular"
-                                        render={({field}) => (
+                                        render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Celular *</FormLabel>
                                                 <FormControl>
                                                     <div className="relative">
                                                         <Smartphone
-                                                            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground"/>
+                                                            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                                                         <Input
                                                             placeholder="(00) 00000-0000"
                                                             className="pl-9"
@@ -372,7 +393,7 @@ const NovoUsuario = () => {
                                                         />
                                                     </div>
                                                 </FormControl>
-                                                <FormMessage/>
+                                                <FormMessage />
                                             </FormItem>
                                         )}
                                     />
@@ -381,13 +402,13 @@ const NovoUsuario = () => {
                                     <FormField
                                         control={form.control}
                                         name="telefoneReserva"
-                                        render={({field}) => (
+                                        render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Telefone reserva</FormLabel>
                                                 <FormControl>
                                                     <div className="relative">
                                                         <Phone
-                                                            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground"/>
+                                                            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                                                         <Input
                                                             placeholder="(00) 00000-0000"
                                                             className="pl-9"
@@ -399,7 +420,7 @@ const NovoUsuario = () => {
                                                         />
                                                     </div>
                                                 </FormControl>
-                                                <FormMessage/>
+                                                <FormMessage />
                                             </FormItem>
                                         )}
                                     />

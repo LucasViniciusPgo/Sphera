@@ -107,13 +107,25 @@ export async function createClient(data: ClienteFormData) {
     };
 
     const res = await http.post<any>("Clients", payload);
+
+    if ("message" in res && !("headers" in res)) {
+        throw res;
+    }
+
     const client = res.data;
     const clientId: string = client.id;
 
     const contacts = buildContactsFromForm(data);
 
     if (contacts.length > 0) {
-        await Promise.all(contacts.map((c) => addContactToClient(clientId, c)));
+        try {
+            await Promise.all(contacts.map((c) => addContactToClient(clientId, c)));
+        } catch (error) {
+            // Rollback: se falhar ao adicionar contatos, remove o cliente para garantir integridade
+            // "Um cliente não pode ficar sem contato"
+            await deleteClient(clientId);
+            throw error;
+        }
     }
 
     return client;
@@ -148,7 +160,11 @@ export async function updateClient(
         status: newStatusBool,
     };
 
-    await http.put(`Clients/${id}`, payload);
+    const res = await http.put(`Clients/${id}`, payload);
+
+    if ("message" in res && !("headers" in res)) {
+        throw res;
+    }
 
     if (typeof currentStatus === "boolean" && currentStatus !== newStatusBool) {
         if (newStatusBool) {
@@ -187,7 +203,7 @@ export async function getClients(params?: {
     includePartner?: boolean;
 }) {
     const { partnerId, status, cnpj, search, page, pageSize, includePartner } =
-    params || {};
+        params || {};
 
     const res = await http.get<ClientDetails[] | { items: ClientDetails[] }>(
         "Clients",
@@ -216,13 +232,25 @@ export async function getClients(params?: {
 }
 
 export async function activateClient(id: string) {
-    return http.patch(`Clients/${id}/activate`);
+    const res = await http.patch(`Clients/${id}/activate`);
+    if ("message" in res && !("headers" in res)) {
+        throw res;
+    }
+    return res;
 }
 
 export async function deactivateClient(id: string) {
-    return http.patch(`Clients/${id}/deactivate`);
+    const res = await http.patch(`Clients/${id}/deactivate`);
+    if ("message" in res && !("headers" in res)) {
+        throw res;
+    }
+    return res;
 }
 
 export async function deleteClient(id: string) {
-    return http.delete(`Clients/${id}`);
+    const res = await http.delete(`Clients/${id}`);
+    if ("message" in res && !("headers" in res)) {
+        throw res;
+    }
+    return res;
 }

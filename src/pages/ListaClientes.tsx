@@ -1,10 +1,10 @@
-import {useState, useEffect, useCallback} from "react";
-import {useNavigate} from "react-router-dom";
-import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card";
-import {Input} from "@/components/ui/input";
-import {Button} from "@/components/ui/button";
-import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from "@/components/ui/table";
-import {Search, Edit, UserPlus, Trash2, Eye} from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Search, Edit, UserPlus, Trash2, Eye } from "lucide-react";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -16,13 +16,14 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
-import {useToast} from "@/hooks/use-toast";
-import { getClients, deleteClient, type ClientDetails } from "@/services/clientsService.ts";
+import { useToast } from "@/hooks/use-toast";
+import { getClients, deleteClient, getClientById, type ClientDetails } from "@/services/clientsService.ts";
+import { removeContactFromClient, addContactToClient } from "@/services/clientsContactsService.ts";
 import { formatCNPJ } from "@/utils/format.ts";
 
 const ListaClientes = () => {
     const navigate = useNavigate();
-    const {toast} = useToast();
+    const { toast } = useToast();
     const [searchTerm, setSearchTerm] = useState("");
     const [clientes, setClientes] = useState<ClientDetails[]>([]);
 
@@ -48,7 +49,17 @@ const ListaClientes = () => {
     }, [loadClientes]);
 
     const handleDelete = async (clienteId: string) => {
+        let contactsToRestore: any[] = [];
         try {
+            const { data: clientDetails } = await getClientById(clienteId);
+            contactsToRestore = clientDetails.contacts || [];
+
+            if (contactsToRestore.length > 0) {
+                await Promise.all(
+                    contactsToRestore.map((c) => removeContactFromClient(clienteId, c.id))
+                );
+            }
+
             await deleteClient(clienteId);
             setClientes((prev) => prev.filter((c) => c.id !== clienteId));
             toast({
@@ -57,12 +68,41 @@ const ListaClientes = () => {
             });
         } catch (error: any) {
             console.error(error);
+            let description = "Não foi possível excluir o cliente.";
+
+            // Rollback: Restaurar contatos
+            if (contactsToRestore.length > 0) {
+                try {
+                    await Promise.all(
+                        contactsToRestore.map((c) => addContactToClient(clienteId, {
+                            name: c.name,
+                            type: c.type,
+                            role: c.role,
+                            value: c.value
+                        }))
+                    );
+                    description += " Os contatos foram restaurados.";
+                } catch (restoreError) {
+                    console.error("Erro ao restaurar contatos:", restoreError);
+                    description += " Falha ao restaurar contatos.";
+                }
+            }
+
+            if (error?.data?.errors) {
+                const errors = error.data.errors;
+                const firstErrorKey = Object.keys(errors)[0];
+                if (firstErrorKey && errors[firstErrorKey]?.length > 0) {
+                    description = errors[firstErrorKey][0];
+                }
+            } else if (error?.data?.message) {
+                description = error.data.message;
+            } else if (error?.message) {
+                description = error.message;
+            }
+
             toast({
                 title: "Erro ao excluir",
-                description:
-                    error?.data?.message ||
-                    error?.message ||
-                    "Não foi possível excluir o cliente.",
+                description,
                 variant: "destructive",
             });
         }
@@ -88,7 +128,7 @@ const ListaClientes = () => {
                         <CardDescription>Gerencie os clientes cadastrados</CardDescription>
                     </div>
                     <Button onClick={() => navigate("/home/cadastro-clientes")}>
-                        <UserPlus className="mr-2 h-4 w-4"/>
+                        <UserPlus className="mr-2 h-4 w-4" />
                         Novo Cliente
                     </Button>
                 </div>
@@ -97,7 +137,7 @@ const ListaClientes = () => {
                 <div className="mb-6 space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
                         <div className="relative">
-                            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground"/>
+                            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                             <Input
                                 placeholder="Buscar por nome, razão social, CNPJ ou parceiro..."
                                 value={searchTerm}
@@ -152,19 +192,19 @@ const ListaClientes = () => {
                                                         size="sm"
                                                         onClick={() => navigate(`/home/cadastro-clientes/${cliente.id}?view=readonly`)}
                                                     >
-                                                        <Eye className="h-4 w-4"/>
+                                                        <Eye className="h-4 w-4" />
                                                     </Button>
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"
                                                         onClick={() => navigate(`/home/cadastro-clientes/${cliente.id}`)}
                                                     >
-                                                        <Edit className="h-4 w-4"/>
+                                                        <Edit className="h-4 w-4" />
                                                     </Button>
                                                     <AlertDialog>
                                                         <AlertDialogTrigger asChild>
                                                             <Button variant="ghost" size="sm">
-                                                                <Trash2 className="h-4 w-4"/>
+                                                                <Trash2 className="h-4 w-4" />
                                                             </Button>
                                                         </AlertDialogTrigger>
                                                         <AlertDialogContent>
