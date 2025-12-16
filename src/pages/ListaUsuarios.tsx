@@ -1,13 +1,13 @@
-import {useCallback, useEffect, useMemo, useState} from "react";
-import {useNavigate} from "react-router-dom";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
-import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card";
-import {Input} from "@/components/ui/input";
-import {Button} from "@/components/ui/button";
-import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from "@/components/ui/table";
-import {Badge} from "@/components/ui/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 
-import {Search, Edit, UserPlus, Trash2, Eye} from "lucide-react";
+import { Search, Edit, UserPlus, Trash2, Eye } from "lucide-react";
 
 import {
     AlertDialog,
@@ -21,12 +21,12 @@ import {
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-import {useToast} from "@/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast";
 
-import type {Usuario} from "@/interfaces/Usuario";
-import {getUsers, deleteUser, getUserById} from "@/services/usersServices";
-import {getRoles} from "@/services/rolesService";
-import {removeContactFromUser} from "@/services/usersContactsService.ts";
+import type { Usuario } from "@/interfaces/Usuario";
+import { getUsers, deleteUser, getUserById } from "@/services/usersServices";
+import { getRoles } from "@/services/rolesService";
+import { removeContactFromUser, addContactToUser } from "@/services/usersContactsService.ts";
 
 interface Role {
     id: number;
@@ -35,7 +35,7 @@ interface Role {
 
 export default function ListaUsuarios() {
     const navigate = useNavigate();
-    const {toast} = useToast();
+    const { toast } = useToast();
 
     const [usuarios, setUsuarios] = useState<Usuario[]>([]);
     const [roles, setRoles] = useState<Role[]>([]);
@@ -51,7 +51,7 @@ export default function ListaUsuarios() {
     const loadUsuarios = useCallback(async () => {
         try {
             setLoading(true);
-            const data = await getUsers({page: 1, pageSize: 100});
+            const data = await getUsers({ page: 1, pageSize: 100 });
             setUsuarios(data);
         } catch (error: any) {
             console.error(error);
@@ -82,12 +82,14 @@ export default function ListaUsuarios() {
     }, [loadUsuarios, loadRoles]);
 
     const handleDelete = async (id: string) => {
+        let contactsToRestore: any[] = [];
         try {
             const response = await getUserById(id);
             const userToDelete = response.data;
-            const contacts = userToDelete.contacts || [];
-            if (contacts.length > 0) {
-                await Promise.all(contacts.map((c) => removeContactFromUser(id, c.id)));
+            contactsToRestore = userToDelete.contacts || [];
+
+            if (contactsToRestore.length > 0) {
+                await Promise.all(contactsToRestore.map((c) => removeContactFromUser(id, c.id)));
             }
 
             await deleteUser(id);
@@ -97,11 +99,41 @@ export default function ListaUsuarios() {
             await loadUsuarios();
         } catch (error: any) {
             console.error(error);
+            let description = "Não foi possível excluir o usuário. Tente novamente.";
+
+            // Rollback: Restaurar contatos
+            if (contactsToRestore.length > 0) {
+                try {
+                    await Promise.all(
+                        contactsToRestore.map((c) => addContactToUser(id, {
+                            type: c.type,
+                            role: c.role,
+                            phoneType: c.phoneType,
+                            value: c.value
+                        }))
+                    );
+                    description += " Os contatos foram restaurados.";
+                } catch (restoreError) {
+                    console.error("Erro ao restaurar contatos:", restoreError);
+                    description += " Falha ao restaurar contatos.";
+                }
+            }
+
+            if (error?.data?.errors) {
+                const errors = error.data.errors;
+                const firstErrorKey = Object.keys(errors)[0];
+                if (firstErrorKey && errors[firstErrorKey]?.length > 0) {
+                    description = errors[firstErrorKey][0];
+                }
+            } else if (error?.data?.message) {
+                description = error.data.message;
+            } else if (error?.message) {
+                description = error.message;
+            }
+
             toast({
                 title: "Erro ao excluir usuário",
-                description:
-                    error?.response?.data?.message ||
-                    "Não foi possível excluir o usuário. Tente novamente.",
+                description,
                 variant: "destructive",
             });
         }
@@ -133,7 +165,7 @@ export default function ListaUsuarios() {
                             </CardDescription>
                         </div>
                         <Button onClick={() => navigate("/home/novo-usuario")}>
-                            <UserPlus className="mr-2 h-4 w-4"/>
+                            <UserPlus className="mr-2 h-4 w-4" />
                             Novo Usuário
                         </Button>
                     </div>
@@ -142,7 +174,7 @@ export default function ListaUsuarios() {
                 <CardContent>
                     <div className="mb-6 space-y-4">
                         <div className="relative max-w-md">
-                            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground"/>
+                            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                             <Input
                                 placeholder="Buscar por nome, e-mail ou perfil..."
                                 value={searchTerm}
@@ -199,11 +231,11 @@ export default function ListaUsuarios() {
                                                         size="sm"
                                                         onClick={() =>
                                                             navigate(`/home/novo-usuario/${usuario.id}?view=readonly`, {
-                                                                state: {usuario},
+                                                                state: { usuario },
                                                             })
                                                         }
                                                     >
-                                                        <Eye className="h-4 w-4"/>
+                                                        <Eye className="h-4 w-4" />
                                                     </Button>
 
                                                     {/* Editar */}
@@ -212,18 +244,18 @@ export default function ListaUsuarios() {
                                                         size="sm"
                                                         onClick={() =>
                                                             navigate(`/home/novo-usuario/${usuario.id}`, {
-                                                                state: {usuario},
+                                                                state: { usuario },
                                                             })
                                                         }
                                                     >
-                                                        <Edit className="h-4 w-4"/>
+                                                        <Edit className="h-4 w-4" />
                                                     </Button>
 
                                                     {/* Excluir */}
                                                     <AlertDialog>
                                                         <AlertDialogTrigger asChild>
                                                             <Button variant="ghost" size="sm">
-                                                                <Trash2 className="h-4 w-4"/>
+                                                                <Trash2 className="h-4 w-4" />
                                                             </Button>
                                                         </AlertDialogTrigger>
                                                         <AlertDialogContent>

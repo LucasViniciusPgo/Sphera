@@ -69,12 +69,20 @@ export async function addContactToUser(
     userId: string,
     body: AddContactToUserCommand
 ) {
-    return http.post(`Users/${userId}/Contacts`, body);
+    const res = await http.post(`Users/${userId}/Contacts`, body);
+    if ("message" in res && !("headers" in res)) {
+        throw res;
+    }
+    return res;
 }
 
 export async function removeContactFromUser(
     userId: string,
     contactId: string
 ) {
-    return http.delete(`Users/${userId}/Contacts/${contactId}`);
+    const res = await http.delete(`Users/${userId}/Contacts/${contactId}`);
+    if ("message" in res && !("headers" in res)) {
+        throw res;
+    }
+    return res;
 }
