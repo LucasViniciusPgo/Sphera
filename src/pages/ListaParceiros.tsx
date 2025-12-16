@@ -31,7 +31,8 @@ import {
     EContactType,
     EPhoneType,
     type PartnerContact,
-    removeContactFromPartner
+    removeContactFromPartner,
+    addContactToPartner
 } from "@/services/partnersContactsService.ts";
 
 export type Parceiro = {
@@ -231,25 +232,19 @@ export default function ListaParceiros() {
 
 
     const handleDelete = async (parceiroId: string) => {
+        let contactsToRestore: any[] = [];
         try {
             // Se quiser manter a regra de clientes vinculados, deixa este bloco.
             // Se não quiser mais, pode remover tudo isso e ir direto pro delete.
             // const {items: clientesVinculados} = await getClientsByPartner(parceiroId);
-            // if (clientesVinculados.length > 0) {
-            //     toast({
-            //         title: "Não é possível excluir",
-            //         description: `Este parceiro possui ${clientesVinculados.length} cliente(s) vinculado(s). Remova os vínculos antes de excluir.`,
-            //         variant: "destructive",
-            //     });
-            //     return;
-            // }
+            // ...
 
             const { data: partnerDetails } = await getPartnerById(parceiroId);
-            const contacts = partnerDetails.contacts || [];
+            contactsToRestore = partnerDetails.contacts || [];
 
-            if (contacts.length > 0) {
+            if (contactsToRestore.length > 0) {
                 await Promise.all(
-                    contacts.map((c) => removeContactFromPartner(parceiroId, c.id))
+                    contactsToRestore.map((c) => removeContactFromPartner(parceiroId, c.id))
                 );
             }
 
@@ -263,6 +258,24 @@ export default function ListaParceiros() {
         } catch (error: any) {
             console.error(error);
             let description = "Não foi possível excluir o parceiro.";
+
+            // Rollback: Restaurar contatos
+            if (contactsToRestore.length > 0) {
+                try {
+                    await Promise.all(
+                        contactsToRestore.map((c) => addContactToPartner(parceiroId, {
+                            type: c.type,
+                            role: c.role,
+                            phoneType: c.phoneType,
+                            value: c.value
+                        }))
+                    );
+                    description += " Os contatos foram restaurados.";
+                } catch (restoreError) {
+                    console.error("Erro ao restaurar contatos:", restoreError);
+                    description += " Falha ao restaurar contatos.";
+                }
+            }
 
             if (error?.data?.errors) {
                 const errors = error.data.errors;

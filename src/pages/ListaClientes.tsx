@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { getClients, deleteClient, getClientById, type ClientDetails } from "@/services/clientsService.ts";
-import { removeContactFromClient } from "@/services/clientsContactsService.ts";
+import { removeContactFromClient, addContactToClient } from "@/services/clientsContactsService.ts";
 import { formatCNPJ } from "@/utils/format.ts";
 
 const ListaClientes = () => {
@@ -49,13 +49,14 @@ const ListaClientes = () => {
     }, [loadClientes]);
 
     const handleDelete = async (clienteId: string) => {
+        let contactsToRestore: any[] = [];
         try {
             const { data: clientDetails } = await getClientById(clienteId);
-            const contacts = clientDetails.contacts || [];
+            contactsToRestore = clientDetails.contacts || [];
 
-            if (contacts.length > 0) {
+            if (contactsToRestore.length > 0) {
                 await Promise.all(
-                    contacts.map((c) => removeContactFromClient(clienteId, c.id))
+                    contactsToRestore.map((c) => removeContactFromClient(clienteId, c.id))
                 );
             }
 
@@ -68,6 +69,24 @@ const ListaClientes = () => {
         } catch (error: any) {
             console.error(error);
             let description = "Não foi possível excluir o cliente.";
+
+            // Rollback: Restaurar contatos
+            if (contactsToRestore.length > 0) {
+                try {
+                    await Promise.all(
+                        contactsToRestore.map((c) => addContactToClient(clienteId, {
+                            name: c.name,
+                            type: c.type,
+                            role: c.role,
+                            value: c.value
+                        }))
+                    );
+                    description += " Os contatos foram restaurados.";
+                } catch (restoreError) {
+                    console.error("Erro ao restaurar contatos:", restoreError);
+                    description += " Falha ao restaurar contatos.";
+                }
+            }
 
             if (error?.data?.errors) {
                 const errors = error.data.errors;
