@@ -43,9 +43,8 @@ export async function getBillingEntries(params?: {
     ServiceDateStart?: string;
     ServiceDateEnd?: string;
     IsBillable?: boolean;
-    OnlyWithoutInvoice?: boolean;
 }) {
-    const { ClientId, ServiceDateStart, ServiceDateEnd, IsBillable, OnlyWithoutInvoice } = params || {};
+    const { ClientId, ServiceDateStart, ServiceDateEnd, IsBillable } = params || {};
 
     const res = await http.get<BillingEntry[] | { items: BillingEntry[] }>(
         "billing/BillingEntries",
@@ -55,7 +54,6 @@ export async function getBillingEntries(params?: {
                 ServiceDateStart,
                 ServiceDateEnd,
                 IsBillable,
-                OnlyWithoutInvoice,
             },
         }
     );

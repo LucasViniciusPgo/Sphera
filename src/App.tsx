@@ -26,6 +26,8 @@ import ListaPrecos from "./pages/ListaPrecos";
 import CadastroPreco from "./pages/CadastroPreco";
 import ListaLancamentos from "./pages/ListaLancamentos";
 import CadastroLancamento from "./pages/CadastroLancamento";
+import ListaFaturas from "./pages/ListaFaturas";
+import CadastroFatura from "./pages/CadastroFatura";
 
 const queryClient = new QueryClient();
 
@@ -84,6 +86,9 @@ const App = () => (
                         <Route path="lancamentos" element={<ListaLancamentos />} />
                         <Route path="cadastro-lancamentos" element={<CadastroLancamento />} />
                         <Route path="cadastro-lancamentos/:id" element={<CadastroLancamento />} />
+                        <Route path="faturas" element={<ListaFaturas />} />
+                        <Route path="cadastro-faturas" element={<CadastroFatura />} />
+                        <Route path="cadastro-faturas/:id" element={<CadastroFatura />} />
                     </Route>
                     {/* Redirects for backwards compatibility */}
                     <Route path="/agenda" element={<Agenda />} />
@@ -129,6 +134,9 @@ const App = () => (
                     <Route path="/lancamentos" element={<ListaLancamentos />} />
                     <Route path="/cadastro-lancamentos" element={<CadastroLancamento />} />
                     <Route path="/cadastro-lancamentos/:id" element={<CadastroLancamento />} />
+                    <Route path="/faturas" element={<ListaFaturas />} />
+                    <Route path="/cadastro-faturas" element={<CadastroFatura />} />
+                    <Route path="/cadastro-faturas/:id" element={<CadastroFatura />} />
                     <Route path="/primeiro-acesso" element={<PrimeiroAcesso />} />
                     <Route path="/login" element={<Login />} />
                 </Routes>

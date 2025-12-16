@@ -1,4 +1,4 @@
-import { Users, List, UserPlus, Briefcase, ArchiveX, Archive, TrendingUp, CalendarDays, LogOut, DollarSign } from "lucide-react";
+import { Users, List, UserPlus, Briefcase, ArchiveX, Archive, TrendingUp, CalendarDays, LogOut, DollarSign, FileText } from "lucide-react";
 import { NavLink, useMatch } from "react-router-dom";
 import {
     Sidebar,
@@ -56,6 +56,7 @@ const agendaItems = [
 const faturamentoItems = [
     { title: "Preços por Cliente", url: "/home/precos", icon: DollarSign },
     { title: "Lançamentos", url: "/home/lancamentos", icon: DollarSign },
+    { title: "Faturas", url: "/home/faturas", icon: FileText },
 ];
 
 const usuarioAdminItemsBase = [
