@@ -61,11 +61,17 @@ export default function CadastroPreco() {
         async function loadData() {
             try {
                 const [clientesRes, servicosRes] = await Promise.all([
-                    getClients({ includePartner: false }),
+                    getClients({ includePartner: false, pageSize: 1000 }),
                     getServices(),
                 ]);
 
                 setClientes(clientesRes.items);
+
+                const params = new URLSearchParams(location.search);
+                const preSelectedClientId = params.get("clientId");
+                if (preSelectedClientId) {
+                    form.setValue("clientId", preSelectedClientId);
+                }
 
                 const servicosItems = Array.isArray(servicosRes)
                     ? servicosRes
@@ -87,6 +93,7 @@ export default function CadastroPreco() {
                         startDate: startDate,
                     });
                 }
+
             } catch (e) {
                 toast({
                     title: "Erro ao carregar dados",
@@ -97,7 +104,7 @@ export default function CadastroPreco() {
         }
 
         loadData();
-    }, [id, toast]);
+    }, [id, toast, location.search, form]);
 
     const onSubmit = async (data: PrecoFormData) => {
         setIsSubmitting(true);
@@ -174,6 +181,7 @@ export default function CadastroPreco() {
                                                 <FormLabel>Cliente *</FormLabel>
                                                 <FormControl>
                                                     <Select
+                                                        key={field.value}
                                                         value={field.value}
                                                         onValueChange={field.onChange}
                                                         disabled={readonly || isEditing}

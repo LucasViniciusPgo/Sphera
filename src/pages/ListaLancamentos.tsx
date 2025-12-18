@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Fragment } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, Edit, Plus, Eye } from "lucide-react";
+import { Search, Edit, Plus, Eye, ChevronDown, ChevronRight, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getBillingEntries, type BillingEntry } from "@/services/billingEntriesService";
 import { getClients, type ClientDetails } from "@/services/clientsService";
@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { createInvoice } from "@/services/invoicesService";
 import { getClientServicePrices, type ClientServicePrice } from "@/services/clientServicePricesService";
+import { cn } from "@/lib/utils";
 
 const ListaLancamentos = () => {
     const navigate = useNavigate();
@@ -28,6 +29,7 @@ const ListaLancamentos = () => {
     const [filterDateEnd, setFilterDateEnd] = useState<string>("");
     const [filterIsBillable, setFilterIsBillable] = useState<string>("all");
     const [selectedEntryIds, setSelectedEntryIds] = useState<string[]>([]);
+    const [expandedClientIds, setExpandedClientIds] = useState<string[]>([]);
 
     const loadData = useCallback(async () => {
         try {
@@ -38,7 +40,7 @@ const ListaLancamentos = () => {
                     ServiceDateEnd: filterDateEnd || undefined,
                     IsBillable: filterIsBillable === "all" ? undefined : filterIsBillable === "yes",
                 }),
-                getClients({ includePartner: false }),
+                getClients({ includePartner: false, pageSize: 1000 }),
                 getServices(),
                 getClientServicePrices({ OnlyActive: true }),
             ]);
@@ -94,6 +96,20 @@ const ListaLancamentos = () => {
         return clientName.includes(term) || serviceName.includes(term);
     });
 
+    // Grouping Logic
+    const groupedLancamentos = filteredLancamentos.reduce((acc, lancamento) => {
+        if (!acc[lancamento.clientId]) {
+            acc[lancamento.clientId] = [];
+        }
+        acc[lancamento.clientId].push(lancamento);
+        return acc;
+    }, {} as Record<string, typeof filteredLancamentos>);
+
+    const sortedClientIds = Object.keys(groupedLancamentos).sort((a, b) => {
+        return getClientName(a).localeCompare(getClientName(b));
+    });
+
+    // Selection Logic
     const handleSelectAll = (checked: boolean) => {
         if (checked) {
             setSelectedEntryIds(filteredLancamentos.map((l) => l.id));
@@ -108,6 +124,46 @@ const ListaLancamentos = () => {
         } else {
             setSelectedEntryIds(selectedEntryIds.filter((id) => id !== entryId));
         }
+    };
+
+    const handleSelectGroup = (clientId: string, checked: boolean) => {
+        const groupEntries = groupedLancamentos[clientId] || [];
+        const groupEntryIds = groupEntries.map(l => l.id);
+
+        if (checked) {
+            // Add all items from this group that aren't already selected
+            const newSelection = [...selectedEntryIds];
+            groupEntryIds.forEach(id => {
+                if (!newSelection.includes(id)) {
+                    newSelection.push(id);
+                }
+            });
+            setSelectedEntryIds(newSelection);
+        } else {
+            // Remove all items from this group
+            setSelectedEntryIds(selectedEntryIds.filter(id => !groupEntryIds.includes(id)));
+        }
+    };
+
+    const toggleExpandGroup = (clientId: string) => {
+        setExpandedClientIds(prev =>
+            prev.includes(clientId)
+                ? prev.filter(id => id !== clientId)
+                : [...prev, clientId]
+        );
+    };
+
+    const isGroupSelected = (clientId: string) => {
+        const groupEntries = groupedLancamentos[clientId] || [];
+        if (groupEntries.length === 0) return false;
+        return groupEntries.every(l => selectedEntryIds.includes(l.id));
+    };
+
+    const isGroupPartiallySelected = (clientId: string) => {
+        const groupEntries = groupedLancamentos[clientId] || [];
+        if (groupEntries.length === 0) return false;
+        const selectedCount = groupEntries.filter(l => selectedEntryIds.includes(l.id)).length;
+        return selectedCount > 0 && selectedCount < groupEntries.length;
     };
 
     const allSelected = filteredLancamentos.length > 0 &&
@@ -185,15 +241,13 @@ const ListaLancamentos = () => {
             isAdditional: false,
         }));
 
-        const issueDate = new Date().toISOString().split('T')[0]; // data de hoje no formato YYYY-MM-DD
+        const issueDate = new Date().toISOString().split('T')[0];
         const billingDueDay = clientes.find(c => c.id === clientId)?.billingDueDay;
         const today = new Date();
         const dueDateObj = new Date(today.getFullYear(), today.getMonth(), billingDueDay || today.getDate());
-        const dueDate = dueDateObj.toISOString().split('T')[0]; // formato YYYY-MM-DD
-
+        const dueDate = dueDateObj.toISOString().split('T')[0];
 
         try {
-            // Create invoice
             await createInvoice({
                 clientId,
                 issueDate,
@@ -207,7 +261,6 @@ const ListaLancamentos = () => {
                 description: `Fatura criada para ${getClientName(clientId)} com ${selectedEntries.length} lançamento(s).`,
             });
 
-            // Clear selection and reload data
             setSelectedEntryIds([]);
             loadData();
         } catch (error: any) {
@@ -240,6 +293,7 @@ const ListaLancamentos = () => {
                 </div>
             </CardHeader>
             <CardContent>
+                {/* Filters Section */}
                 <div className="mb-6 space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="relative">
@@ -331,29 +385,29 @@ const ListaLancamentos = () => {
                     )}
                 </div>
 
-                {selectedEntryIds.length > 0 && (
-                    <div className="mb-4 p-4 bg-primary/10 rounded-md flex justify-between items-center">
-                        <span className="text-sm font-medium">
-                            {selectedEntryIds.length} lançamento(s) selecionado(s)
-                        </span>
-                        <div className="flex gap-2">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setSelectedEntryIds([])}
-                            >
-                                Limpar Seleção
-                            </Button>
-                            <Button
-                                size="sm"
-                                onClick={handleSendToInvoice}
-                            >
-                                Enviar para Fatura
-                            </Button>
-                        </div>
+                {/* Selection Action Bar */}
+                <div className="mb-4 p-4 bg-primary/10 rounded-md flex justify-between items-center transition-all h-16 data-[visible=false]:opacity-0 data-[visible=false]:h-0 data-[visible=false]:p-0 overflow-hidden" data-visible={selectedEntryIds.length > 0}>
+                    <span className="text-sm font-medium">
+                        {selectedEntryIds.length} lançamento(s) selecionado(s)
+                    </span>
+                    <div className="flex gap-2">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setSelectedEntryIds([])}
+                        >
+                            Limpar Seleção
+                        </Button>
+                        <Button
+                            size="sm"
+                            onClick={handleSendToInvoice}
+                        >
+                            Enviar para Fatura
+                        </Button>
                     </div>
-                )}
+                </div>
 
+                {/* Content: Grouped by Client */}
                 {filteredLancamentos.length === 0 ? (
                     <div className="text-center py-12 text-muted-foreground border rounded-md">
                         {hasActiveFilters
@@ -361,85 +415,124 @@ const ListaLancamentos = () => {
                             : "Nenhum lançamento cadastrado ainda."}
                     </div>
                 ) : (
-                    <div className="rounded-md border">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead className="w-12">
-                                        <Checkbox
-                                            checked={allSelected}
-                                            onCheckedChange={handleSelectAll}
-                                            aria-label="Selecionar todas"
-                                            className={someSelected ? "data-[state=checked]:bg-primary/50" : ""}
-                                        />
-                                    </TableHead>
-                                    <TableHead>Cliente</TableHead>
-                                    <TableHead>Serviço</TableHead>
-                                    <TableHead>Quantidade</TableHead>
-                                    <TableHead>Data Serviço</TableHead>
-                                    <TableHead>Faturável</TableHead>
-                                    <TableHead className="text-right">Ações</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {filteredLancamentos.map((lancamento) => (
-                                    <TableRow
-                                        key={lancamento.id}
-                                        className={selectedEntryIds.includes(lancamento.id) ? "bg-muted/50" : ""}
+                    <div className="space-y-4">
+                        {/* Global Header just for "Select All" indication */}
+                        <div className="flex items-center gap-2 p-2 border-b">
+                            <Checkbox
+                                checked={allSelected}
+                                onCheckedChange={handleSelectAll}
+                                aria-label="Selecionar todos os lançamentos"
+                                className={someSelected ? "data-[state=checked]:bg-primary/50" : ""}
+                            />
+                            <span className="text-sm font-medium text-muted-foreground">Selecionar Todos ({filteredLancamentos.length})</span>
+                        </div>
+
+                        {sortedClientIds.map((clientId) => {
+                            const isExpanded = expandedClientIds.includes(clientId);
+                            const groupEntries = groupedLancamentos[clientId];
+                            const groupSelected = isGroupSelected(clientId);
+                            const groupPartiallySelected = isGroupPartiallySelected(clientId);
+
+                            return (
+                                <div key={clientId} className="border rounded-md overflow-hidden">
+                                    {/* Group Header */}
+                                    <div
+                                        className={cn(
+                                            "flex items-center justify-between p-3 bg-muted/40 cursor-pointer hover:bg-muted/60 transition-colors",
+                                            isExpanded && "bg-muted/60 border-b"
+                                        )}
+                                        onClick={() => toggleExpandGroup(clientId)}
                                     >
-                                        <TableCell>
-                                            <Checkbox
-                                                checked={selectedEntryIds.includes(lancamento.id)}
-                                                onCheckedChange={(checked) =>
-                                                    handleSelectEntry(lancamento.id, checked as boolean)
-                                                }
-                                                aria-label={`Selecionar lançamento ${lancamento.id}`}
-                                            />
-                                        </TableCell>
-                                        <TableCell className="font-medium">
-                                            {getClientName(lancamento.clientId)}
-                                        </TableCell>
-                                        <TableCell>{getServiceName(lancamento.serviceId)}</TableCell>
-                                        <TableCell>{lancamento.quantity}</TableCell>
-                                        <TableCell>{formatDate(lancamento.serviceDate)}</TableCell>
-                                        <TableCell>
-                                            <span
-                                                className={`px-2 py-1 rounded text-xs ${lancamento.isBillable
-                                                    ? "bg-green-100 text-green-800"
-                                                    : "bg-gray-100 text-gray-800"
-                                                    }`}
-                                            >
-                                                {lancamento.isBillable ? "Sim" : "Não"}
-                                            </span>
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <div className="flex gap-2 justify-end">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() =>
-                                                        navigate(`/home/cadastro-lancamentos/${lancamento.id}?view=readonly`)
-                                                    }
-                                                >
-                                                    <Eye className="h-4 w-4" />
-                                                </Button>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => navigate(`/home/cadastro-lancamentos/${lancamento.id}`)}
-                                                >
-                                                    <Edit className="h-4 w-4" />
-                                                </Button>
+                                        <div className="flex items-center gap-3">
+                                            <div onClick={(e) => e.stopPropagation()}>
+                                                <Checkbox
+                                                    checked={groupSelected}
+                                                    onCheckedChange={(checked) => handleSelectGroup(clientId, checked as boolean)}
+                                                    className={groupPartiallySelected ? "data-[state=checked]:bg-primary/50" : ""}
+                                                />
                                             </div>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
+                                            {isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+                                            <span className="font-medium">{getClientName(clientId)}</span>
+                                            <span className="text-sm text-muted-foreground ml-2">({groupEntries.length} lançamentos)</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Group Body */}
+                                    {isExpanded && (
+                                        <div className="bg-background">
+                                            <Table>
+                                                <TableHeader>
+                                                    <TableRow>
+                                                        <TableHead className="w-12"></TableHead>
+                                                        <TableHead>Serviço</TableHead>
+                                                        <TableHead>Quantidade</TableHead>
+                                                        <TableHead>Data Serviço</TableHead>
+                                                        <TableHead>Faturável</TableHead>
+                                                        <TableHead className="text-right">Ações</TableHead>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {groupEntries.map((lancamento) => (
+                                                        <TableRow
+                                                            key={lancamento.id}
+                                                            className={selectedEntryIds.includes(lancamento.id) ? "bg-muted/50" : ""}
+                                                        >
+                                                            <TableCell>
+                                                                <Checkbox
+                                                                    checked={selectedEntryIds.includes(lancamento.id)}
+                                                                    onCheckedChange={(checked) =>
+                                                                        handleSelectEntry(lancamento.id, checked as boolean)
+                                                                    }
+                                                                />
+                                                            </TableCell>
+                                                            <TableCell>{getServiceName(lancamento.serviceId)}</TableCell>
+                                                            <TableCell>{lancamento.quantity}</TableCell>
+                                                            <TableCell>{formatDate(lancamento.serviceDate)}</TableCell>
+                                                            <TableCell>
+                                                                <span
+                                                                    className={cn(
+                                                                        "px-2 py-1 rounded text-xs",
+                                                                        lancamento.isBillable
+                                                                            ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+                                                                            : "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400"
+                                                                    )}
+                                                                >
+                                                                    {lancamento.isBillable ? "Sim" : "Não"}
+                                                                </span>
+                                                            </TableCell>
+                                                            <TableCell className="text-right">
+                                                                <div className="flex gap-2 justify-end">
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="sm"
+                                                                        onClick={() =>
+                                                                            navigate(`/home/cadastro-lancamentos/${lancamento.id}?view=readonly`)
+                                                                        }
+                                                                    >
+                                                                        <Eye className="h-4 w-4" />
+                                                                    </Button>
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="sm"
+                                                                        onClick={() => navigate(`/home/cadastro-lancamentos/${lancamento.id}`)}
+                                                                    >
+                                                                        <Edit className="h-4 w-4" />
+                                                                    </Button>
+                                                                </div>
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
                     </div>
                 )}
             </CardContent>
-        </Card >
+        </Card>
     );
 };
 
