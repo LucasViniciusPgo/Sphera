@@ -421,8 +421,8 @@ export default function CadastroParceiros() {
                                                 <FormLabel>CEP </FormLabel>
                                                 <FormControl>
                                                     <Input
-                                                        placeholder="00000-000"
-                                                        maxLength={9}
+                                                        placeholder="00.000-000 ou 00000-000"
+                                                        maxLength={11}
                                                         value={field.value}
                                                         onChange={(e) => field.onChange(formatCEP(e.target.value))}
                                                         readOnly={readonly}

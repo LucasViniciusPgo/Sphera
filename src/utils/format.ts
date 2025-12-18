@@ -39,9 +39,26 @@ export function cleanPhone(value?: string | null): string | null {
 
 export function formatCEP(value?: string | null): string {
     if (!value) return "";
+    
+    // Remove tudo que não é dígito
     const digits = value.replace(/\D/g, "").slice(0, 8);
-    if (digits.length <= 5) return digits;
-    return digits.replace(/^(\d{5})(\d{3})$/, "$1-$2");
+    
+    if (digits.length <= 2) return digits;
+    if (digits.length <= 5) {
+        // Verifica se o valor original já tem ponto na posição correta
+        if (value.includes('.') && value.indexOf('.') === 2) {
+            return digits.replace(/^(\d{2})(\d{0,3})/, "$1.$2");
+        }
+        return digits;
+    }
+    
+    if (value.includes('.')) {
+        // Formato com ponto: 00.000-000
+        return digits.replace(/^(\d{2})(\d{3})(\d{0,3})/, "$1.$2-$3");
+    } else {
+        // Formato tradicional: 00000-000
+        return digits.replace(/^(\d{5})(\d{0,3})/, "$1-$2");
+    }
 }
 
 export function cleanCEP(value?: string | null): string | null {
