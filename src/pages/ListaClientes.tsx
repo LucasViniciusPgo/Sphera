@@ -36,7 +36,7 @@ const ListaClientes = () => {
     const [searchTerm, setSearchTerm] = useState("");
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
-    const pageSize = 2;
+    const pageSize = 10;
 
     const [clientes, setClientes] = useState<ClientDetails[]>([]);
 
@@ -61,6 +61,16 @@ const ListaClientes = () => {
                 pageSize,
                 search: searchParam || undefined
             });
+
+            if (pageParam > 1 && items.length === 0) {
+                toast({
+                    title: "Fim da lista",
+                    description: "Não existem mais registros para exibir.",
+                });
+                setHasMore(false);
+                setPage(prev => prev - 1);
+                return;
+            }
 
             setClientes(items);
 
