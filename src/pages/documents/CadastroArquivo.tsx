@@ -70,7 +70,7 @@ export default function CadastroArquivo() {
     (async () => {
       setClients((await getClients()).items);
 
-      setServices(await getServices());
+      setServices((await getServices()).items);
 
       setUsers(await getUsers())
 
@@ -150,7 +150,7 @@ export default function CadastroArquivo() {
             variant: "destructive",
           });
         }
-      }    
+      }
     } catch (error) {
       toast({
         title: "Erro ao salvar",
@@ -321,29 +321,29 @@ export default function CadastroArquivo() {
                 </div>
 
                 <FormField
-                    control={form.control}
-                    name="responsibleId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Responsável *</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value} disabled={readonly}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione um responsável" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {users.map((user) => (
-                              <SelectItem key={user.id} value={user.id}>
-                                {user.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  control={form.control}
+                  name="responsibleId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Responsável *</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value} disabled={readonly}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione um responsável" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {users.map((user) => (
+                            <SelectItem key={user.id} value={user.id}>
+                              {user.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField

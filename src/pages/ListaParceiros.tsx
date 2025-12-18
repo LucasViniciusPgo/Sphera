@@ -17,6 +17,14 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
+import {
+    Pagination,
+    PaginationContent,
+    PaginationItem,
+    PaginationLink,
+    PaginationNext,
+    PaginationPrevious,
+} from "@/components/ui/pagination";
 import { useToast } from "@/hooks/use-toast";
 import {
     getPartners,
@@ -203,14 +211,47 @@ export default function ListaParceiros() {
     const [parceiros, setParceiros] = useState<Parceiro[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
     const [isLoading, setIsLoading] = useState(false);
+    const [page, setPage] = useState(1);
+    const [hasMore, setHasMore] = useState(true);
+    const pageSize = 10;
 
+    // Debounce search
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (page === 1) {
+                loadParceiros(1, searchTerm);
+            } else {
+                setPage(1);
+            }
+        }, 500);
 
-    const loadParceiros = useCallback(async () => {
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
+
+    const loadParceiros = useCallback(async (pageParam: number, searchParam: string) => {
         setIsLoading(true);
         try {
-            const { items } = await getPartners();
+            const { items } = await getPartners({
+                page: pageParam,
+                pageSize,
+                search: searchParam || undefined
+            });
+
+            // Bounce back logic
+            if (pageParam > 1 && items.length === 0) {
+                toast({
+                    title: "Fim da lista",
+                    description: "Não existem mais registros para exibir.",
+                });
+                setHasMore(false);
+                setPage(prev => prev - 1);
+                setIsLoading(false);
+                return;
+            }
+
             const mapped = items.map(mapApiPartnerToParceiro);
             setParceiros(mapped);
+            setHasMore(items.length >= pageSize);
         } catch (error: any) {
             console.error(error);
             toast({
@@ -227,8 +268,8 @@ export default function ListaParceiros() {
     }, [toast]);
 
     useEffect(() => {
-        loadParceiros();
-    }, []);
+        loadParceiros(page, searchTerm);
+    }, [page, loadParceiros]);
 
 
     const handleDelete = async (parceiroId: string) => {
@@ -297,13 +338,7 @@ export default function ListaParceiros() {
         }
     };
 
-    const filteredParceiros = parceiros.filter((parceiro) => {
-        const term = searchTerm.toLowerCase();
-        const razao = parceiro.razaoSocial.toLowerCase();
-        const cnpj = (parceiro.cnpj ?? "").toLowerCase();
-
-        return razao.includes(term) || cnpj.includes(term);
-    });
+    const filteredParceiros = parceiros;
 
     return (
         <div className="max-w-7xl mx-auto">
@@ -435,6 +470,30 @@ export default function ListaParceiros() {
                     )}
                 </CardContent>
             </Card>
-        </div>
+
+            <div className="mt-4 flex justify-center">
+                <Pagination>
+                    <PaginationContent>
+                        <PaginationItem>
+                            <PaginationPrevious
+                                onClick={() => setPage(p => Math.max(1, p - 1))}
+                                className={page === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                            />
+                        </PaginationItem>
+
+                        <PaginationItem>
+                            <PaginationLink isActive>{page}</PaginationLink>
+                        </PaginationItem>
+
+                        <PaginationItem>
+                            <PaginationNext
+                                onClick={() => setPage(p => p + 1)}
+                                className={!hasMore ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                            />
+                        </PaginationItem>
+                    </PaginationContent>
+                </Pagination>
+            </div>
+        </div >
     );
 }
