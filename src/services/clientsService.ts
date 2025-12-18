@@ -222,13 +222,44 @@ export async function getClients(params?: {
 
     const raw = res.data;
 
-    const items: ClientDetails[] = Array.isArray(raw)
-        ? raw
-        : Array.isArray((raw as any)?.items)
-            ? (raw as any).items
-            : [];
+    let items: ClientDetails[] = [];
+    let totalCount = 0;
+    
+    if (Array.isArray(raw)) {
+        items = raw;
+        totalCount = raw.length;
+    } else if ((raw as any)?.items) {
+        items = (raw as any).items;
+        // Check for total count in body
+        totalCount = (raw as any).totalCount || (raw as any).total || 0;
+    }
 
-    return { items, raw };
+    // Checking headers for pagination metadata commonly used in .NET/other APIs
+    if ("headers" in res) {
+        const paginationHeader = (res.headers as any)?.["x-pagination"];
+        if (paginationHeader) {
+            try {
+                const parsed = JSON.parse(paginationHeader);
+                if (parsed.TotalCount) totalCount = parsed.TotalCount;
+            } catch (e) {
+               // ignore
+            }
+        }
+        // Fallback or explicit header
+        const simpleTotal = (res.headers as any)?.["x-total-count"];
+        if (simpleTotal) {
+            totalCount = Number(simpleTotal);
+        }
+    }
+
+     // If we requested pagination and got no totalCount but have items, 
+     // and it's less than page size, we can perhaps guess, but safer to trust API or default to item count if only one page.
+     if (totalCount === 0 && items.length > 0) {
+        // Fallback for when API doesn't notify total, just show what we have.
+        totalCount = items.length; // This might be wrong for page 1 if there are more, but better than 0.
+     }
+
+    return { items, raw, totalCount };
 }
 
 export async function activateClient(id: string) {
