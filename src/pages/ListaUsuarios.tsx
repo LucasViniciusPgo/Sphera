@@ -20,6 +20,14 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+    Pagination,
+    PaginationContent,
+    PaginationItem,
+    PaginationLink,
+    PaginationNext,
+    PaginationPrevious,
+} from "@/components/ui/pagination";
 
 import { useToast } from "@/hooks/use-toast";
 
@@ -41,18 +49,46 @@ export default function ListaUsuarios() {
     const [roles, setRoles] = useState<Role[]>([]);
     const [loading, setLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
+    const [page, setPage] = useState(1);
+    const [hasMore, setHasMore] = useState(true);
+    const pageSize = 10;
 
-    const roleNameById = useMemo(() => {
-        const map = new Map<number, string>();
-        roles.forEach((r) => map.set(r.id, r.name));
-        return map;
-    }, [roles]);
+    // Debounce search
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (page === 1) {
+                loadUsuarios(1, searchTerm);
+            } else {
+                setPage(1);
+            }
+        }, 500);
 
-    const loadUsuarios = useCallback(async () => {
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
+
+    const loadUsuarios = useCallback(async (pageParam: number, searchParam: string) => {
         try {
             setLoading(true);
-            const data = await getUsers({ page: 1, pageSize: 100 });
+            const data = await getUsers({
+                page: pageParam,
+                pageSize,
+                search: searchParam || undefined
+            });
+
+            // Bounce back logic
+            if (pageParam > 1 && data.length === 0) {
+                toast({
+                    title: "Fim da lista",
+                    description: "Não existem mais registros para exibir.",
+                });
+                setHasMore(false);
+                setPage(prev => prev - 1);
+                setLoading(false);
+                return;
+            }
+
             setUsuarios(data);
+            setHasMore(data.length >= pageSize);
         } catch (error: any) {
             console.error(error);
             toast({
@@ -77,9 +113,18 @@ export default function ListaUsuarios() {
     }, []);
 
     useEffect(() => {
-        loadUsuarios();
+        loadUsuarios(page, searchTerm);
+    }, [page, loadUsuarios]);
+
+    useEffect(() => {
         loadRoles();
-    }, [loadUsuarios, loadRoles]);
+    }, [loadRoles]);
+
+    const roleNameById = useMemo(() => {
+        const map = new Map<number, string>();
+        roles.forEach((r) => map.set(r.id, r.name));
+        return map;
+    }, [roles]);
 
     const handleDelete = async (id: string) => {
         let contactsToRestore: any[] = [];
@@ -96,7 +141,7 @@ export default function ListaUsuarios() {
             toast({
                 title: "Usuário excluído com sucesso!",
             });
-            await loadUsuarios();
+            await loadUsuarios(page, searchTerm);
         } catch (error: any) {
             console.error(error);
             let description = "Não foi possível excluir o usuário. Tente novamente.";
@@ -139,19 +184,7 @@ export default function ListaUsuarios() {
         }
     };
 
-    const filteredUsuarios = useMemo(() => {
-        const term = searchTerm.trim().toLowerCase();
-        if (!term) return usuarios;
-
-        return usuarios.filter((u) => {
-            const roleName = roleNameById.get(u.roleId) ?? "";
-            return (
-                u.name?.toLowerCase().includes(term) ||
-                u.email?.toLowerCase().includes(term) ||
-                roleName.toLowerCase().includes(term)
-            );
-        });
-    }, [usuarios, searchTerm, roleNameById]);
+    const filteredUsuarios = usuarios;
 
     return (
         <div className="max-w-6xl mx-auto">
@@ -285,6 +318,30 @@ export default function ListaUsuarios() {
                     </div>
                 </CardContent>
             </Card>
+
+            <div className="mt-4 flex justify-center">
+                <Pagination>
+                    <PaginationContent>
+                        <PaginationItem>
+                            <PaginationPrevious
+                                onClick={() => setPage(p => Math.max(1, p - 1))}
+                                className={page === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                            />
+                        </PaginationItem>
+
+                        <PaginationItem>
+                            <PaginationLink isActive>{page}</PaginationLink>
+                        </PaginationItem>
+
+                        <PaginationItem>
+                            <PaginationNext
+                                onClick={() => setPage(p => p + 1)}
+                                className={!hasMore ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                            />
+                        </PaginationItem>
+                    </PaginationContent>
+                </Pagination>
+            </div>
         </div>
     );
 }

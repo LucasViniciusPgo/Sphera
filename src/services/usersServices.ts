@@ -14,8 +14,9 @@ export async function getUsers(params?: {
     roleId?: number;
     page?: number;
     pageSize?: number;
+    search?: string;
 }) {
-    const { email, isActive, roleId, page, pageSize } = params || {};
+    const { email, isActive, roleId, page, pageSize, search } = params || {};
     const actualParams: Record<string, any> = {};
 
     if (email) actualParams.Email = email;
@@ -23,6 +24,7 @@ export async function getUsers(params?: {
     if (roleId !== undefined) actualParams.RoleId = roleId;
     if (page !== undefined) actualParams.Page = page;
     if (pageSize !== undefined) actualParams.PageSize = pageSize;
+    if (search) actualParams.Search = search;
 
     const response = await http.get<Usuario[] | { items: Usuario[] }>("users", {
         params: actualParams,
