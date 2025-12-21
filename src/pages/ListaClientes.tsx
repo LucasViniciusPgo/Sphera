@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, Edit, UserPlus, Trash2, Eye } from "lucide-react";
+import {useState, useEffect, useCallback} from "react";
+import {useNavigate} from "react-router-dom";
+import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card";
+import {Input} from "@/components/ui/input";
+import {Button} from "@/components/ui/button";
+import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from "@/components/ui/table";
+import {Search, Edit, UserPlus, Trash2, Eye} from "lucide-react";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -16,10 +16,10 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
-import { useToast } from "@/hooks/use-toast";
-import { getClients, deleteClient, getClientById, type ClientDetails } from "@/services/clientsService.ts";
-import { removeContactFromClient, addContactToClient } from "@/services/clientsContactsService.ts";
-import { formatCNPJ } from "@/utils/format.ts";
+import {useToast} from "@/hooks/use-toast";
+import {getClients, deleteClient, getClientById, type ClientDetails} from "@/services/clientsService.ts";
+import {removeContactFromClient, addContactToClient} from "@/services/clientsContactsService.ts";
+import {formatCNPJ} from "@/utils/format.ts";
 import {
     Pagination,
     PaginationContent,
@@ -32,7 +32,7 @@ import {
 
 const ListaClientes = () => {
     const navigate = useNavigate();
-    const { toast } = useToast();
+    const {toast} = useToast();
     const [searchTerm, setSearchTerm] = useState("");
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
@@ -55,7 +55,7 @@ const ListaClientes = () => {
 
     const loadClientes = useCallback(async (pageParam: number, searchParam: string) => {
         try {
-            const { items, totalCount: total } = await getClients({
+            const {items, totalCount: total} = await getClients({
                 includePartner: true,
                 page: pageParam,
                 pageSize,
@@ -97,7 +97,7 @@ const ListaClientes = () => {
     const handleDelete = async (clienteId: string) => {
         let contactsToRestore: any[] = [];
         try {
-            const { data: clientDetails } = await getClientById(clienteId);
+            const {data: clientDetails} = await getClientById(clienteId);
             contactsToRestore = clientDetails.contacts || [];
 
             if (contactsToRestore.length > 0) {
@@ -167,7 +167,7 @@ const ListaClientes = () => {
                         <CardDescription>Gerencie os clientes cadastrados</CardDescription>
                     </div>
                     <Button onClick={() => navigate("/home/cadastro-clientes")}>
-                        <UserPlus className="mr-2 h-4 w-4" />
+                        <UserPlus className="mr-2 h-4 w-4"/>
                         Novo Cliente
                     </Button>
                 </div>
@@ -176,9 +176,9 @@ const ListaClientes = () => {
                 <div className="mb-6 space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
                         <div className="relative">
-                            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground"/>
                             <Input
-                                placeholder="Buscar por nome, razão social, CNPJ ou parceiro..."
+                                placeholder="Buscar por nome ou razão social..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 className="pl-10"
@@ -231,19 +231,19 @@ const ListaClientes = () => {
                                                         size="sm"
                                                         onClick={() => navigate(`/home/cadastro-clientes/${cliente.id}?view=readonly`)}
                                                     >
-                                                        <Eye className="h-4 w-4" />
+                                                        <Eye className="h-4 w-4"/>
                                                     </Button>
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"
                                                         onClick={() => navigate(`/home/cadastro-clientes/${cliente.id}`)}
                                                     >
-                                                        <Edit className="h-4 w-4" />
+                                                        <Edit className="h-4 w-4"/>
                                                     </Button>
                                                     <AlertDialog>
                                                         <AlertDialogTrigger asChild>
                                                             <Button variant="ghost" size="sm">
-                                                                <Trash2 className="h-4 w-4" />
+                                                                <Trash2 className="h-4 w-4"/>
                                                             </Button>
                                                         </AlertDialogTrigger>
                                                         <AlertDialogContent>
@@ -275,7 +275,6 @@ const ListaClientes = () => {
                 )}
 
 
-
                 <div className="mt-4">
                     <Pagination>
                         <PaginationContent>
@@ -289,7 +288,6 @@ const ListaClientes = () => {
                             <PaginationItem>
                                 <PaginationLink isActive>{page}</PaginationLink>
                             </PaginationItem>
-
                             <PaginationItem>
                                 <PaginationNext
                                     onClick={() => setPage(p => p + 1)}
@@ -300,7 +298,7 @@ const ListaClientes = () => {
                     </Pagination>
                 </div>
             </CardContent>
-        </Card >
+        </Card>
     );
 };
 
