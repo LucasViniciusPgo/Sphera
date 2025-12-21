@@ -222,13 +222,22 @@ export async function getClients(params?: {
 
     const raw = res.data;
 
-    const items: ClientDetails[] = Array.isArray(raw)
-        ? raw
-        : Array.isArray((raw as any)?.items)
-            ? (raw as any).items
-            : [];
+    let items: ClientDetails[] = [];
+    let totalCount = 0;
 
-    return { items, raw };
+    if (Array.isArray(raw)) {
+        items = raw;
+        totalCount = raw.length;
+    } else if ((raw as any)?.items) {
+        items = (raw as any).items;
+        totalCount = (raw as any).totalCount || (raw as any).total || 0;
+    }
+
+    if (totalCount === 0 && items.length > 0) {
+        totalCount = items.length;
+    }
+
+    return { items, raw, totalCount };
 }
 
 export async function activateClient(id: string) {

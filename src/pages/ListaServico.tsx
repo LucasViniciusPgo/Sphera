@@ -5,11 +5,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import {ArrowLeft, Search, Edit, Plus, Trash2, Eye} from "lucide-react";
+import { ArrowLeft, Search, Edit, Plus, Trash2, Eye } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import {
+    Pagination,
+    PaginationContent,
+    PaginationItem,
+    PaginationLink,
+    PaginationNext,
+    PaginationPrevious,
+} from "@/components/ui/pagination";
 import { useToast } from "@/hooks/use-toast";
 import { getServices, deleteService, mapServiceToViewModel } from "@/services/servicesService";
-import {ApiError, ApiResponse} from "@/lib/http.ts";
+import { ApiError, ApiResponse } from "@/lib/http.ts";
 
 export type Servico = {
     id: string;
@@ -29,19 +37,46 @@ export default function ListaServicos() {
     const { toast } = useToast();
     const [servicos, setServicos] = useState<Servico[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
+    const [page, setPage] = useState(1);
+    const [hasMore, setHasMore] = useState(true);
+    const pageSize = 10;
 
+    // Debounce search
     useEffect(() => {
-        loadServicos();
-    }, []);
+        const timer = setTimeout(() => {
+            if (page === 1) {
+                loadServicos(1, searchTerm);
+            } else {
+                setPage(1);
+            }
+        }, 500);
 
-    const loadServicos = async () => {
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
+
+    const loadServicos = async (pageParam: number, searchParam: string) => {
         try {
-            const data  = await getServices();
-            const itemsRaw = Array.isArray(data)
-                ? data
-                : data?.items ?? [];
-            const viewItems: Servico[] = itemsRaw.map(mapServiceToViewModel);
+            const { items } = await getServices({
+                page: pageParam,
+                pageSize,
+                search: searchParam || undefined
+            });
+
+            // Bounce back logic
+            if (pageParam > 1 && items.length === 0) {
+                toast({
+                    title: "Fim da lista",
+                    description: "Não existem mais registros para exibir.",
+                });
+                setHasMore(false);
+                setPage(prev => prev - 1);
+                return;
+            }
+
+            const viewItems: Servico[] = items.map(mapServiceToViewModel);
             setServicos(viewItems);
+
+            setHasMore(items.length >= pageSize);
         } catch (e) {
             toast({
                 title: "Erro ao carregar serviços",
@@ -52,8 +87,8 @@ export default function ListaServicos() {
     };
 
     useEffect(() => {
-        loadServicos();
-    }, []);
+        loadServicos(page, searchTerm);
+    }, [page]);
 
 
     const handleDelete = async (servicoId: string) => {
@@ -93,26 +128,7 @@ export default function ListaServicos() {
     };
 
 
-    const filteredServicos = servicos.filter((servico) => {
-        const term = searchTerm.trim().toLowerCase();
-        if (term === "") return true;
-        const nomeMatch = servico.nomeServico.toLowerCase().includes(term);
-        const codigoMatch = servico.codigo.toLowerCase().includes(term);
-        let prazoMatch = false;
-        if (typeof servico.vencimentoDoc === 'number') {
-            prazoMatch = String(servico.vencimentoDoc).includes(term);
-        } else if (servico.vencimentoDoc === null) {
-            prazoMatch = 'sem prazo'.includes(term);
-        } else {
-            const dateObj = new Date(servico.vencimentoDoc);
-            if (!isNaN(dateObj.getTime())) {
-                const iso = dateObj.toISOString().split('T')[0];
-                const locale = dateObj.toLocaleDateString('pt-BR');
-                prazoMatch = iso.includes(term) || locale.toLowerCase().includes(term);
-            }
-        }
-        return nomeMatch || codigoMatch || prazoMatch;
-    });
+    const filteredServicos = servicos;
 
     return (
         <div className="max-w-7xl mx-auto">
@@ -155,7 +171,7 @@ export default function ListaServicos() {
                             <div className="flex gap-2 text-sm text-muted-foreground">
                                 <span>Filtro ativo:</span>
                                 <span className="bg-secondary px-2 py-1 rounded">Busca: "{searchTerm}"</span>
-                                <button 
+                                <button
                                     onClick={() => setSearchTerm("")}
                                     className="text-primary hover:underline ml-2"
                                 >
@@ -246,7 +262,31 @@ export default function ListaServicos() {
                     )}
                 </CardContent>
             </Card>
-        </div>
+
+            <div className="mt-4 flex justify-center">
+                <Pagination>
+                    <PaginationContent>
+                        <PaginationItem>
+                            <PaginationPrevious
+                                onClick={() => setPage(p => Math.max(1, p - 1))}
+                                className={page === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                            />
+                        </PaginationItem>
+
+                        <PaginationItem>
+                            <PaginationLink isActive>{page}</PaginationLink>
+                        </PaginationItem>
+
+                        <PaginationItem>
+                            <PaginationNext
+                                onClick={() => setPage(p => p + 1)}
+                                className={!hasMore ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                            />
+                        </PaginationItem>
+                    </PaginationContent>
+                </Pagination>
+            </div>
+        </div >
     );
 }
 

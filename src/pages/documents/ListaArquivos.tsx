@@ -69,8 +69,9 @@ export default function ListaArquivos() {
         arquivo.status = status;
       });
       setArquivos(arquivosData);
-    
-      setServicos(await getServices());
+
+      const { items } = await getServices();
+      setServicos(items);
 
       if (clientId && arquivosData.length > 0) {
         setNomeCliente(arquivosData[0].clientName || "");

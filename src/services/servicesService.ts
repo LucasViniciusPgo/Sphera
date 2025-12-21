@@ -1,6 +1,6 @@
 import { http } from "@/lib/http";
 import type { ServicoFormData } from "@/pages/CadastroServico";
-import {Servico} from "@/interfaces/Servico.ts";
+import { Servico } from "@/interfaces/Servico.ts";
 
 export interface CreateServiceCommand {
     name: string;
@@ -41,7 +41,7 @@ export type ServicoViewModel = {
     updatedBy: string | null;
 };
 
-export function mapServiceToViewModel(dto: Servico) : ServicoViewModel {
+export function mapServiceToViewModel(dto: Servico): ServicoViewModel {
     return {
         id: dto.id,
         nomeServico: dto.name,
@@ -77,19 +77,28 @@ export async function getServices(params?: {
     code?: string;
     name?: string;
     isActive?: boolean;
+    search?: string;
+    page?: number;
+    pageSize?: number;
 }) {
-    const { code, name, isActive } = params || {};
+    const { code, name, isActive, search, page, pageSize } = params || {};
     const actualParams: Record<string, any> = {};
-    if (code)
-        actualParams.code = code;
-    if (name)
-        actualParams.name = name;
-    if (isActive)
-        actualParams.isActive = isActive;
+    if (code) actualParams.code = code;
+    if (name) actualParams.name = name;
+    if (isActive) actualParams.isActive = isActive;
+    if (search) actualParams.Search = search;
+    if (page) actualParams.Page = page;
+    if (pageSize) actualParams.PageSize = pageSize;
 
     const response = await http.get<Servico[] | { items: Servico[] }>(
         "Services", { params: actualParams });
-    return response.data;
+
+    const raw = response.data;
+    const items = Array.isArray(raw)
+        ? raw
+        : (raw as any).items || [];
+
+    return { items, raw };
 }
 
 export async function activateService(id: string) {

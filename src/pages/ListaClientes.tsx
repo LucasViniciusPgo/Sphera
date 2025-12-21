@@ -20,17 +20,63 @@ import { useToast } from "@/hooks/use-toast";
 import { getClients, deleteClient, getClientById, type ClientDetails } from "@/services/clientsService.ts";
 import { removeContactFromClient, addContactToClient } from "@/services/clientsContactsService.ts";
 import { formatCNPJ } from "@/utils/format.ts";
+import {
+    Pagination,
+    PaginationContent,
+    PaginationItem,
+    PaginationLink,
+    PaginationNext,
+    PaginationPrevious,
+} from "@/components/ui/pagination";
+
 
 const ListaClientes = () => {
     const navigate = useNavigate();
     const { toast } = useToast();
     const [searchTerm, setSearchTerm] = useState("");
+    const [page, setPage] = useState(1);
+    const [hasMore, setHasMore] = useState(true);
+    const pageSize = 10;
+
     const [clientes, setClientes] = useState<ClientDetails[]>([]);
 
-    const loadClientes = useCallback(async () => {
+    // Debounce search to avoid too many requests
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (page === 1) {
+                loadClientes(1, searchTerm);
+            } else {
+                setPage(1);
+            }
+        }, 500);
+
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
+
+    const loadClientes = useCallback(async (pageParam: number, searchParam: string) => {
         try {
-            const { items } = await getClients({ includePartner: true });
+            const { items, totalCount: total } = await getClients({
+                includePartner: true,
+                page: pageParam,
+                pageSize,
+                search: searchParam || undefined
+            });
+
+            if (pageParam > 1 && items.length === 0) {
+                toast({
+                    title: "Fim da lista",
+                    description: "Não existem mais registros para exibir.",
+                });
+                setHasMore(false);
+                setPage(prev => prev - 1);
+                return;
+            }
+
             setClientes(items);
+
+            // If we got fewer items than pageSize, we know there are no more pages.
+            // If we got exact pageSize, we assume there might be more.
+            setHasMore(items.length >= pageSize);
         } catch (error: any) {
             console.error(error);
             toast({
@@ -45,8 +91,8 @@ const ListaClientes = () => {
     }, [toast]);
 
     useEffect(() => {
-        loadClientes();
-    }, [loadClientes]);
+        loadClientes(page, searchTerm);
+    }, [page, loadClientes]);
 
     const handleDelete = async (clienteId: string) => {
         let contactsToRestore: any[] = [];
@@ -61,7 +107,8 @@ const ListaClientes = () => {
             }
 
             await deleteClient(clienteId);
-            setClientes((prev) => prev.filter((c) => c.id !== clienteId));
+            // Reload current page
+            loadClientes(page, searchTerm);
             toast({
                 title: "Cliente excluído",
                 description: "O cliente foi excluído com sucesso.",
@@ -108,16 +155,8 @@ const ListaClientes = () => {
         }
     };
 
-    const filteredClientes = clientes.filter((cliente) => {
-        const term = searchTerm.toLowerCase();
-        const parceiroNome = cliente.partner?.legalName?.toLowerCase() ?? "";
-        return (
-            cliente.tradeName.toLowerCase().includes(term) ||
-            cliente.legalName.toLowerCase().includes(term) ||
-            (cliente.cnpj ?? "").includes(searchTerm) ||
-            parceiroNome.includes(term)
-        );
-    });
+    // Remove client-side filtering
+    const filteredClientes = clientes;
 
     return (
         <Card className="max-w-6xl mx-auto">
@@ -234,8 +273,34 @@ const ListaClientes = () => {
                         </Table>
                     </div>
                 )}
+
+
+
+                <div className="mt-4">
+                    <Pagination>
+                        <PaginationContent>
+                            <PaginationItem>
+                                <PaginationPrevious
+                                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                                    className={page === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                                />
+                            </PaginationItem>
+
+                            <PaginationItem>
+                                <PaginationLink isActive>{page}</PaginationLink>
+                            </PaginationItem>
+
+                            <PaginationItem>
+                                <PaginationNext
+                                    onClick={() => setPage(p => p + 1)}
+                                    className={!hasMore ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                                />
+                            </PaginationItem>
+                        </PaginationContent>
+                    </Pagination>
+                </div>
             </CardContent>
-        </Card>
+        </Card >
     );
 };
 
