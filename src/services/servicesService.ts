@@ -94,11 +94,18 @@ export async function getServices(params?: {
         "Services", { params: actualParams });
 
     const raw = response.data;
-    const items = Array.isArray(raw)
-        ? raw
-        : (raw as any).items || [];
+    let items: Servico[] = [];
+    let totalCount = 0;
 
-    return { items, raw };
+    if (Array.isArray(raw)) {
+        items = raw;
+        totalCount = raw.length;
+    } else {
+        items = (raw as any).items || [];
+        totalCount = (raw as any).totalCount || (raw as any).total || 0;
+    }
+
+    return { items, raw, totalCount };
 }
 
 export async function activateService(id: string) {

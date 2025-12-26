@@ -9,6 +9,7 @@ import {
 
 
 export async function getUsers(params?: {
+    name?: string;
     email?: string;
     isActive?: boolean;
     roleId?: number;
@@ -16,9 +17,10 @@ export async function getUsers(params?: {
     pageSize?: number;
     search?: string;
 }) {
-    const { email, isActive, roleId, page, pageSize, search } = params || {};
+    const { name, email, isActive, roleId, page, pageSize, search } = params || {};
     const actualParams: Record<string, any> = {};
 
+    if (name) actualParams.Name = name;
     if (email) actualParams.Email = email;
     if (typeof isActive === "boolean") actualParams.IsActive = isActive;
     if (roleId !== undefined) actualParams.RoleId = roleId;
@@ -31,9 +33,18 @@ export async function getUsers(params?: {
     });
 
     const raw = response.data;
-    const items = Array.isArray(raw) ? raw : Array.isArray((raw as any).items) ? (raw as any).items : [];
+    let items: Usuario[] = [];
+    let totalCount = 0;
 
-    return items;
+    if (Array.isArray(raw)) {
+        items = raw;
+        totalCount = raw.length;
+    } else {
+        items = (raw as any).items || [];
+        totalCount = (raw as any).totalCount || (raw as any).total || 0;
+    }
+
+    return { items, totalCount };
 }
 
 export async function getUserById(id: string) {
