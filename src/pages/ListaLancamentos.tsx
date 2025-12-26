@@ -12,9 +12,10 @@ import { getServices } from "@/services/servicesService";
 import { Servico } from "@/interfaces/Servico";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { createInvoice } from "@/services/invoicesService";
+import { Invoice } from "@/services/invoicesService";
 import { getClientServicePrices, type ClientServicePrice } from "@/services/clientServicePricesService";
 import { cn } from "@/lib/utils";
+import { CloseInvoicesWizard, type ClientClosingGroup } from "@/components/CloseInvoicesWizard";
 
 const ListaLancamentos = () => {
     const navigate = useNavigate();
@@ -30,6 +31,9 @@ const ListaLancamentos = () => {
     const [filterIsBillable, setFilterIsBillable] = useState<string>("all");
     const [selectedEntryIds, setSelectedEntryIds] = useState<string[]>([]);
     const [expandedClientIds, setExpandedClientIds] = useState<string[]>([]);
+    const [isWizardOpen, setIsWizardOpen] = useState(false);
+    const [wizardGroups, setWizardGroups] = useState<ClientClosingGroup[]>([]);
+    const [isGeneratingInvoices, setIsGeneratingInvoices] = useState(false);
 
     const loadData = useCallback(async () => {
         try {
@@ -175,7 +179,7 @@ const ListaLancamentos = () => {
         if (selectedEntryIds.length === 0) {
             toast({
                 title: "Nenhum lançamento selecionado",
-                description: "Selecione ao menos um lançamento para enviar à fatura.",
+                description: "Selecione ao menos um lançamento para fechar fatura.",
                 variant: "destructive",
             });
             return;
@@ -206,6 +210,10 @@ const ListaLancamentos = () => {
             return;
         }
 
+        setIsGeneratingInvoices(true);
+        const newWizardGroups: ClientClosingGroup[] = [];
+        const errors: string[] = [];
+
         // Group by client
         const groupedByClient = selectedEntries.reduce((acc, entry) => {
             if (!acc[entry.clientId]) {
@@ -215,65 +223,67 @@ const ListaLancamentos = () => {
             return acc;
         }, {} as Record<string, typeof selectedEntries>);
 
-        const clientIds = Object.keys(groupedByClient);
-
-        // Validate: all entries must be from the same client
-        if (clientIds.length > 1) {
-            toast({
-                title: "Múltiplos clientes selecionados",
-                description: "Todos os lançamentos devem ser do mesmo cliente para criar uma fatura. Por favor, selecione lançamentos de apenas um cliente.",
-                variant: "destructive",
-            });
-            return;
-        }
-
-        const clientId = clientIds[0];
-        const clientEntries = groupedByClient[clientId];
-
-        const items = clientEntries.map((entry) => ({
-            serviceId: entry.serviceId,
-            description: "",
-            quantity: entry.quantity,
-            unitPrice: clientServicePrices.find(
-                sp => sp.clientId === entry.clientId && sp.serviceId === entry.serviceId
-            )?.unitPrice ?? 0,
-            additionalAmount: 0,
-            isAdditional: false,
-        }));
-
-        const issueDate = new Date().toISOString().split('T')[0];
-        const billingDueDay = clientes.find(c => c.id === clientId)?.billingDueDay;
-        const today = new Date();
-        const dueDateObj = new Date(today.getFullYear(), today.getMonth(), billingDueDay || today.getDate());
-        const dueDate = dueDateObj.toISOString().split('T')[0];
-
+        // Process each client group
         try {
-            await createInvoice({
-                clientId,
-                issueDate,
-                dueDate,
-                notes: `Fatura criada a partir de ${selectedEntries.length} lançamento(s)`,
-                items
-            });
+            for (const [clientId, clientEntries] of Object.entries(groupedByClient)) {
+                const clientDetails = clientes.find((c) => c.id === clientId);
+                if (!clientDetails) {
+                    errors.push(`Cliente ID ${clientId} não encontrado.`);
+                    continue;
+                }
 
-            toast({
-                title: "Fatura criada com sucesso",
-                description: `Fatura criada para ${getClientName(clientId)} com ${selectedEntries.length} lançamento(s).`,
-            });
+                let totalAmount = 0;
+                clientEntries.forEach(entry => {
+                    const price = clientServicePrices.find(
+                        sp => sp.clientId === entry.clientId && sp.serviceId === entry.serviceId
+                    )?.unitPrice ?? 0;
+                    totalAmount += (entry.quantity * price);
+                });
 
-            setSelectedEntryIds([]);
-            loadData();
-        } catch (error: any) {
+                newWizardGroups.push({
+                    client: clientDetails,
+                    entries: clientEntries,
+                    totalAmount: totalAmount
+                });
+            }
+
+            if (errors.length > 0) {
+                toast({
+                    title: "Erros durante a geração",
+                    description: (
+                        <div className="mt-2 text-xs">
+                            <p>Algumas faturas falharam:</p>
+                            <ul className="list-disc pl-4 mt-1">
+                                {errors.map((e, i) => <li key={i}>{e}</li>)}
+                            </ul>
+                        </div>
+                    ),
+                    variant: "destructive",
+                });
+            }
+
+            if (newWizardGroups.length > 0) {
+                setWizardGroups(newWizardGroups);
+                setIsWizardOpen(true);
+            }
+
+        } catch (error) {
             console.error(error);
             toast({
-                title: "Erro ao criar fatura",
-                description:
-                    error?.data?.message ||
-                    error?.message ||
-                    "Não foi possível criar a fatura. Verifique os dados e tente novamente.",
-                variant: "destructive",
+                title: "Erro critico",
+                description: "Ocorreu um erro ao preparar o fechamento.",
+                variant: "destructive"
             });
+        } finally {
+            setIsGeneratingInvoices(false);
         }
+    };
+
+    const handleWizardSuccess = () => {
+        setIsWizardOpen(false);
+        setWizardGroups([]);
+        setSelectedEntryIds([]);
+        loadData();
     };
 
     const hasActiveFilters = searchTerm || filterClientId !== "all" || filterDateStart || filterDateEnd || filterIsBillable !== "all";
@@ -401,8 +411,16 @@ const ListaLancamentos = () => {
                         <Button
                             size="sm"
                             onClick={handleSendToInvoice}
+                            disabled={isGeneratingInvoices}
                         >
-                            Enviar para Fatura
+                            {isGeneratingInvoices ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Preparando...
+                                </>
+                            ) : (
+                                "Fechar Faturas"
+                            )}
                         </Button>
                     </div>
                 </div>
@@ -532,6 +550,13 @@ const ListaLancamentos = () => {
                     </div>
                 )}
             </CardContent>
+
+            <CloseInvoicesWizard
+                open={isWizardOpen}
+                onOpenChange={setIsWizardOpen}
+                groups={wizardGroups}
+                onSuccess={handleWizardSuccess}
+            />
         </Card>
     );
 };
