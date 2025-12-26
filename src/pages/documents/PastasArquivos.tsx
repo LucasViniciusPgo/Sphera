@@ -21,9 +21,9 @@ export default function PastasArquivos() {
   useEffect(() => {
     (async () => {
       const partnersResponse = await getPartners({ includeClients: true });
-    
+
       setPartners(partnersResponse.items);
-    
+
       const count: Record<string, number> = {};
       partnersResponse.items.forEach((partner) => {
         count[partner.id] = partner.clients ? partner.clients.length : 0;
@@ -39,7 +39,8 @@ export default function PastasArquivos() {
   }, [partners, searchTerm]);
 
   const handleFolderClick = (partnerId: string) => {
-    navigate(`/home/arquivos/${partnerId}`, { state: { partnerId } });
+    const totalClients = clientsPerPartner[partnerId] || 0;
+    navigate(`/home/arquivos/${partnerId}`, { state: { partnerId, totalClients } });
   };
 
   return (
@@ -99,7 +100,7 @@ export default function PastasArquivos() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {searchPartners.map((partner) => {
             const totalClients = clientsPerPartner[partner.id] || 0;
-            
+
             return (
               <Card
                 key={partner.id}

@@ -74,8 +74,6 @@ const ListaClientes = () => {
 
             setClientes(items);
 
-            // If we got fewer items than pageSize, we know there are no more pages.
-            // If we got exact pageSize, we assume there might be more.
             setHasMore(items.length >= pageSize);
         } catch (error: any) {
             console.error(error);

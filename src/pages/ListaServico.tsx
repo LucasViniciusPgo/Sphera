@@ -62,23 +62,20 @@ export default function ListaServicos() {
                 name: searchParam || undefined
             });
 
-            // Se a página solicitada não tem itens e não é a primeira, volta
             if (pageParam > 1 && items.length === 0) {
-                // Opção: Ajustar a página para a última válida se possível, ou apenas anterior
-                setPage(prev => Math.max(1, prev - 1));
+                toast({
+                    title: "Fim da lista",
+                    description: "Não existem mais registros para exibir.",
+                });
+                setHasMore(false);
+                setPage(prev => prev - 1);
                 return;
             }
 
             const viewItems: Servico[] = items.map(mapServiceToViewModel);
             setServicos(viewItems);
 
-            // Se totalCount disponível, usa ele. Se não, fallback para lógica antiga.
-            if (totalCount > 0) {
-                setHasMore(pageParam * pageSize < totalCount);
-            } else {
-                setHasMore(items.length >= pageSize);
-            }
-
+            setHasMore(items.length >= pageSize);
         } catch (e) {
             toast({
                 title: "Erro ao carregar serviços",
