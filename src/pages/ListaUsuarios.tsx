@@ -76,7 +76,6 @@ export default function ListaUsuarios() {
                 name: searchParam || undefined
             });
 
-            // Bounce back logic
             if (pageParam > 1 && items.length === 0) {
                 toast({
                     title: "Fim da lista",
@@ -90,11 +89,7 @@ export default function ListaUsuarios() {
 
             setUsuarios(items);
 
-            if (totalCount > 0) {
-                setHasMore(pageParam * pageSize < totalCount);
-            } else {
-                setHasMore(items.length >= pageSize);
-            }
+            setHasMore(items.length >= pageSize);
         } catch (error: any) {
             console.error(error);
             toast({

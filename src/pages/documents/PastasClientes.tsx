@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Folder, FileText, ArrowLeft, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ interface Client {
 
 export default function PastasClientes() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { partnerId } = useParams<{ partnerId: string }>();
   const [clients, setClients] = useState<any[]>([]);
   const [documentsPerClient, setDocumentsPerClient] = useState<Record<string, number>>({});
@@ -26,7 +27,12 @@ export default function PastasClientes() {
 
   useEffect(() => {
     (async () => {
-      const clientsResponse = (await getClients({ partnerId, includePartner: true })).items;
+      const pageSize = location.state?.totalClients || 1000;
+      const clientsResponse = (await getClients({
+        partnerId,
+        includePartner: true,
+        pageSize: pageSize > 0 ? pageSize : 1000
+      })).items;
       setClients(clientsResponse);
       let legalName = "";
       if (clientsResponse.length > 0 && clientsResponse[0].partner) {
@@ -46,14 +52,14 @@ export default function PastasClientes() {
       });
       setDocumentsPerClient(count);
     })();
-  }, [ partnerId ]);
+  }, [partnerId]);
 
   const searchClients = useMemo(() => {
     return clients.filter((c) =>
       searchTerm === "" || c.legalName.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [clients, searchTerm]);
-  
+
   const handlePastaClick = (clientId: string) => {
     navigate(`/home/arquivos/${partnerId}/${clientId}`, { state: { partnerId, clientId } });
   };
