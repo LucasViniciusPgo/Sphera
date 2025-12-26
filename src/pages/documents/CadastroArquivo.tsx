@@ -16,6 +16,7 @@ import { createDocument, getDocumentById, updateDocument } from "@/services/docu
 import { getClients } from "@/services/clientsService";
 import { getUsers } from "@/services/usersServices";
 import { getServices } from "@/services/servicesService";
+import { AsyncSelect } from "@/components/AsyncSelect";
 
 const arquivoSchema = z.object({
   fileName: z.string().min(1, "Nome do Arquivo é obrigatório").max(100),
@@ -43,9 +44,10 @@ export default function CadastroArquivo() {
   const { id } = useParams();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [clients, setClients] = useState<any[]>([]);
-  const [services, setServices] = useState<any[]>([]);
-  const [users, setUsers] = useState<any[]>([]);
+  // const [clients, setClients] = useState<any[]>([]); // Clients now via AsyncSelect
+  // const [services, setServices] = useState<any[]>([]); // Services via AsyncSelect
+  // const [users, setUsers] = useState<any[]>([]); // Users via AsyncSelect
+  const [selectedService, setSelectedService] = useState<any | null>(null);
   const [editingDocument, setEditingDocument] = useState<Arquivo | null>(null);
   const [manualDue, setManualDue] = useState(false); // usuário editou manualmente DataVencimento
   // Removido vínculo automático entre serviço e data de vencimento
@@ -68,11 +70,14 @@ export default function CadastroArquivo() {
 
   useEffect(() => {
     (async () => {
-      setClients((await getClients()).items);
+      // setClients((await getClients()).items); // Removido carregamento inicial de todos os clientes
 
+
+      /*
       setServices((await getServices()).items);
 
       setUsers(await getUsers())
+      */
 
       if (id) {
         const existingDocument = await getDocumentById(id);
@@ -81,16 +86,23 @@ export default function CadastroArquivo() {
           issueDate: existingDocument.issueDate.slice(0, 10),
           dueDate: existingDocument.dueDate.slice(0, 10),
         });
+
+        // Se estiver editando, precisamos buscar os dados do serviço atual
+        if (existingDocument.serviceId) {
+          const svc = await getServices({ search: existingDocument.serviceName, pageSize: 1 });
+          const found = svc.items.find(s => s.id === existingDocument.serviceId);
+          if (found) setSelectedService(found);
+        }
       }
     })();
   }, [id]);
 
-  // Segundo efeito: somente reseta quando listas já carregadas para garantir selects preenchidos
+  // Segundo efeito: somente reseta quando documento editado disponível
   useEffect(() => {
-    if (editingDocument && clients.length > 0 && services.length > 0) {
+    if (editingDocument) {
       form.reset(editingDocument);
     }
-  }, [editingDocument, clients, services, form]);
+  }, [editingDocument, form]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -257,20 +269,21 @@ export default function CadastroArquivo() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Cliente *</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value} disabled={readonly}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione um cliente" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {clients.map((cliente) => (
-                              <SelectItem key={cliente.id} value={cliente.id}>
-                                {cliente.legalName}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <FormControl>
+                          <AsyncSelect
+                            fetcher={async (search) => {
+                              const res = await getClients({ search, pageSize: 20 });
+                              return res.items;
+                            }}
+                            value={field.value}
+                            onChange={field.onChange}
+                            getLabel={(client: any) => client.legalName || client.tradeName || "Sem Nome"}
+                            getValue={(client: any) => client.id}
+                            initialLabel={editingDocument?.clientName || ""}
+                            placeholder="Buscar cliente..."
+                            disabled={readonly}
+                          />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -282,38 +295,45 @@ export default function CadastroArquivo() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Serviço *</FormLabel>
-                        <Select
-                          onValueChange={(value) => {
-                            field.onChange(value);
-                            // ao selecionar serviço, se tiver prazo, recalcula vencimento
-                            const servicoSel = services.find(s => s.id === value);
-                            if (servicoSel && servicoSel.dueDate) {
+                        <FormControl>
+                          <AsyncSelect
+                            fetcher={async (name) => {
+                              const res = await getServices({ name, pageSize: 20 });
+                              return res.items;
+                            }}
+                            value={field.value}
+                            onChange={(value) => {
+                              field.onChange(value);
+                            }}
+                            onSelectObject={(servicoSel: any) => {
+                              setSelectedService(servicoSel); // Salva o serviço selecionado para cálculos futuros
+                              const dias = servicoSel.defaultDueInDays || servicoSel.DefaultDueInDays || servicoSel.remainingDays || servicoSel.RemainingDays || servicoSel.vencimentoDoc;
+                              const fixedDate = servicoSel.dueDate || servicoSel.DueDate;
+
                               const emissao = form.getValues('issueDate');
                               const base = emissao || new Date().toISOString().slice(0, 10);
                               if (!emissao) {
                                 form.setValue('issueDate', base);
                               }
-                              const nova = addDaysISO(base, servicoSel.dueDate);
-                              form.setValue('dueDate', nova);
-                              setManualDue(false);
-                            }
-                          }}
-                          value={field.value}
-                          disabled={readonly}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione um serviço" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {services.map((servico) => (
-                              <SelectItem key={servico.id} value={servico.id}>
-                                {servico.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+
+                              if (typeof dias === 'number' && dias > 0) {
+                                const nova = addDaysISO(base, dias);
+                                form.setValue('dueDate', nova);
+                                setManualDue(false);
+                              } else if (fixedDate && typeof fixedDate === 'string') {
+                                // Se tiver data fixa (YYYY-MM-DD), usa ela direto
+                                const nova = fixedDate.slice(0, 10);
+                                form.setValue('dueDate', nova);
+                                setManualDue(false);
+                              }
+                            }}
+                            getLabel={(s: any) => s.name || s.Name || s.nomeServico || "Sem Nome"}
+                            getValue={(s: any) => s.id || s.Id}
+                            initialLabel={editingDocument?.serviceName || ""}
+                            placeholder="Buscar serviço..."
+                            disabled={readonly}
+                          />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -326,20 +346,21 @@ export default function CadastroArquivo() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Responsável *</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value} disabled={readonly}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione um responsável" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {users.map((user) => (
-                            <SelectItem key={user.id} value={user.id}>
-                              {user.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <FormControl>
+                        <AsyncSelect
+                          fetcher={async (name) => {
+                            const res = await getUsers({ name, pageSize: 20 });
+                            return res.items;
+                          }}
+                          value={field.value}
+                          onChange={field.onChange}
+                          getLabel={(u: any) => u.name}
+                          getValue={(u: any) => u.id}
+                          initialLabel={editingDocument?.responsibleName || ""}
+                          placeholder="Buscar responsável..."
+                          disabled={readonly}
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -359,11 +380,14 @@ export default function CadastroArquivo() {
                             onChange={(e) => {
                               field.onChange(e.target.value);
                               // Recalcula vencimento se serviço com prazo e não manual
-                              const servicoId = form.getValues('serviceId');
-                              const servicoSel = services.find(s => s.id === servicoId);
-                              if (servicoSel && servicoSel.dueDate && !manualDue) {
-                                const nova = addDaysISO(e.target.value, servicoSel.dueDate);
-                                form.setValue('dueDate', nova);
+                              const dias = selectedService?.defaultDueInDays || selectedService?.DefaultDueInDays || selectedService?.remainingDays || selectedService?.RemainingDays || selectedService?.vencimentoDoc;
+                              const fixedDate = selectedService?.dueDate || selectedService?.DueDate;
+
+                              if (selectedService && !manualDue) {
+                                if (typeof dias === 'number' && dias > 0) {
+                                  const nova = addDaysISO(e.target.value, dias);
+                                  form.setValue('dueDate', nova);
+                                }
                               }
                             }}
                             readOnly={readonly}
