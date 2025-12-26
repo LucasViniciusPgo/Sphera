@@ -56,27 +56,29 @@ export default function ListaServicos() {
 
     const loadServicos = async (pageParam: number, searchParam: string) => {
         try {
-            const { items } = await getServices({
+            const { items, totalCount } = await getServices({
                 page: pageParam,
                 pageSize,
-                search: searchParam || undefined
+                name: searchParam || undefined
             });
 
-            // Bounce back logic
+            // Se a página solicitada não tem itens e não é a primeira, volta
             if (pageParam > 1 && items.length === 0) {
-                toast({
-                    title: "Fim da lista",
-                    description: "Não existem mais registros para exibir.",
-                });
-                setHasMore(false);
-                setPage(prev => prev - 1);
+                // Opção: Ajustar a página para a última válida se possível, ou apenas anterior
+                setPage(prev => Math.max(1, prev - 1));
                 return;
             }
 
             const viewItems: Servico[] = items.map(mapServiceToViewModel);
             setServicos(viewItems);
 
-            setHasMore(items.length >= pageSize);
+            // Se totalCount disponível, usa ele. Se não, fallback para lógica antiga.
+            if (totalCount > 0) {
+                setHasMore(pageParam * pageSize < totalCount);
+            } else {
+                setHasMore(items.length >= pageSize);
+            }
+
         } catch (e) {
             toast({
                 title: "Erro ao carregar serviços",
@@ -263,7 +265,7 @@ export default function ListaServicos() {
                 </CardContent>
             </Card>
 
-            <div className="mt-4 flex justify-center">
+            <div className="mt-4">
                 <Pagination>
                     <PaginationContent>
                         <PaginationItem>

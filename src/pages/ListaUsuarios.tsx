@@ -69,14 +69,15 @@ export default function ListaUsuarios() {
     const loadUsuarios = useCallback(async (pageParam: number, searchParam: string) => {
         try {
             setLoading(true);
-            const data = await getUsers({
+            setLoading(true);
+            const { items, totalCount } = await getUsers({
                 page: pageParam,
                 pageSize,
-                search: searchParam || undefined
+                name: searchParam || undefined
             });
 
             // Bounce back logic
-            if (pageParam > 1 && data.length === 0) {
+            if (pageParam > 1 && items.length === 0) {
                 toast({
                     title: "Fim da lista",
                     description: "Não existem mais registros para exibir.",
@@ -87,8 +88,13 @@ export default function ListaUsuarios() {
                 return;
             }
 
-            setUsuarios(data);
-            setHasMore(data.length >= pageSize);
+            setUsuarios(items);
+
+            if (totalCount > 0) {
+                setHasMore(pageParam * pageSize < totalCount);
+            } else {
+                setHasMore(items.length >= pageSize);
+            }
         } catch (error: any) {
             console.error(error);
             toast({
@@ -319,7 +325,7 @@ export default function ListaUsuarios() {
                 </CardContent>
             </Card>
 
-            <div className="mt-4 flex justify-center">
+            <div className="mt-4">
                 <Pagination>
                     <PaginationContent>
                         <PaginationItem>
