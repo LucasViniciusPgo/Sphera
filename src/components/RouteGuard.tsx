@@ -1,4 +1,3 @@
-import { useAuthRole } from "@/hooks/useAuthRole";
 import { Navigate, Outlet } from "react-router-dom";
 
 interface RouteGuardProps {
@@ -6,12 +5,12 @@ interface RouteGuardProps {
 }
 
 export function RouteGuard(props: RouteGuardProps) {
-    let { role } = useAuthRole(); // Reutilizando o hook useAuthRole para verificar se o usuário está autenticado
+    const token = localStorage.getItem("authToken")
 
-    if (props.requiresAuthentication && role === null) {
+    if (props.requiresAuthentication && token === null) {
         return <Navigate to="/" replace />;
     }
-    if (!props.requiresAuthentication && role !== null) {
+    if (!props.requiresAuthentication && token !== null) {
         return <Navigate to="/home" replace />;
     }
 
