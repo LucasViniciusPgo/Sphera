@@ -26,23 +26,23 @@ import {
 } from "@/components/ui/alert-dialog";
 
 const parceirosItems = [
-    { title: "Cadastrar Parceiros", url: "/home/cadastro-parceiros", icon: Users },
-    { title: "Listar Parceiros", url: "/home/parceiros", icon: List },
+    { title: "Cadastrar Parceiros", url: "/cadastro-parceiros", icon: Users },
+    { title: "Listar Parceiros", url: "/parceiros", icon: List },
 ];
 
 const clientesItems = [
-    { title: "Cadastrar Clientes", url: "/home/cadastro-clientes", icon: UserPlus },
-    { title: "Listar Clientes", url: "/home/clientes", icon: List },
+    { title: "Cadastrar Clientes", url: "/cadastro-clientes", icon: UserPlus },
+    { title: "Listar Clientes", url: "/clientes", icon: List },
 ];
 
 const serviceItems = [
-    { title: "Cadastrar Serviços", url: "/home/cadastro-servicos", icon: Briefcase },
-    { title: "Listar Serviços", url: "/home/servicos", icon: Briefcase },
+    { title: "Cadastrar Serviços", url: "/cadastro-servicos", icon: Briefcase },
+    { title: "Listar Serviços", url: "/servicos", icon: Briefcase },
 ];
 
 const cadastroArquivosItems = [
-    { title: "Cadastrar Arquivos", url: "/home/cadastro-arquivos", icon: Archive },
-    { title: "Listar Arquivos", url: "/home/arquivos", icon: ArchiveX },
+    { title: "Cadastrar Arquivos", url: "/cadastro-arquivos", icon: Archive },
+    { title: "Listar Arquivos", url: "/arquivos", icon: ArchiveX },
 ];
 
 const dashboardItem = [
@@ -50,12 +50,12 @@ const dashboardItem = [
 ];
 
 const agendaItems = [
-    { title: "Agenda", url: "/home/agenda", icon: CalendarDays },
+    { title: "Agenda", url: "/agenda", icon: CalendarDays },
 ];
 
 const usuarioAdminItemsBase = [
-    { title: "Cadastrar Usuários", url: "/home/novo-usuario", icon: UserPlus },
-    { title: "Listar Usuários", url: "/home/usuarios", icon: Users },
+    { title: "Cadastrar Usuários", url: "/novo-usuario", icon: UserPlus },
+    { title: "Listar Usuários", url: "/usuarios", icon: Users },
 ];
 
 export function AppSidebar() {
