@@ -89,7 +89,8 @@ const ListaClientes = () => {
     }, [toast]);
 
     useEffect(() => {
-        loadClientes(page, searchTerm);
+        if (page !== 1)
+            loadClientes(page, searchTerm);
     }, [page, loadClientes]);
 
     const handleDelete = async (clienteId: string) => {
