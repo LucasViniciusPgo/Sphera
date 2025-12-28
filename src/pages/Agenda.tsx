@@ -155,7 +155,7 @@ const Agenda = () => {
             });
 
         getUsers({ isActive: true, pageSize: 100 })
-            .then((items) => setUsers(items))
+            .then((items) => setUsers(items.items))
             .catch(() => {
                 setUsers([]);
             });

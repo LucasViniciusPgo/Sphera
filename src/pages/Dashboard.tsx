@@ -62,6 +62,13 @@ const Dashboard = () => {
         return { occurredAtStart, occurredAtEnd };
     };
 
+    const parseUtcDate = (timestamp: string) => {
+        // Treat timestamps without explicit timezone as UTC
+        const hasTimeZone = /[zZ]$|[+-]\d{2}:\d{2}$/.test(timestamp);
+        const ts = hasTimeZone ? timestamp : `${timestamp}Z`;
+        return new Date(ts);
+    };
+
     const loadAuditories = async () => {
         setLoading(true);
         setError(null);
@@ -85,7 +92,7 @@ const Dashboard = () => {
             // ordena por data decrescente
             const sorted = [...items].sort(
                 (a, b) =>
-                    new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime(),
+                    parseUtcDate(b.occurredAt).getTime() - parseUtcDate(a.occurredAt).getTime(),
             );
 
             setAuditLogs(sorted);
@@ -187,7 +194,7 @@ const Dashboard = () => {
     };
 
     const formatDate = (timestamp: string) => {
-        const date = new Date(timestamp);
+        const date = parseUtcDate(timestamp);
         if (Number.isNaN(date.getTime())) return timestamp;
 
         return date.toLocaleString("pt-BR", {
