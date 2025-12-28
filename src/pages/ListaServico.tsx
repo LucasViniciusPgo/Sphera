@@ -86,7 +86,8 @@ export default function ListaServicos() {
     };
 
     useEffect(() => {
-        loadServicos(page, searchTerm);
+        if (page !== 1)
+            loadServicos(page, searchTerm);
     }, [page]);
 
 
