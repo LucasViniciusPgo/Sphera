@@ -215,7 +215,7 @@ export default function ListaParceiros() {
     const [hasMore, setHasMore] = useState(true);
     const pageSize = 10;
 
-    // Debounce search
+    // // Debounce search
     useEffect(() => {
         const timer = setTimeout(() => {
             if (page === 1) {
@@ -268,7 +268,8 @@ export default function ListaParceiros() {
     }, [toast]);
 
     useEffect(() => {
-        loadParceiros(page, searchTerm);
+        if (page !== 1)
+            loadParceiros(page, searchTerm);
     }, [page, loadParceiros]);
 
 

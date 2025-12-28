@@ -114,7 +114,8 @@ export default function ListaUsuarios() {
     }, []);
 
     useEffect(() => {
-        loadUsuarios(page, searchTerm);
+        if (page !== 1)
+            loadUsuarios(page, searchTerm);
     }, [page, loadUsuarios]);
 
     useEffect(() => {
