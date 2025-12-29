@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -214,9 +214,15 @@ export default function ListaParceiros() {
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
     const pageSize = 10;
+    const mounted = useRef(false);
 
     // // Debounce search
     useEffect(() => {
+        if (!mounted.current) {
+            mounted.current = true;
+            return;
+        }
+
         const timer = setTimeout(() => {
             if (page === 1) {
                 loadParceiros(1, searchTerm);
@@ -268,8 +274,7 @@ export default function ListaParceiros() {
     }, [toast]);
 
     useEffect(() => {
-        if (page !== 1)
-            loadParceiros(page, searchTerm);
+        loadParceiros(page, searchTerm);
     }, [page, loadParceiros]);
 
 
