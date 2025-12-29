@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -52,9 +52,15 @@ export default function ListaUsuarios() {
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
     const pageSize = 10;
+    const mounted = useRef(false);
 
     // Debounce search
     useEffect(() => {
+        if (!mounted.current) {
+            mounted.current = true;
+            return;
+        }
+
         const timer = setTimeout(() => {
             if (page === 1) {
                 loadUsuarios(1, searchTerm);
@@ -114,8 +120,7 @@ export default function ListaUsuarios() {
     }, []);
 
     useEffect(() => {
-        if (page !== 1)
-            loadUsuarios(page, searchTerm);
+        loadUsuarios(page, searchTerm);
     }, [page, loadUsuarios]);
 
     useEffect(() => {

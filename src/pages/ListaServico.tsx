@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -40,9 +40,15 @@ export default function ListaServicos() {
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
     const pageSize = 10;
+    const mounted = useRef(false);
 
     // Debounce search
     useEffect(() => {
+        if (!mounted.current) {
+            mounted.current = true;
+            return;
+        }
+
         const timer = setTimeout(() => {
             if (page === 1) {
                 loadServicos(1, searchTerm);
@@ -86,8 +92,7 @@ export default function ListaServicos() {
     };
 
     useEffect(() => {
-        if (page !== 1)
-            loadServicos(page, searchTerm);
+        loadServicos(page, searchTerm);
     }, [page]);
 
 

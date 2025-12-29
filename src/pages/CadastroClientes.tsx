@@ -24,6 +24,7 @@ import type { ClientContact } from "@/services/clientsContactsService.ts";
 import { getPartners, type ApiPartner, type AddressDTO } from "@/services/partnersService.ts";
 import { formatCNPJ, formatPhone, formatCEP } from "@/utils/format.ts";
 import { validateCNPJ } from "@/utils/validators";
+import { AsyncSelect } from "@/components/AsyncSelect";
 
 export interface Cliente {
     id: string;
@@ -114,7 +115,7 @@ const CadastroClientes = () => {
 
     const [originalStatus, setOriginalStatus] = useState<boolean | undefined>();
     const [existingContacts, setExistingContacts] = useState<ClientContact[]>([]);
-    const [parceiros, setParceiros] = useState<ApiPartner[]>([]);
+    const [initialPartnerName, setInitialPartnerName] = useState("");
 
     const form = useForm<ClienteFormData>({
         resolver: zodResolver(clienteSchema),
@@ -145,24 +146,7 @@ const CadastroClientes = () => {
         },
     });
 
-    useEffect(() => {
-        (async () => {
-            try {
-                const { items } = await getPartners();
-                setParceiros(items);
-            } catch (error: any) {
-                console.error(error);
-                toast({
-                    title: "Erro ao carregar parceiros",
-                    description:
-                        error?.data?.message ||
-                        error?.message ||
-                        "Não foi possível carregar a lista de parceiros.",
-                    variant: "destructive",
-                });
-            }
-        })();
-    }, [toast]);
+
 
     useEffect(() => {
         if (!id) return;
@@ -174,11 +158,12 @@ const CadastroClientes = () => {
                 const addr: AddressDTO = clienteApi.address || {} as AddressDTO;
                 const contacts: PartnerContact[] = clienteApi.contacts || [];
                 const partner: ApiPartner = clienteApi.partner || {} as ApiPartner;
-                const partners: ApiPartner[] = partner ? [partner] : [];
 
                 setExistingContacts(contacts);
                 setOriginalStatus(statusBool);
-                setParceiros(partners);
+                if (partner) {
+                    setInitialPartnerName(partner.legalName);
+                }
 
                 let nomeFinanceiro = "";
                 let emailFinanceiro = "";
@@ -736,20 +721,21 @@ const CadastroClientes = () => {
                                     render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>Parceiro *</FormLabel>
-                                            <Select onValueChange={field.onChange} value={field.value}>
-                                                <FormControl>
-                                                    <SelectTrigger disabled={readonly}>
-                                                        <SelectValue placeholder="Selecione um parceiro" />
-                                                    </SelectTrigger>
-                                                </FormControl>
-                                                <SelectContent>
-                                                    {parceiros.map((parceiro: any) => (
-                                                        <SelectItem key={parceiro.id} value={parceiro.id}>
-                                                            {parceiro.legalName}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
+                                            <FormControl>
+                                                <AsyncSelect
+                                                    fetcher={async (search) => {
+                                                        const res = await getPartners({ search, pageSize: 20 });
+                                                        return res.items;
+                                                    }}
+                                                    value={field.value}
+                                                    onChange={field.onChange}
+                                                    getLabel={(p: any) => p.legalName || p.razaoSocial || "Sem Nome"}
+                                                    getValue={(p: any) => p.id}
+                                                    initialLabel={initialPartnerName}
+                                                    placeholder="Buscar parceiro..."
+                                                    disabled={readonly}
+                                                />
+                                            </FormControl>
                                             <FormMessage />
                                         </FormItem>
                                     )}
