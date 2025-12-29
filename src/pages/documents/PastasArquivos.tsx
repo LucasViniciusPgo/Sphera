@@ -1,42 +1,94 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Folder, Users, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import http from "@/lib/http";
-import { getPartners } from "@/services/partnersService";
-
-interface Partner {
-  id: string;
-  legalName: string;
-  clients: any[];
-}
+import { getPartners, type PartnerDetails } from "@/services/partnersService";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import { useToast } from "@/hooks/use-toast";
 
 export default function PastasArquivos() {
   const navigate = useNavigate();
-  const [partners, setPartners] = useState<any[]>([]);
+  const { toast } = useToast();
+  const [partners, setPartners] = useState<PartnerDetails[]>([]);
   const [clientsPerPartner, setClientsPerPartner] = useState<Record<string, number>>({});
   const [searchTerm, setSearchTerm] = useState<string>("");
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const mounted = useRef(false);
+  const pageSize = 12; // Multiplo de 2 e 3 para ficar bom no grid
 
+  // Debounce search
   useEffect(() => {
-    (async () => {
-      const partnersResponse = await getPartners({ includeClients: true });
+    if (!mounted.current) {
+      mounted.current = true;
+      return;
+    }
 
-      setPartners(partnersResponse.items);
+    const timer = setTimeout(() => {
+      if (page === 1) {
+        loadPartners(1, searchTerm);
+      } else {
+        setPage(1);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  const loadPartners = useCallback(async (pageParam: number, searchParam: string) => {
+    setIsLoading(true);
+    try {
+      const { items } = await getPartners({
+        page: pageParam,
+        pageSize,
+        search: searchParam || undefined,
+        includeClients: true
+      });
+
+      if (pageParam > 1 && items.length === 0) {
+        toast({
+          title: "Fim da lista",
+          description: "Não existem mais pastas para exibir.",
+        });
+        setHasMore(false);
+        setPage(prev => prev - 1);
+        setIsLoading(false);
+        return;
+      }
+
+      setPartners(items);
 
       const count: Record<string, number> = {};
-      partnersResponse.items.forEach((partner) => {
+      items.forEach((partner) => {
         count[partner.id] = partner.clients ? partner.clients.length : 0;
       });
       setClientsPerPartner(count);
-    })();
-  }, []);
 
-  const searchPartners = useMemo(() => {
-    return partners.filter((p) =>
-      searchTerm === "" || p.legalName.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [partners, searchTerm]);
+      setHasMore(items.length >= pageSize);
+    } catch (error) {
+      console.error(error);
+      toast({
+        title: "Erro ao carregar pastas",
+        description: "Não foi possível carregar a lista de parceiros.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    loadPartners(page, searchTerm);
+  }, [page, loadPartners]);
 
   const handleFolderClick = (partnerId: string) => {
     const totalClients = clientsPerPartner[partnerId] || 0;
@@ -84,7 +136,11 @@ export default function PastasArquivos() {
         </CardContent>
       </Card>
 
-      {partners.length === 0 ? (
+      {isLoading && partners.length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground">
+          Carregando pastas...
+        </div>
+      ) : partners.length === 0 ? (
         <Card>
           <CardContent className="pt-6">
             <div className="text-center py-12">
@@ -98,7 +154,7 @@ export default function PastasArquivos() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {searchPartners.map((partner) => {
+          {partners.map((partner) => {
             const totalClients = clientsPerPartner[partner.id] || 0;
 
             return (
@@ -124,6 +180,31 @@ export default function PastasArquivos() {
           })}
         </div>
       )}
+
+      {/* Pagination Controls */}
+      <div className="mt-4 flex justify-center">
+        <Pagination>
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                className={page === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+              />
+            </PaginationItem>
+
+            <PaginationItem>
+              <PaginationLink isActive>{page}</PaginationLink>
+            </PaginationItem>
+
+            <PaginationItem>
+              <PaginationNext
+                onClick={() => setPage(p => p + 1)}
+                className={!hasMore ? "pointer-events-none opacity-50" : "cursor-pointer"}
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      </div>
     </div>
   );
 }
