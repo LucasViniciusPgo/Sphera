@@ -35,6 +35,7 @@ export interface ApiClient {
     billingDueDay?: number | null;
     contractDate?: string | null;
     status: boolean;
+    documentsCount?: number;
 }
 
 export interface ClientDetails extends ApiClient {
