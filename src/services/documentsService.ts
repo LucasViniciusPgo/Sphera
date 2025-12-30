@@ -117,5 +117,8 @@ export async function deleteDocument(id: string) {
 
 export async function downloadDocumentFile(id: string) {
   const response = await http.get<Blob>(`/documents/${id}/download`, { responseType: 'blob' });
+  if (response.status !== 200) {
+    throw response;
+  }
   return response.data;
 }
