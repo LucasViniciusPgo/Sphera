@@ -261,16 +261,35 @@ export default function ListaArquivos() {
                             variant="ghost"
                             size="sm"
                             onClick={async () => {
-                              var content = await downloadDocumentFile(arquivo.id);
-                              const blob = new Blob([content], { type: 'application/octet-stream' });
-                              const url = window.URL.createObjectURL(blob);
-                              const link = document.createElement('a');
-                              link.href = url;
-                              link.setAttribute('download', arquivo.fileName);
-                              document.body.appendChild(link);
-                              link.click();
-                              document.body.removeChild(link);
-                              window.URL.revokeObjectURL(url);
+                              try {
+                                const content = await downloadDocumentFile(arquivo.id);
+                                const blob = new Blob([content], { type: 'application/octet-stream' });
+                                const url = window.URL.createObjectURL(blob);
+                                const downloadName = arquivo.fileName.toLowerCase().endsWith('.pdf')
+                                  ? arquivo.fileName
+                                  : `${arquivo.fileName}.pdf`;
+
+                                const link = document.createElement('a');
+                                link.href = url;
+                                link.setAttribute('download', downloadName);
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                                window.URL.revokeObjectURL(url);
+                              } catch (error: any) {
+                                if (error?.status === 400 || error?.response?.status === 400) {
+                                  toast({
+                                    title: "Arquivo não disponível",
+                                    description: "Não há arquivo físico associado a este registro.",
+                                  });
+                                } else {
+                                  toast({
+                                    title: "Erro no download",
+                                    description: "Ocorreu um erro ao baixar o arquivo. Tente novamente.",
+                                    variant: "destructive",
+                                  });
+                                }
+                              }
                             }}
                           >
                             <FileDown className="h-4 w-4" />

@@ -69,7 +69,7 @@ export default function PastasArquivos() {
 
       const count: Record<string, number> = {};
       items.forEach((partner) => {
-        count[partner.id] = partner.clients ? partner.clients.length : 0;
+        count[partner.id] = partner.clientsCount;
       });
       setClientsPerPartner(count);
 

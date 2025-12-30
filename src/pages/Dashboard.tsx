@@ -28,6 +28,14 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import {
+    Pagination,
+    PaginationContent,
+    PaginationItem,
+    PaginationLink,
+    PaginationNext,
+    PaginationPrevious,
+} from "@/components/ui/pagination";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import {
     getAuditories,
@@ -40,6 +48,9 @@ const Dashboard = () => {
 
     const [auditLogs, setAuditLogs] = useState<AuditoryDTO[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
+    const [page, setPage] = useState(1);
+    const [hasMore, setHasMore] = useState(true);
+    const pageSize = 10;
     const [filterAction, setFilterAction] = useState<string>("all");
     const [filterEntity, setFilterEntity] = useState<string>("all");
     const [dateFrom, setDateFrom] = useState<string>(""); // yyyy-MM-dd
@@ -78,6 +89,9 @@ const Dashboard = () => {
             const params: GetAuditoriesParams = {
                 occurredAtStart,
                 occurredAtEnd,
+                page,
+                pageSize,
+                search: searchTerm || undefined,
             };
 
             if (filterAction !== "all") {
@@ -87,7 +101,7 @@ const Dashboard = () => {
                 params.entityType = filterEntity;
             }
 
-            const { items } = await getAuditories(params);
+            const { items, totalCount } = await getAuditories(params);
 
             // ordena por data decrescente
             const sorted = [...items].sort(
@@ -96,6 +110,7 @@ const Dashboard = () => {
             );
 
             setAuditLogs(sorted);
+            setHasMore(items.length >= pageSize); // Basic 'has more' check based on page size
         } catch (e: any) {
             console.error(e);
             setError(
@@ -111,33 +126,32 @@ const Dashboard = () => {
 
     useEffect(() => {
         void loadAuditories();
-    }, [filterAction, filterEntity, dateFrom, dateTo]);
+    }, [filterAction, filterEntity, dateFrom, dateTo, page]); // Reload when filters or page change
+
+    useEffect(() => {
+        // Reset page to 1 when search or other filters change
+        setPage((prev) => 1);
+        void loadAuditories();
+    }, [searchTerm]); // Separated to handle debounce if needed later, currently immediate or on blur/enter? 
+    // Actually, let's keep it simple: any change triggers reload.
+    // But we need to reset page to 1 if filters change.
+
+    // Better effect logic:
+    // 1. When filters (except page) change, reset page to 1.
+    // 2. When page changes, reload.
+
+    // Let's refactor the effects slightly to avoid double firing or complexity.
+    // Using a single effect for loading, and setters for filters resetting page.
+
+    /* However, to follow the existing pattern closest: */
+    /* We'll stick to a simple effect dependency list, but we must ensure Page resets when filters change */
+    /* easiest way is to wrap setFilterX to also setPage(1) */
+
+    /* Or we can just include them all in dependency array and handle page reset in the input handlers */
 
 
-    const filteredLogs = useMemo(() => {
-        let logs = auditLogs;
-
-        if (filterAction !== "all") {
-            logs = logs.filter((log) => log.action === filterAction);
-        }
-        if (filterEntity !== "all") {
-            logs = logs.filter((log) => log.entityType === filterEntity);
-        }
-
-        if (searchTerm) {
-            const term = searchTerm.toLowerCase();
-            logs = logs.filter((log) => {
-                return (
-                    log.actorEmail?.toLowerCase().includes(term) ||
-                    log.actorName?.toLowerCase().includes(term) ||
-                    log.action?.toLowerCase().includes(term) ||
-                    log.entityType?.toLowerCase().includes(term)
-                );
-            });
-        }
-
-        return logs;
-    }, [auditLogs, searchTerm, filterAction, filterEntity]);
+    // Removed client-side filtering as logic moved to backend
+    const filteredLogs = auditLogs;
 
     const getActionIcon = (action: string) => {
         switch (action.toLowerCase()) {
@@ -244,9 +258,15 @@ const Dashboard = () => {
                         <div className="space-y-2">
                             <label className="text-sm font-medium">Buscar</label>
                             <Input
-                                placeholder="Email, ação, tipo ..."
+                                placeholder="Buscar (Enter para pesquisar)"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                        setPage(1);
+                                        void loadAuditories();
+                                    }
+                                }}
                             />
                         </div>
 
@@ -255,7 +275,10 @@ const Dashboard = () => {
                             <label className="text-sm font-medium">Ação</label>
                             <Select
                                 value={filterAction}
-                                onValueChange={setFilterAction}
+                                onValueChange={(val) => {
+                                    setFilterAction(val);
+                                    setPage(1);
+                                }}
                             >
                                 <SelectTrigger>
                                     <SelectValue placeholder="Todas" />
@@ -274,7 +297,10 @@ const Dashboard = () => {
                             <label className="text-sm font-medium">Tipo</label>
                             <Select
                                 value={filterEntity}
-                                onValueChange={setFilterEntity}
+                                onValueChange={(val) => {
+                                    setFilterEntity(val);
+                                    setPage(1);
+                                }}
                             >
                                 <SelectTrigger>
                                     <SelectValue placeholder="Todos" />
@@ -298,12 +324,18 @@ const Dashboard = () => {
                                 <Input
                                     type="date"
                                     value={dateFrom}
-                                    onChange={(e) => setDateFrom(e.target.value)}
+                                    onChange={(e) => {
+                                        setDateFrom(e.target.value);
+                                        setPage(1);
+                                    }}
                                 />
                                 <Input
                                     type="date"
                                     value={dateTo}
-                                    onChange={(e) => setDateTo(e.target.value)}
+                                    onChange={(e) => {
+                                        setDateTo(e.target.value);
+                                        setPage(1);
+                                    }}
                                 />
                             </div>
                         </div>
@@ -338,6 +370,7 @@ const Dashboard = () => {
                                     <TableHead>Data/Hora</TableHead>
                                     <TableHead>Ação</TableHead>
                                     <TableHead>Tipo</TableHead>
+                                    <TableHead>Nome</TableHead>
                                     <TableHead>Usuário</TableHead>
                                     <TableHead>E-mail</TableHead>
                                 </TableRow>
@@ -378,6 +411,9 @@ const Dashboard = () => {
                                                     {getEntityLabel(log.entityType)}
                                                 </Badge>
                                             </TableCell>
+                                            <TableCell className="text-sm">
+                                                {log.entityName || "-"}
+                                            </TableCell>
                                             <TableCell className="font-mono text-xs">
                                                 {log.actorName}
                                             </TableCell>
@@ -390,6 +426,31 @@ const Dashboard = () => {
                     </div>
                 </CardContent>
             </Card>
+
+            {/* Paginação */}
+            <div className="flex justify-center">
+                <Pagination>
+                    <PaginationContent>
+                        <PaginationItem>
+                            <PaginationPrevious
+                                onClick={() => setPage(p => Math.max(1, p - 1))}
+                                className={page === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                            />
+                        </PaginationItem>
+
+                        <PaginationItem>
+                            <PaginationLink isActive>{page}</PaginationLink>
+                        </PaginationItem>
+
+                        <PaginationItem>
+                            <PaginationNext
+                                onClick={() => setPage(p => p + 1)}
+                                className={!hasMore ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                            />
+                        </PaginationItem>
+                    </PaginationContent>
+                </Pagination>
+            </div>
         </div>
     );
 };

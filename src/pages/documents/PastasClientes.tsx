@@ -46,9 +46,7 @@ export default function PastasClientes() {
       const documentsResponse = await getDocuments({ partnerId });
       const count: Record<string, number> = {};
       clientsResponse.forEach((client) => {
-        count[client.id] = documentsResponse.filter(
-          (document: any) => document.clientId === client.id
-        ).length;
+        count[client.id] = client.documentsCount || 0;
       });
       setDocumentsPerClient(count);
     })();

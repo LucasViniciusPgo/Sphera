@@ -131,7 +131,7 @@ export default function CadastroArquivo() {
     setIsSubmitting(true);
     try {
       if (isEditing && id) {
-        const { success, document } = await updateDocument(id, editingDocument!, data, selectedFile!)
+        const { success, document } = await updateDocument(id, editingDocument!, data, selectedFile)
         if (success) {
           toast({
             title: "Arquivo atualizado!",
@@ -148,7 +148,7 @@ export default function CadastroArquivo() {
         }
       }
       else {
-        const { success, document } = await createDocument(data, selectedFile!);
+        const { success, document } = await createDocument(data, selectedFile);
         if (success) {
           toast({
             title: "Arquivo cadastrado!",

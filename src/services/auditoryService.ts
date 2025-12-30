@@ -7,6 +7,7 @@ export interface AuditoryDTO {
     actorId: string;      // Guid
     action: string;
     entityType: string;
+    entityName?: string;
     entityId?: string | null;
     requestIp: string;
     actorEmail: string;
@@ -21,6 +22,9 @@ export interface GetAuditoriesParams {
     action?: string;
     entityType?: string;
     entityId?: string;
+    search?: string;
+    page?: number;
+    pageSize?: number;
 }
 
 export async function getAuditories(params?: GetAuditoriesParams) {
@@ -32,6 +36,9 @@ export async function getAuditories(params?: GetAuditoriesParams) {
         action,
         entityType,
         entityId,
+        search,
+        page,
+        pageSize,
     } = params || {};
 
     const res = await http.get<AuditoryDTO[] | { items: AuditoryDTO[] }>("Auditory", {
@@ -43,15 +50,29 @@ export async function getAuditories(params?: GetAuditoriesParams) {
             Action: action,
             EntityType: entityType,
             EntityId: entityId,
+            Search: search,
+            Page: page,
+            PageSize: pageSize,
         },
     });
 
     const raw = res.data;
-    const items: AuditoryDTO[] = Array.isArray(raw)
-        ? raw
-        : Array.isArray((raw as any)?.items)
-            ? (raw as any).items
-            : [];
 
-    return { items, raw };
+    let items: AuditoryDTO[] = [];
+    let totalCount = 0;
+
+    if (Array.isArray(raw)) {
+        items = raw;
+        totalCount = raw.length;
+    } else if ((raw as any)?.items) {
+        items = (raw as any).items;
+        totalCount = (raw as any).totalCount || (raw as any).total || 0;
+    }
+
+    // Fallback if totalCount is missing but we have items (e.g. non-paginated legacy response)
+    if (totalCount === 0 && items.length > 0) {
+        totalCount = items.length;
+    }
+
+    return { items, raw, totalCount };
 }

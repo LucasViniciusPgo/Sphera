@@ -44,6 +44,7 @@ export interface PartnerDetails {
     updatedBy: string | null;
     contacts: PartnerContact[];
     clients: any[];
+    clientsCount?: number;
 }
 
 export interface CreatePartnerCommand {
@@ -170,13 +171,22 @@ export async function getPartners(params?: {
 
     const raw = res.data;
 
-    const items: PartnerDetails[] = Array.isArray(raw)
-        ? raw
-        : Array.isArray(raw?.items)
-            ? raw.items
-            : [];
+    let items: PartnerDetails[] = [];
+    let totalCount = 0;
 
-    return { items, raw }; // devolvo items + raw pra vc usar depois se quiser paginação
+    if (Array.isArray(raw)) {
+        items = raw;
+        totalCount = raw.length;
+    } else if ((raw as any)?.items) {
+        items = (raw as any).items;
+        totalCount = (raw as any).totalCount || (raw as any).total || 0;
+    }
+
+    if (totalCount === 0 && items.length > 0) {
+        totalCount = items.length;
+    }
+
+    return { items, raw, totalCount };
 }
 
 export async function activatePartner(id: string) {
