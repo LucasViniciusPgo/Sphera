@@ -20,6 +20,7 @@ import ListaArquivos from "./pages/documents/ListaArquivos";
 import PastasArquivos from "./pages/documents/PastasArquivos";
 import PastasClientes from "./pages/documents/PastasClientes";
 import Agenda from "./pages/Agenda";
+import AgendaParticular from "./pages/AgendaParticular";
 import { RequireRole } from "./components/RequireRole";
 import ListaUsuarios from "./pages/ListaUsuarios";
 import { RouteGuard } from "./components/RouteGuard";
@@ -30,6 +31,7 @@ const loggedInRoutes = () => {
     return (
         <>
             <Route path="agenda" element={<Agenda />} />
+            <Route path="agenda-particular" element={<AgendaParticular />} />
             <Route path="cadastro-parceiros" element={<CadastroParceiros />} />
             <Route path="cadastro-parceiros/:id" element={<CadastroParceiros />} />
             <Route path="parceiros" element={<ListaParceiros />} />

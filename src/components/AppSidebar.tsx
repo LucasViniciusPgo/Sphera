@@ -50,7 +50,8 @@ const dashboardItem = [
 ];
 
 const agendaItems = [
-    { title: "Agenda", url: "/agenda", icon: CalendarDays },
+    { title: "Agenda Global", url: "/agenda", icon: CalendarDays },
+    { title: "Agenda Particular", url: "/agenda-particular", icon: CalendarDays },
 ];
 
 const usuarioAdminItemsBase = [
