@@ -6,6 +6,7 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
@@ -50,6 +51,8 @@ export interface Cliente {
     status: "ativo" | "inativo";
     vencimentoContrato: string;
     dataVencimento: string;
+    dataVencimentoEcac: string;
+    observacoes?: string;
     parceiroId: string;
     createdBy: string;
     createdAt: string;
@@ -80,6 +83,8 @@ const clienteSchema = z.object({
     status: z.enum(["ativo", "inativo"]),
     vencimentoContrato: z.string().min(1, "Data de vencimento do contrato é obrigatória"),
     dataVencimento: z.string().min(1, "Data de vencimento é obrigatória"),
+    dataVencimentoEcac: z.string().min(1, "Data de vencimento e-CAC é obrigatória"),
+    observacoes: z.string().max(500, "A observação deve ter no máximo 500 caracteres").optional(),
     parceiroId: z.string().min(1, "Selecione um parceiro"),
 });
 
@@ -146,6 +151,8 @@ const CadastroClientes = () => {
             status: "ativo",
             vencimentoContrato: "",
             dataVencimento: "",
+            dataVencimentoEcac: "",
+            observacoes: "",
             parceiroId: "",
         },
     });
@@ -230,6 +237,8 @@ const CadastroClientes = () => {
                         ? daysSinceContract(clienteApi.contractDate)
                         : "",
                     dataVencimento: buildDateFromDueDay(clienteApi.billingDueDay),
+                    dataVencimentoEcac: clienteApi.ecacExpirationDate ? clienteApi.ecacExpirationDate.split("T")[0] : "",
+                    observacoes: clienteApi.notes || "",
                     parceiroId: partner?.id || "",
                 });
             } catch (error: any) {
@@ -701,6 +710,20 @@ const CadastroClientes = () => {
 
                                     <FormField
                                         control={form.control}
+                                        name="dataVencimentoEcac"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Data de Vencimento e-CAC *</FormLabel>
+                                                <FormControl>
+                                                    <Input type="date" {...field} readOnly={readonly} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+
+                                    <FormField
+                                        control={form.control}
                                         name="vencimentoContrato"
                                         render={({ field }) => (
                                             <FormItem>
@@ -711,6 +734,26 @@ const CadastroClientes = () => {
                                                         placeholder="Número de dias"
                                                         min={1}
                                                         {...field}
+                                                        readOnly={readonly}
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+
+                                    <FormField
+                                        control={form.control}
+                                        name="observacoes"
+                                        render={({ field }) => (
+                                            <FormItem className="md:col-span-2">
+                                                <FormLabel>Observação</FormLabel>
+                                                <FormControl>
+                                                    <Textarea
+                                                        placeholder="Digite observações relevantes sobre o cliente..."
+                                                        className="min-h-[120px] resize-y"
+                                                        {...field}
+                                                        maxLength={500}
                                                         readOnly={readonly}
                                                     />
                                                 </FormControl>

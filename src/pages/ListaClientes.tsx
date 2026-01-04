@@ -38,6 +38,8 @@ const ListaClientes = () => {
     const { toast } = useToast();
     const [searchTerm, setSearchTerm] = useState("");
     const [filtroStatus, setFiltroStatus] = useState<string>("todos");
+    const [dueDateFrom, setDueDateFrom] = useState<string>("");
+    const [dueDateTo, setDueDateTo] = useState<string>("");
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
     const pageSize = 10;
@@ -66,7 +68,7 @@ const ListaClientes = () => {
 
         const timer = setTimeout(() => {
             if (page === 1) {
-                loadClientes(1, searchTerm);
+                loadClientes(1, searchTerm, filtroStatus, dueDateFrom, dueDateTo);
             } else {
                 setPage(1);
             }
@@ -75,13 +77,29 @@ const ListaClientes = () => {
         return () => clearTimeout(timer);
     }, [searchTerm]);
 
-    const loadClientes = useCallback(async (pageParam: number, searchParam: string) => {
+    // Reset to page 1 when status or date filter changes
+    useEffect(() => {
+        if (mounted.current) {
+            setPage(1);
+            loadClientes(1, searchTerm, filtroStatus, dueDateFrom, dueDateTo);
+        }
+    }, [filtroStatus, dueDateFrom, dueDateTo]);
+
+    const loadClientes = useCallback(async (pageParam: number, searchParam: string, statusParam: string, fromParam?: string, toParam?: string) => {
         try {
+            let expirationStatus: number | undefined = undefined;
+            if (statusParam === "vencido") expirationStatus = EExpirationStatus.Expired;
+            else if (statusParam === "a-vencer") expirationStatus = EExpirationStatus.AboutToExpire;
+            else if (statusParam === "dentro-prazo") expirationStatus = EExpirationStatus.WithinDeadline;
+
             const { items, totalCount: total } = await getClients({
                 includePartner: true,
                 page: pageParam,
                 pageSize,
-                search: searchParam || undefined
+                search: searchParam || undefined,
+                expirationStatus: expirationStatus,
+                dueDateFrom: fromParam || undefined,
+                dueDateTo: toParam || undefined
             });
 
             if (pageParam > 1 && items.length === 0) {
@@ -111,7 +129,7 @@ const ListaClientes = () => {
     }, [toast]);
 
     useEffect(() => {
-        loadClientes(page, searchTerm);
+        loadClientes(page, searchTerm, filtroStatus, dueDateFrom, dueDateTo);
     }, [page, loadClientes]);
 
     const handleDelete = async (clienteId: string) => {
@@ -128,7 +146,7 @@ const ListaClientes = () => {
 
             await deleteClient(clienteId);
             // Reload current page
-            loadClientes(page, searchTerm);
+            loadClientes(page, searchTerm, filtroStatus, dueDateFrom, dueDateTo);
             toast({
                 title: "Cliente excluído",
                 description: "O cliente foi excluído com sucesso.",
@@ -175,17 +193,20 @@ const ListaClientes = () => {
         }
     };
 
-    // Remove client-side filtering
-    const filteredClientes = clientes.filter((cliente) => {
-        const matchStatus = filtroStatus === "todos" ||
-            (filtroStatus === "vencido" && cliente.expirationStatus === EExpirationStatus.Expired) ||
-            (filtroStatus === "a-vencer" && cliente.expirationStatus === EExpirationStatus.AboutToExpire) ||
-            (filtroStatus === "dentro-prazo" && cliente.expirationStatus === EExpirationStatus.WithinDeadline);
-        return matchStatus;
-    });
+    const filteredClientes = clientes;
+
+    const formatDate = (dateStr: string | null | undefined) => {
+        if (!dateStr) return "-";
+        try {
+            const date = new Date(dateStr);
+            return date.toLocaleDateString("pt-BR");
+        } catch (e) {
+            return "-";
+        }
+    };
 
     return (
-        <Card className="max-w-6xl mx-auto">
+        <Card className="max-w-7xl mx-auto">
             <CardHeader>
                 <div className="flex justify-between items-center">
                     <div>
@@ -200,11 +221,11 @@ const ListaClientes = () => {
             </CardHeader>
             <CardContent>
                 <div className="mb-6 space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="relative">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div className="relative md:col-span-1">
                             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                             <Input
-                                placeholder="Buscar por nome ou razão social..."
+                                placeholder="Buscar cliente..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 className="pl-10"
@@ -212,7 +233,7 @@ const ListaClientes = () => {
                         </div>
                         <Select value={filtroStatus} onValueChange={setFiltroStatus}>
                             <SelectTrigger>
-                                <SelectValue placeholder="Todos os Status" />
+                                <SelectValue placeholder="Status Vencimento" />
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="todos">Todos os Status</SelectItem>
@@ -221,10 +242,26 @@ const ListaClientes = () => {
                                 <SelectItem value="dentro-prazo">Dentro do Prazo</SelectItem>
                             </SelectContent>
                         </Select>
+                        <div className="flex flex-col space-y-1">
+                            <Input
+                                type="date"
+                                value={dueDateFrom}
+                                onChange={(e) => setDueDateFrom(e.target.value)}
+                                title="Vencimento e-CAC De"
+                            />
+                        </div>
+                        <div className="flex flex-col space-y-1">
+                            <Input
+                                type="date"
+                                value={dueDateTo}
+                                onChange={(e) => setDueDateTo(e.target.value)}
+                                title="Vencimento e-CAC Até"
+                            />
+                        </div>
                     </div>
-                    {(searchTerm || filtroStatus !== "todos") && (
-                        <div className="flex gap-2 text-sm text-muted-foreground">
-                            <span>Filtro ativo:</span>
+                    {(searchTerm || filtroStatus !== "todos" || dueDateFrom || dueDateTo) && (
+                        <div className="flex gap-2 text-sm text-muted-foreground items-center flex-wrap">
+                            <span>Filtros ativos:</span>
                             {searchTerm && (
                                 <span className="bg-secondary px-2 py-1 rounded">Busca: "{searchTerm}"</span>
                             )}
@@ -233,14 +270,22 @@ const ListaClientes = () => {
                                     Status: {getStatusLabelAndClass(filtroStatus)?.label}
                                 </span>
                             )}
+                            {dueDateFrom && (
+                                <span className="bg-secondary px-2 py-1 rounded">De: {new Date(dueDateFrom).toLocaleDateString()}</span>
+                            )}
+                            {dueDateTo && (
+                                <span className="bg-secondary px-2 py-1 rounded">Até: {new Date(dueDateTo).toLocaleDateString()}</span>
+                            )}
                             <button
                                 onClick={() => {
                                     setSearchTerm("");
                                     setFiltroStatus("todos");
+                                    setDueDateFrom("");
+                                    setDueDateTo("");
                                 }}
                                 className="text-primary hover:underline ml-2"
                             >
-                                Limpar
+                                Limpar Tudo
                             </button>
                         </div>
                     )}
@@ -259,6 +304,7 @@ const ListaClientes = () => {
                                     <TableHead>Razão Social</TableHead>
                                     <TableHead>CNPJ</TableHead>
                                     <TableHead>Parceiro Vinculado</TableHead>
+                                    <TableHead>Venc. e-CAC</TableHead>
                                     <TableHead>Status</TableHead>
                                     <TableHead className="text-right">Ações</TableHead>
                                 </TableRow>
@@ -271,6 +317,7 @@ const ListaClientes = () => {
                                             <TableCell>{cliente.legalName}</TableCell>
                                             <TableCell>{formatCNPJ(cliente.cnpj)}</TableCell>
                                             <TableCell>{cliente?.partner?.legalName || "Parceiro não encontrado"}</TableCell>
+                                            <TableCell>{formatDate(cliente.ecacExpirationDate)}</TableCell>
                                             <TableCell>
                                                 {(() => {
                                                     const statusConfig = getStatusLabelAndClass(cliente.expirationStatus);

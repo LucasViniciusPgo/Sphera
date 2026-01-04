@@ -35,6 +35,8 @@ export interface ApiClient {
     contractDate?: string | null;
     status: boolean;
     expirationStatus: EExpirationStatus;
+    ecacExpirationDate?: string | null;
+    notes?: string | null;
     documentsCount?: number;
 }
 
@@ -63,6 +65,8 @@ export interface CreateClientCommand {
     phone: string;
     billingDueDay?: number | null;
     contractDateInDays: number;
+    ecacExpirationDate: string;
+    notes?: string | null;
 }
 
 export interface UpdateClientCommand extends CreateClientCommand {
@@ -109,6 +113,8 @@ export async function createClient(data: ClienteFormData) {
         phone: cleanPhone(data.telefoneResponsavel)!,
         billingDueDay: billingDueDay,
         contractDateInDays: contractDays,
+        ecacExpirationDate: data.dataVencimentoEcac,
+        notes: data.observacoes || null,
     };
 
     const res = await http.post<any>("Clients", payload);
@@ -152,6 +158,8 @@ export async function updateClient(
         phone: cleanPhone(data.telefoneResponsavel)!,
         billingDueDay,
         contractDateInDays: contractDays,
+        ecacExpirationDate: data.dataVencimentoEcac,
+        notes: data.observacoes || null,
         status: newStatusBool,
     };
 
@@ -226,8 +234,11 @@ export async function getClients(params?: {
     page?: number;
     pageSize?: number;
     includePartner?: boolean;
+    expirationStatus?: number;
+    dueDateFrom?: string;
+    dueDateTo?: string;
 }) {
-    const { partnerId, status, cnpj, search, page, pageSize, includePartner } =
+    const { partnerId, status, cnpj, search, page, pageSize, includePartner, expirationStatus, dueDateFrom, dueDateTo } =
         params || {};
 
     const res = await http.get<ClientDetails[] | { items: ClientDetails[] }>(
@@ -241,6 +252,9 @@ export async function getClients(params?: {
                 Page: page,
                 PageSize: pageSize,
                 IncludePartner: includePartner,
+                ExpirationStatus: expirationStatus,
+                DueDateFrom: dueDateFrom,
+                DueDateTo: dueDateTo,
             },
         }
     );
