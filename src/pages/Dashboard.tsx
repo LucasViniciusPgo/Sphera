@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
     FileText,
@@ -58,6 +58,7 @@ const Dashboard = () => {
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const mounted = useRef(false);
 
     const buildDateTimeRange = () => {
         let occurredAtStart: string | undefined;
@@ -80,28 +81,36 @@ const Dashboard = () => {
         return new Date(ts);
     };
 
-    const loadAuditories = async () => {
+    const loadAuditories = useCallback(async (pageParam: number, searchParam: string, actionParam: string, entityParam: string, fromParam: string, toParam: string) => {
         setLoading(true);
         setError(null);
         try {
-            const { occurredAtStart, occurredAtEnd } = buildDateTimeRange();
+            let occurredAtStart: string | undefined;
+            let occurredAtEnd: string | undefined;
+
+            if (fromParam) {
+                occurredAtStart = new Date(`${fromParam}T00:00:00`).toISOString();
+            }
+            if (toParam) {
+                occurredAtEnd = new Date(`${toParam}T23:59:59`).toISOString();
+            }
 
             const params: GetAuditoriesParams = {
                 occurredAtStart,
                 occurredAtEnd,
-                page,
+                page: pageParam,
                 pageSize,
-                search: searchTerm || undefined,
+                search: searchParam || undefined,
             };
 
-            if (filterAction !== "all") {
-                params.action = filterAction;
+            if (actionParam !== "all") {
+                params.action = actionParam;
             }
-            if (filterEntity !== "all") {
-                params.entityType = filterEntity;
+            if (entityParam !== "all") {
+                params.entityType = entityParam;
             }
 
-            const { items, totalCount } = await getAuditories(params);
+            const { items } = await getAuditories(params);
 
             // ordena por data decrescente
             const sorted = [...items].sort(
@@ -110,7 +119,7 @@ const Dashboard = () => {
             );
 
             setAuditLogs(sorted);
-            setHasMore(items.length >= pageSize); // Basic 'has more' check based on page size
+            setHasMore(items.length >= pageSize);
         } catch (e: any) {
             console.error(e);
             setError(
@@ -121,34 +130,43 @@ const Dashboard = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
-
+    // Debounce search
     useEffect(() => {
-        void loadAuditories();
-    }, [filterAction, filterEntity, dateFrom, dateTo, page]); // Reload when filters or page change
+        if (!mounted.current) return;
 
+        const timer = setTimeout(() => {
+            if (page === 1) {
+                loadAuditories(1, searchTerm, filterAction, filterEntity, dateFrom, dateTo);
+            } else {
+                setPage(1);
+            }
+        }, 500);
+
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
+
+    // Reset page to 1 on filter changes
     useEffect(() => {
-        // Reset page to 1 when search or other filters change
-        setPage((prev) => 1);
-        void loadAuditories();
-    }, [searchTerm]); // Separated to handle debounce if needed later, currently immediate or on blur/enter? 
-    // Actually, let's keep it simple: any change triggers reload.
-    // But we need to reset page to 1 if filters change.
+        if (!mounted.current) return;
 
-    // Better effect logic:
-    // 1. When filters (except page) change, reset page to 1.
-    // 2. When page changes, reload.
+        if (page === 1) {
+            loadAuditories(1, searchTerm, filterAction, filterEntity, dateFrom, dateTo);
+        } else {
+            setPage(1);
+        }
+    }, [filterAction, filterEntity, dateFrom, dateTo]);
 
-    // Let's refactor the effects slightly to avoid double firing or complexity.
-    // Using a single effect for loading, and setters for filters resetting page.
+    // Main page effect
+    useEffect(() => {
+        loadAuditories(page, searchTerm, filterAction, filterEntity, dateFrom, dateTo);
+    }, [page, loadAuditories]);
 
-    /* However, to follow the existing pattern closest: */
-    /* We'll stick to a simple effect dependency list, but we must ensure Page resets when filters change */
-    /* easiest way is to wrap setFilterX to also setPage(1) */
-
-    /* Or we can just include them all in dependency array and handle page reset in the input handlers */
-
+    // Set mounted flag
+    useEffect(() => {
+        mounted.current = true;
+    }, []);
 
     // Removed client-side filtering as logic moved to backend
     const filteredLogs = auditLogs;
@@ -243,7 +261,7 @@ const Dashboard = () => {
                     <Button
                         variant="outline"
                         size="icon"
-                        onClick={() => void loadAuditories()}
+                        onClick={() => void loadAuditories(page, searchTerm, filterAction, filterEntity, dateFrom, dateTo)}
                         disabled={loading}
                         title="Recarregar"
                     >
@@ -264,7 +282,7 @@ const Dashboard = () => {
                                 onKeyDown={(e) => {
                                     if (e.key === "Enter") {
                                         setPage(1);
-                                        void loadAuditories();
+                                        void loadAuditories(1, searchTerm, filterAction, filterEntity, dateFrom, dateTo);
                                     }
                                 }}
                             />

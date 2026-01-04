@@ -42,7 +42,6 @@ const ListaClientes = () => {
     const [dueDateTo, setDueDateTo] = useState<string>("");
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
-    const pageSize = 10;
     const mounted = useRef(false);
 
     const [clientes, setClientes] = useState<ClientDetails[]>([]);
@@ -61,10 +60,7 @@ const ListaClientes = () => {
 
     // Debounce search to avoid too many requests
     useEffect(() => {
-        if (!mounted.current) {
-            mounted.current = true;
-            return;
-        }
+        if (!mounted.current) return;
 
         const timer = setTimeout(() => {
             if (page === 1) {
@@ -79,13 +75,17 @@ const ListaClientes = () => {
 
     // Reset to page 1 when status or date filter changes
     useEffect(() => {
-        if (mounted.current) {
-            setPage(1);
+        if (!mounted.current) return;
+
+        if (page === 1) {
             loadClientes(1, searchTerm, filtroStatus, dueDateFrom, dueDateTo);
+        } else {
+            setPage(1);
         }
     }, [filtroStatus, dueDateFrom, dueDateTo]);
 
     const loadClientes = useCallback(async (pageParam: number, searchParam: string, statusParam: string, fromParam?: string, toParam?: string) => {
+        const effectivePageSize = statusParam !== "todos" ? 1000 : 10;
         try {
             let expirationStatus: number | undefined = undefined;
             if (statusParam === "vencido") expirationStatus = EExpirationStatus.Expired;
@@ -95,7 +95,7 @@ const ListaClientes = () => {
             const { items, totalCount: total } = await getClients({
                 includePartner: true,
                 page: pageParam,
-                pageSize,
+                pageSize: effectivePageSize,
                 search: searchParam || undefined,
                 expirationStatus: expirationStatus,
                 dueDateFrom: fromParam || undefined,
@@ -114,7 +114,7 @@ const ListaClientes = () => {
 
             setClientes(items);
 
-            setHasMore(items.length >= pageSize);
+            setHasMore(items.length >= effectivePageSize);
         } catch (error: any) {
             console.error(error);
             toast({
@@ -131,6 +131,11 @@ const ListaClientes = () => {
     useEffect(() => {
         loadClientes(page, searchTerm, filtroStatus, dueDateFrom, dueDateTo);
     }, [page, loadClientes]);
+
+    // Set mounted flag
+    useEffect(() => {
+        mounted.current = true;
+    }, []);
 
     const handleDelete = async (clienteId: string) => {
         let contactsToRestore: any[] = [];
