@@ -4,6 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Edit, UserPlus, Trash2, Eye } from "lucide-react";
 import {
     AlertDialog,
@@ -20,6 +22,7 @@ import { useToast } from "@/hooks/use-toast";
 import { getClients, deleteClient, getClientById, type ClientDetails } from "@/services/clientsService.ts";
 import { removeContactFromClient, addContactToClient } from "@/services/clientsContactsService.ts";
 import { formatCNPJ } from "@/utils/format.ts";
+import { EExpirationStatus } from "@/interfaces/Arquivo";
 import {
     Pagination,
     PaginationContent,
@@ -34,12 +37,25 @@ const ListaClientes = () => {
     const navigate = useNavigate();
     const { toast } = useToast();
     const [searchTerm, setSearchTerm] = useState("");
+    const [filtroStatus, setFiltroStatus] = useState<string>("todos");
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
     const pageSize = 10;
     const mounted = useRef(false);
 
     const [clientes, setClientes] = useState<ClientDetails[]>([]);
+    const getStatusLabelAndClass = (status: EExpirationStatus | string) => {
+        if (status === EExpirationStatus.Expired || status === "vencido") {
+            return { label: "Vencido", className: "bg-red-500 hover:bg-red-600 text-white" };
+        }
+        if (status === EExpirationStatus.AboutToExpire || status === "a-vencer") {
+            return { label: "A Vencer", className: "bg-orange-500 hover:bg-orange-600 text-white" };
+        }
+        if (status === EExpirationStatus.WithinDeadline || status === "dentro-prazo") {
+            return { label: "Dentro do Prazo", className: "bg-green-500 hover:bg-green-600 text-white" };
+        }
+        return { label: "Desconhecido", className: "bg-gray-500 text-white" };
+    };
 
     // Debounce search to avoid too many requests
     useEffect(() => {
@@ -160,7 +176,13 @@ const ListaClientes = () => {
     };
 
     // Remove client-side filtering
-    const filteredClientes = clientes;
+    const filteredClientes = clientes.filter((cliente) => {
+        const matchStatus = filtroStatus === "todos" ||
+            (filtroStatus === "vencido" && cliente.expirationStatus === EExpirationStatus.Expired) ||
+            (filtroStatus === "a-vencer" && cliente.expirationStatus === EExpirationStatus.AboutToExpire) ||
+            (filtroStatus === "dentro-prazo" && cliente.expirationStatus === EExpirationStatus.WithinDeadline);
+        return matchStatus;
+    });
 
     return (
         <Card className="max-w-6xl mx-auto">
@@ -178,7 +200,7 @@ const ListaClientes = () => {
             </CardHeader>
             <CardContent>
                 <div className="mb-6 space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="relative">
                             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                             <Input
@@ -188,13 +210,34 @@ const ListaClientes = () => {
                                 className="pl-10"
                             />
                         </div>
+                        <Select value={filtroStatus} onValueChange={setFiltroStatus}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Todos os Status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="todos">Todos os Status</SelectItem>
+                                <SelectItem value="vencido">Vencido</SelectItem>
+                                <SelectItem value="a-vencer">A Vencer</SelectItem>
+                                <SelectItem value="dentro-prazo">Dentro do Prazo</SelectItem>
+                            </SelectContent>
+                        </Select>
                     </div>
-                    {searchTerm && (
+                    {(searchTerm || filtroStatus !== "todos") && (
                         <div className="flex gap-2 text-sm text-muted-foreground">
                             <span>Filtro ativo:</span>
-                            <span className="bg-secondary px-2 py-1 rounded">Busca: "{searchTerm}"</span>
+                            {searchTerm && (
+                                <span className="bg-secondary px-2 py-1 rounded">Busca: "{searchTerm}"</span>
+                            )}
+                            {filtroStatus !== "todos" && (
+                                <span className="bg-secondary px-2 py-1 rounded">
+                                    Status: {getStatusLabelAndClass(filtroStatus)?.label}
+                                </span>
+                            )}
                             <button
-                                onClick={() => setSearchTerm("")}
+                                onClick={() => {
+                                    setSearchTerm("");
+                                    setFiltroStatus("todos");
+                                }}
                                 className="text-primary hover:underline ml-2"
                             >
                                 Limpar
@@ -216,6 +259,7 @@ const ListaClientes = () => {
                                     <TableHead>Razão Social</TableHead>
                                     <TableHead>CNPJ</TableHead>
                                     <TableHead>Parceiro Vinculado</TableHead>
+                                    <TableHead>Status</TableHead>
                                     <TableHead className="text-right">Ações</TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -226,7 +270,17 @@ const ListaClientes = () => {
                                             <TableCell className="font-medium">{cliente.tradeName}</TableCell>
                                             <TableCell>{cliente.legalName}</TableCell>
                                             <TableCell>{formatCNPJ(cliente.cnpj)}</TableCell>
-                                            <TableCell>{cliente?.partner.legalName || "Parceiro não encontrado"}</TableCell>
+                                            <TableCell>{cliente?.partner?.legalName || "Parceiro não encontrado"}</TableCell>
+                                            <TableCell>
+                                                {(() => {
+                                                    const statusConfig = getStatusLabelAndClass(cliente.expirationStatus);
+                                                    return (
+                                                        <Badge className={statusConfig.className}>
+                                                            {statusConfig.label}
+                                                        </Badge>
+                                                    );
+                                                })()}
+                                            </TableCell>
                                             <TableCell className="text-right">
                                                 <div className="flex gap-2 justify-end">
 

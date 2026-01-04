@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { http } from "@/lib/http";
-import { Arquivo, StatusType } from "@/interfaces/Arquivo";
+import { Arquivo, EExpirationStatus } from "@/interfaces/Arquivo";
 import { getServices } from "@/services/servicesService";
 import { downloadDocumentFile, getDocuments } from "@/services/documentsService";
 
@@ -39,35 +39,22 @@ export default function ListaArquivos() {
   const [nomeCliente, setNomeCliente] = useState<string>("");
   const [nomeParceiro, setNomeParceiro] = useState<string>("");
 
-  const calcularStatus = (dueDate: string): StatusType => {
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
-    const vencimento = new Date(dueDate);
-    vencimento.setHours(0, 0, 0, 0);
-    const diffDays = Math.ceil((vencimento.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
-    if (diffDays < 0) return "vencido";
-    if (diffDays <= 7) return "a-vencer";
-    return "dentro-prazo";
-  };
-
-  const getStatusConfig = (status: StatusType) => {
-    switch (status) {
-      case "vencido":
-        return { label: "Vencido", className: "bg-red-500 hover:bg-red-600 text-white" };
-      case "a-vencer":
-        return { label: "A Vencer", className: "bg-orange-500 hover:bg-orange-600 text-white" };
-      case "dentro-prazo":
-        return { label: "Dentro do Prazo", className: "bg-green-500 hover:bg-green-600 text-white" };
+  const getStatusLabelAndClass = (status: EExpirationStatus | string) => {
+    if (status === EExpirationStatus.Expired || status === "vencido") {
+      return { label: "Vencido", className: "bg-red-500 hover:bg-red-600 text-white" };
     }
+    if (status === EExpirationStatus.AboutToExpire || status === "a-vencer") {
+      return { label: "A Vencer", className: "bg-orange-500 hover:bg-orange-600 text-white" };
+    }
+    if (status === EExpirationStatus.WithinDeadline || status === "dentro-prazo") {
+      return { label: "Dentro do Prazo", className: "bg-green-500 hover:bg-green-600 text-white" };
+    }
+    return { label: "Desconhecido", className: "bg-gray-500 text-white" };
   };
 
   useEffect(() => {
     (async () => {
       const arquivosData: Arquivo[] = await getDocuments({ clientId: clientId });
-      arquivosData.forEach((arquivo) => {
-        const status = calcularStatus(arquivo.dueDate);
-        arquivo.status = status;
-      });
       setArquivos(arquivosData);
 
       const { items } = await getServices();
@@ -85,12 +72,17 @@ export default function ListaArquivos() {
       const matchSearch =
         searchTerm === "" ||
         arquivo.fileName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        arquivo.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        arquivo.partnerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        arquivo.serviceName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        arquivo.responsibleName.toLowerCase().includes(searchTerm.toLowerCase());
+        (arquivo.clientName?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (arquivo.partnerName?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (arquivo.serviceName?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (arquivo.responsibleName?.toLowerCase().includes(searchTerm.toLowerCase()));
       const matchServico = filtroServico === "todos" || arquivo.serviceName === filtroServico;
-      const matchStatus = filtroStatus === "todos" || arquivo.status === filtroStatus;
+
+      const matchStatus = filtroStatus === "todos" ||
+        (filtroStatus === "vencido" && arquivo.status === EExpirationStatus.Expired) ||
+        (filtroStatus === "a-vencer" && arquivo.status === EExpirationStatus.AboutToExpire) ||
+        (filtroStatus === "dentro-prazo" && arquivo.status === EExpirationStatus.WithinDeadline);
+
       return matchSearch && matchServico && matchStatus;
     });
   }, [arquivos, searchTerm, filtroServico, filtroStatus]);
@@ -203,7 +195,7 @@ export default function ListaArquivos() {
                 )}
                 {filtroStatus !== 'todos' && (
                   <span
-                    className="bg-secondary px-2 py-1 rounded">Status: {getStatusConfig(filtroStatus as StatusType)?.label}</span>
+                    className="bg-secondary px-2 py-1 rounded">Status: {getStatusLabelAndClass(filtroStatus)?.label}</span>
                 )}
                 <button
                   onClick={() => {
@@ -243,7 +235,7 @@ export default function ListaArquivos() {
               </TableHeader>
               <TableBody>
                 {arquivosFiltrados.map((arquivo) => {
-                  const statusConfig = getStatusConfig(arquivo.status);
+                  const statusConfig = getStatusLabelAndClass(arquivo.status);
                   return (
                     <TableRow key={arquivo.id}>
                       <TableCell className="font-medium">{arquivo.fileName}</TableCell>

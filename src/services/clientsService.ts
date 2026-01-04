@@ -1,4 +1,5 @@
 import { http } from "@/lib/http";
+import { EExpirationStatus } from "@/interfaces/Arquivo";
 import type { ClienteFormData } from "@/pages/CadastroClientes";
 import { cleanCNPJ, cleanPhone, cleanCEP } from "@/utils/format.ts";
 import {
@@ -33,6 +34,7 @@ export interface ApiClient {
     billingDueDay?: number | null;
     contractDate?: string | null;
     status: boolean;
+    expirationStatus: EExpirationStatus;
     documentsCount?: number;
 }
 
