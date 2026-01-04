@@ -30,6 +30,7 @@ export interface ApiPartner {
     cnpj?: string | null;
     address?: AddressDTO | null;
     status: boolean;
+    notes?: string | null;
 }
 
 export interface PartnerDetails {
@@ -38,6 +39,7 @@ export interface PartnerDetails {
     cnpj: string | null;
     address?: AddressDTO | null;
     status: boolean;
+    notes?: string | null;
     createdAt: string;
     createdBy: string;
     updatedAt: string | null;
@@ -51,6 +53,7 @@ export interface CreatePartnerCommand {
     legalName: string;
     cnpj?: string | null;
     address?: AddressDTO | null;
+    notes?: string | null;
 }
 
 export interface UpdatePartnerCommand extends CreatePartnerCommand {
@@ -77,6 +80,7 @@ export async function createPartner(data: ParceiroFormData) {
         legalName: data.razaoSocial,
         cnpj: cleanCNPJ(data.cnpj),
         address: buildAddressFromForm(data),
+        notes: data.observacoes || null,
     };
 
     const res = await http.post<any>("Partners", payload);
@@ -112,6 +116,7 @@ export async function updatePartner(id: string, data: ParceiroFormData, currentS
         legalName: data.razaoSocial,
         cnpj: cleanCNPJ(data.cnpj),
         address: buildAddressFromForm(data),
+        notes: data.observacoes || null,
         status: true,
     };
 

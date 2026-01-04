@@ -1,16 +1,17 @@
-import {useState, useEffect} from "react";
-import {useForm} from "react-hook-form";
-import {zodResolver} from "@hookform/resolvers/zod";
+import { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import {Button} from "@/components/ui/button";
-import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card";
-import {Form, FormControl, FormField, FormItem, FormLabel, FormMessage} from "@/components/ui/form";
-import {Input} from "@/components/ui/input";
-import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select";
-import {useToast} from "@/hooks/use-toast";
-import {ArrowLeft} from "lucide-react";
-import {useLocation, useNavigate, useParams} from "react-router-dom";
-import {getCurrentUser} from "@/hooks/useCurrentUser";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
+import { ArrowLeft } from "lucide-react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { getCurrentUser } from "@/hooks/useCurrentUser";
 import {
     createService,
     updateService,
@@ -26,6 +27,7 @@ export interface Servico {
     codigo: string;
     vencimentoDoc: number | null;
     status: "ativo" | "inativo";
+    observacoes: string | null;
     createdBy: string;
     createdAt: string;
     updatedBy: string;
@@ -52,15 +54,16 @@ const servicoSchema = z.object({
             if (val === undefined || val === null || val === "") return null;
             return typeof val === "number" ? val : Number(val);
         }),
-    status: z.enum(["ativo", "inativo"])
+    status: z.enum(["ativo", "inativo"]),
+    observacoes: z.string().max(500, "A observação deve ter no máximo 500 caracteres").optional(),
 });
 
 export type ServicoFormData = z.infer<typeof servicoSchema>;
 
 export default function CadastroServico() {
-    const {toast} = useToast();
+    const { toast } = useToast();
     const navigate = useNavigate();
-    const {id} = useParams();
+    const { id } = useParams();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const isEditing = !!id;
     const location = useLocation();
@@ -73,6 +76,7 @@ export default function CadastroServico() {
             codigo: "",
             vencimentoDoc: null,
             status: "ativo",
+            observacoes: "",
         },
     });
 
@@ -88,6 +92,7 @@ export default function CadastroServico() {
                     codigo: servicoView.codigo,
                     vencimentoDoc: servicoView.vencimentoDoc,
                     status: servicoView.status === "ativo" ? "ativo" : "inativo",
+                    observacoes: servicoView.observacoes || "",
                 });
             } catch (e) {
                 toast({
@@ -149,7 +154,7 @@ export default function CadastroServico() {
                 onClick={() => navigate("/home/servicos")}
                 className="mb-6"
             >
-                <ArrowLeft className="mr-2 h-4 w-4"/>
+                <ArrowLeft className="mr-2 h-4 w-4" />
                 Voltar
             </Button>
 
@@ -184,14 +189,14 @@ export default function CadastroServico() {
                                     <FormField
                                         control={form.control}
                                         name="nomeServico"
-                                        render={({field}) => (
+                                        render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Nome do Serviço *</FormLabel>
                                                 <FormControl>
                                                     <Input placeholder="Nome do serviço" {...field}
-                                                           readOnly={readonly}/>
+                                                        readOnly={readonly} />
                                                 </FormControl>
-                                                <FormMessage/>
+                                                <FormMessage />
                                             </FormItem>
                                         )}
                                     />
@@ -199,14 +204,14 @@ export default function CadastroServico() {
                                     <FormField
                                         control={form.control}
                                         name="codigo"
-                                        render={({field}) => (
+                                        render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Código do Serviço *</FormLabel>
                                                 <FormControl>
                                                     <Input placeholder="Código do serviço" {...field}
-                                                           readOnly={readonly}/>
+                                                        readOnly={readonly} />
                                                 </FormControl>
-                                                <FormMessage/>
+                                                <FormMessage />
                                             </FormItem>
                                         )}
                                     />
@@ -218,7 +223,7 @@ export default function CadastroServico() {
                                     <FormField
                                         control={form.control}
                                         name="vencimentoDoc"
-                                        render={({field}) => (
+                                        render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Prazo de Vencimento (dias) (opcional)</FormLabel>
                                                 <FormControl>
@@ -233,7 +238,7 @@ export default function CadastroServico() {
                                                         }} readOnly={readonly}
                                                     />
                                                 </FormControl>
-                                                <FormMessage/>
+                                                <FormMessage />
                                             </FormItem>
                                         )}
                                     />
@@ -241,13 +246,13 @@ export default function CadastroServico() {
                                     <FormField
                                         control={form.control}
                                         name="status"
-                                        render={({field}) => (
+                                        render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Status </FormLabel>
                                                 <FormControl>
                                                     <Select value={field.value} onValueChange={field.onChange}>
                                                         <SelectTrigger disabled={readonly || !isEditing}>
-                                                            <SelectValue placeholder="Selecione o status"/>
+                                                            <SelectValue placeholder="Selecione o status" />
                                                         </SelectTrigger>
                                                         <SelectContent>
                                                             <SelectItem value="ativo">Ativo</SelectItem>
@@ -255,12 +260,33 @@ export default function CadastroServico() {
                                                         </SelectContent>
                                                     </Select>
                                                 </FormControl>
-                                                <FormMessage/>
+                                                <FormMessage />
                                             </FormItem>
                                         )}
                                     />
 
                                 </div>
+
+                                <FormField
+                                    control={form.control}
+                                    name="observacoes"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Observação</FormLabel>
+                                            <FormControl>
+                                                <Textarea
+                                                    placeholder="Digite observações relevantes sobre o serviço..."
+                                                    className="min-h-[120px] resize-y"
+                                                    {...field}
+                                                    value={field.value || ''}
+                                                    maxLength={500}
+                                                    readOnly={readonly}
+                                                />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
                             </div>
                             {!readonly && (
                                 <div className="flex gap-4 pt-4">
