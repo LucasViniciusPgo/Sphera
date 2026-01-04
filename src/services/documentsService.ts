@@ -1,5 +1,5 @@
 import { getCurrentUser } from "@/hooks/useCurrentUser";
-import { Arquivo, StatusType } from "@/interfaces/Arquivo";
+import { Arquivo, StatusType, EExpirationStatus } from "@/interfaces/Arquivo";
 import { http } from "@/lib/http";
 import { ArquivoFormData } from "@/pages/documents/CadastroArquivo";
 
@@ -16,6 +16,7 @@ export async function createDocument(data: ArquivoFormData, file?: File | null) 
     dueDate: data.dueDate,
     notes: data.notes || "",
     file: file || undefined,
+    status: EExpirationStatus.WithinDeadline, // Status será calculado pelo backend
     createdBy: getCurrentUser(),
     createdAt,
     updatedBy: getCurrentUser(),
@@ -73,6 +74,18 @@ export async function getDocumentById(id: string) {
   return (await http.get<Arquivo>(`/documents/${id}`)).data;
 }
 
+// Converte StatusType string para EExpirationStatus numérico
+function convertStatusToEnum(status: StatusType): EExpirationStatus {
+  switch (status) {
+    case "vencido":
+      return EExpirationStatus.Expired;
+    case "a-vencer":
+      return EExpirationStatus.AboutToExpire;
+    case "dentro-prazo":
+      return EExpirationStatus.WithinDeadline;
+  }
+}
+
 export async function getDocuments(params?: {
   partnerId?: string,
   clientId?: string,
@@ -95,7 +108,7 @@ export async function getDocuments(params?: {
   if (serviceId)
     actualParams.serviceId = serviceId;
   if (status)
-    actualParams.status = status;
+    actualParams.status = convertStatusToEnum(status);
   if (dueDateFrom)
     actualParams.dueDateFrom = dueDateFrom;
   if (dueDateTo)

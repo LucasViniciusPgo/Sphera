@@ -21,9 +21,12 @@ import PastasArquivos from "./pages/documents/PastasArquivos";
 import PastasClientes from "./pages/documents/PastasClientes";
 import Agenda from "./pages/Agenda";
 import AgendaParticular from "./pages/AgendaParticular";
-import { RequireRole } from "./components/RequireRole";
 import ListaUsuarios from "./pages/ListaUsuarios";
 import { RouteGuard } from "./components/RouteGuard";
+import { RequireRole } from "./components/RequireRole";
+import RelatorioArquivos from "@/pages/documents/RelatorioArquivos";
+import RelatorioClientes from "./pages/RelatorioClientes";
+
 
 const queryClient = new QueryClient();
 
@@ -70,6 +73,8 @@ const loggedInRoutes = () => {
             <Route path="arquivos" element={<PastasArquivos />} />
             <Route path="arquivos/:partnerId" element={<PastasClientes />} />
             <Route path="arquivos/:partnerId/:clientId" element={<ListaArquivos />} />
+            <Route path="relatorio-clientes" element={<RelatorioClientes />} />
+            <Route path="relatorio-arquivos" element={<RelatorioArquivos />} />
         </>)
 }
 

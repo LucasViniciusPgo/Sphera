@@ -310,8 +310,8 @@ const ListaClientes = () => {
                                     <TableHead>CNPJ</TableHead>
                                     <TableHead>Parceiro Vinculado</TableHead>
                                     <TableHead>Venc. e-CAC</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead className="text-right">Ações</TableHead>
+                                    <TableHead>Contrato</TableHead>
+                                    <TableHead>Ações</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>

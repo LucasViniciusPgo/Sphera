@@ -4,6 +4,8 @@ export enum EExpirationStatus {
     Expired = 2
 }
 
+export type StatusType = "vencido" | "a-vencer" | "dentro-prazo";
+
 export interface Arquivo {
     id: string;
     fileName: string;
