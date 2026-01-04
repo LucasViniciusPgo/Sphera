@@ -1,10 +1,9 @@
 import { http } from "@/lib/http";
+import { EExpirationStatus } from "@/interfaces/Arquivo";
 import type { ClienteFormData } from "@/pages/CadastroClientes";
 import { cleanCNPJ, cleanPhone, cleanCEP } from "@/utils/format.ts";
 import {
-    buildContactsFromForm,
-    addContactToClient,
-    removeContactFromClient,
+    patchContact,
     type ClientContact,
 } from "./clientsContactsService.ts";
 
@@ -35,6 +34,9 @@ export interface ApiClient {
     billingDueDay?: number | null;
     contractDate?: string | null;
     status: boolean;
+    expirationStatus: EExpirationStatus;
+    ecacExpirationDate?: string | null;
+    notes?: string | null;
     documentsCount?: number;
 }
 
@@ -52,15 +54,19 @@ export interface CreateClientCommand {
     tradeName: string;
     legalName: string;
     cnpj: string;
-    stateRegistration: string;
-    municipalRegistration: string;
+    stateRegistration: string | null;
+    municipalRegistration: string | null;
     address: AddressDTO;
+    financialContactName: string;
     financialEmail: string;
     financialPhone: string;
+    contactName: string;
     email: string;
     phone: string;
     billingDueDay?: number | null;
     contractDateInDays: number;
+    ecacExpirationDate: string;
+    notes?: string | null;
 }
 
 export interface UpdateClientCommand extends CreateClientCommand {
@@ -84,7 +90,7 @@ function getBillingDueDayFromDate(dateStr: string | undefined): number | null {
     if (!dateStr) return null;
     const d = new Date(dateStr);
     if (Number.isNaN(d.getTime())) return null;
-    return d.getDate();
+    return d.getUTCDate();
 }
 
 export async function createClient(data: ClienteFormData) {
@@ -96,15 +102,19 @@ export async function createClient(data: ClienteFormData) {
         tradeName: data.nomeFantasia,
         legalName: data.razaoSocial,
         cnpj: cleanCNPJ(data.cnpj),
-        stateRegistration: data.inscricaoEstadual || "ISENTO",
-        municipalRegistration: data.inscricaoMunicipal,
+        stateRegistration: data.inscricaoEstadual || null,
+        municipalRegistration: data.inscricaoMunicipal || null,
         address: buildAddressFromForm(data),
+        financialContactName: data.nomeFinanceiro,
         financialEmail: data.emailFinanceiro,
         financialPhone: cleanPhone(data.telefoneFinanceiro)!,
+        contactName: data.nomeResponsavel,
         email: data.emailResponsavel,
         phone: cleanPhone(data.telefoneResponsavel)!,
         billingDueDay: billingDueDay,
         contractDateInDays: contractDays,
+        ecacExpirationDate: data.dataVencimentoEcac,
+        notes: data.observacoes || null,
     };
 
     const res = await http.post<any>("Clients", payload);
@@ -113,79 +123,101 @@ export async function createClient(data: ClienteFormData) {
         throw res;
     }
 
-    const client = res.data;
-    const clientId: string = client.id;
-
-    const contacts = buildContactsFromForm(data);
-
-    if (contacts.length > 0) {
-        try {
-            await Promise.all(contacts.map((c) => addContactToClient(clientId, c)));
-        } catch (error) {
-            // Rollback: se falhar ao adicionar contatos, remove o cliente para garantir integridade
-            // "Um cliente não pode ficar sem contato"
-            await deleteClient(clientId);
-            throw error;
-        }
-    }
-
-    return client;
+    return res.data;
 }
 
 export async function updateClient(
     id: string,
     data: ClienteFormData,
-    currentStatus?: boolean,
-    existingContacts?: ClientContact[]
+    contactIds: {
+        financialEmailId?: string;
+        financialPhoneId?: string;
+        personalEmailId?: string;
+        personalPhoneId?: string;
+    }
 ) {
     const newStatusBool = data.status === "ativo";
     const billingDueDay = getBillingDueDayFromDate(data.dataVencimento);
     const contractDays = data.vencimentoContrato
         ? Number(data.vencimentoContrato)
-        : undefined;
+        : 0;
 
     const payload: UpdateClientCommand = {
         partnerId: data.parceiroId,
         tradeName: data.nomeFantasia,
         legalName: data.razaoSocial,
         cnpj: cleanCNPJ(data.cnpj),
-        stateRegistration: data.inscricaoEstadual || "ISENTO",
-        municipalRegistration: data.inscricaoMunicipal,
+        stateRegistration: data.inscricaoEstadual || null,
+        municipalRegistration: data.inscricaoMunicipal || null,
         address: buildAddressFromForm(data),
+        financialContactName: data.nomeFinanceiro,
         financialEmail: data.emailFinanceiro,
         financialPhone: cleanPhone(data.telefoneFinanceiro)!,
+        contactName: data.nomeResponsavel,
         email: data.emailResponsavel,
         phone: cleanPhone(data.telefoneResponsavel)!,
         billingDueDay,
         contractDateInDays: contractDays,
+        ecacExpirationDate: data.dataVencimentoEcac,
+        notes: data.observacoes || null,
         status: newStatusBool,
     };
 
+    // Update main client data
     const res = await http.put(`Clients/${id}`, payload);
 
     if ("message" in res && !("headers" in res)) {
         throw res;
     }
 
-    if (typeof currentStatus === "boolean" && currentStatus !== newStatusBool) {
-        if (newStatusBool) {
-            await activateClient(id);
-        } else {
-            await deactivateClient(id);
-        }
+    // Update contacts via PATCH
+    const patchPromises = [];
+
+    if (contactIds.financialEmailId) {
+        patchPromises.push(patchContact(contactIds.financialEmailId, {
+            name: data.nomeFinanceiro,
+            value: data.emailFinanceiro,
+            type: 0, // Email
+            role: 1, // Financial
+            phoneType: null
+        }));
     }
 
-    if (existingContacts && existingContacts.length > 0) {
-        await Promise.all(
-            existingContacts.map((c) => removeContactFromClient(id, c.id))
-        );
+    if (contactIds.financialPhoneId) {
+        patchPromises.push(patchContact(contactIds.financialPhoneId, {
+            name: data.nomeFinanceiro,
+            value: cleanPhone(data.telefoneFinanceiro),
+            type: 1, // Phone
+            role: 1, // Financial
+            phoneType: 0 // Landline (defaulting based on previous logic)
+        }));
     }
 
-    const contacts = buildContactsFromForm(data);
-
-    if (contacts.length) {
-        await Promise.all(contacts.map((c) => addContactToClient(id, c)));
+    if (contactIds.personalEmailId) {
+        patchPromises.push(patchContact(contactIds.personalEmailId, {
+            name: data.nomeResponsavel,
+            value: data.emailResponsavel,
+            type: 0, // Email
+            role: 0, // Personal/Personal
+            phoneType: null
+        }));
     }
+
+    if (contactIds.personalPhoneId) {
+        patchPromises.push(patchContact(contactIds.personalPhoneId, {
+            name: data.nomeResponsavel,
+            value: cleanPhone(data.telefoneResponsavel),
+            type: 1, // Phone
+            role: 0, // Personal/Personal
+            phoneType: 1 // Mobile (defaulting based on previous logic)
+        }));
+    }
+
+    if (patchPromises.length > 0) {
+        await Promise.all(patchPromises);
+    }
+
+    return res.data;
 }
 
 export async function getClientById(id: string) {
@@ -202,8 +234,11 @@ export async function getClients(params?: {
     page?: number;
     pageSize?: number;
     includePartner?: boolean;
+    expirationStatus?: number;
+    dueDateFrom?: string;
+    dueDateTo?: string;
 }) {
-    const { partnerId, status, cnpj, search, page, pageSize, includePartner } =
+    const { partnerId, status, cnpj, search, page, pageSize, includePartner, expirationStatus, dueDateFrom, dueDateTo } =
         params || {};
 
     const res = await http.get<ClientDetails[] | { items: ClientDetails[] }>(
@@ -217,6 +252,9 @@ export async function getClients(params?: {
                 Page: page,
                 PageSize: pageSize,
                 IncludePartner: includePartner,
+                ExpirationStatus: expirationStatus,
+                DueDateFrom: dueDateFrom,
+                DueDateTo: dueDateTo,
             },
         }
     );

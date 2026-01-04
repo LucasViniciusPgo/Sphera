@@ -6,6 +6,7 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
@@ -50,6 +51,8 @@ export interface Cliente {
     status: "ativo" | "inativo";
     vencimentoContrato: string;
     dataVencimento: string;
+    dataVencimentoEcac: string;
+    observacoes?: string;
     parceiroId: string;
     createdBy: string;
     createdAt: string;
@@ -61,8 +64,8 @@ const clienteSchema = z.object({
     nomeFantasia: z.string().min(1, "Nome Fantasia é obrigatório").max(100),
     razaoSocial: z.string().min(1, "Razão Social é obrigatória").max(100),
     cnpj: z.string().refine((val) => validateCNPJ(val), "CNPJ inválido"),
-    inscricaoEstadual: z.string().max(50).optional(),
-    inscricaoMunicipal: z.string().min(1, "Inscrição Municipal é obrigatória").max(50),
+    inscricaoEstadual: z.string().max(50).optional().nullable(),
+    inscricaoMunicipal: z.string().max(50).optional().nullable(),
     rua: z.string().min(1, "Rua é obrigatória").max(120),
     bairro: z.string().min(1, "Bairro é obrigatório").max(80),
     numero: z.string().min(1, "Número é obrigatório").max(20),
@@ -80,6 +83,8 @@ const clienteSchema = z.object({
     status: z.enum(["ativo", "inativo"]),
     vencimentoContrato: z.string().min(1, "Data de vencimento do contrato é obrigatória"),
     dataVencimento: z.string().min(1, "Data de vencimento é obrigatória"),
+    dataVencimentoEcac: z.string().min(1, "Data de vencimento e-CAC é obrigatória"),
+    observacoes: z.string().max(500, "A observação deve ter no máximo 500 caracteres").optional(),
     parceiroId: z.string().min(1, "Selecione um parceiro"),
 });
 
@@ -113,8 +118,12 @@ const CadastroClientes = () => {
     const location = useLocation();
     const readonly = new URLSearchParams(location.search).get("view") === "readonly";
 
-    const [originalStatus, setOriginalStatus] = useState<boolean | undefined>();
-    const [existingContacts, setExistingContacts] = useState<ClientContact[]>([]);
+    const [contactIds, setContactIds] = useState<{
+        financialEmailId?: string;
+        financialPhoneId?: string;
+        personalEmailId?: string;
+        personalPhoneId?: string;
+    }>({});
     const [initialPartnerName, setInitialPartnerName] = useState("");
 
     const form = useForm<ClienteFormData>({
@@ -142,6 +151,8 @@ const CadastroClientes = () => {
             status: "ativo",
             vencimentoContrato: "",
             dataVencimento: "",
+            dataVencimentoEcac: "",
+            observacoes: "",
             parceiroId: "",
         },
     });
@@ -159,8 +170,6 @@ const CadastroClientes = () => {
                 const contacts: PartnerContact[] = clienteApi.contacts || [];
                 const partner: ApiPartner = clienteApi.partner || {} as ApiPartner;
 
-                setExistingContacts(contacts);
-                setOriginalStatus(statusBool);
                 if (partner) {
                     setInitialPartnerName(partner.legalName);
                 }
@@ -173,14 +182,18 @@ const CadastroClientes = () => {
                 let emailResponsavel = "";
                 let telefoneResponsavel = "";
 
+                const ids: typeof contactIds = {};
+
                 for (const c of contacts) {
                     if (c.role === EContactRole.Financial) {
                         if (!nomeFinanceiro && c.name) nomeFinanceiro = c.name;
                         if (c.type === EContactType.Email && !emailFinanceiro) {
                             emailFinanceiro = c.value;
+                            ids.financialEmailId = c.id;
                         }
                         if (c.type === EContactType.Phone && !telefoneFinanceiro) {
                             telefoneFinanceiro = formatPhone(c.value);
+                            ids.financialPhoneId = c.id;
                         }
                     }
 
@@ -188,12 +201,16 @@ const CadastroClientes = () => {
                         if (!nomeResponsavel && c.name) nomeResponsavel = c.name;
                         if (c.type === EContactType.Email && !emailResponsavel) {
                             emailResponsavel = c.value;
+                            ids.personalEmailId = c.id;
                         }
                         if (c.type === EContactType.Phone && !telefoneResponsavel) {
                             telefoneResponsavel = formatPhone(c.value);
+                            ids.personalPhoneId = c.id;
                         }
                     }
                 }
+
+                setContactIds(ids);
 
                 form.reset({
                     nomeFantasia: clienteApi.tradeName || "",
@@ -220,6 +237,8 @@ const CadastroClientes = () => {
                         ? daysSinceContract(clienteApi.contractDate)
                         : "",
                     dataVencimento: buildDateFromDueDay(clienteApi.billingDueDay),
+                    dataVencimentoEcac: clienteApi.ecacExpirationDate ? clienteApi.ecacExpirationDate.split("T")[0] : "",
+                    observacoes: clienteApi.notes || "",
                     parceiroId: partner?.id || "",
                 });
             } catch (error: any) {
@@ -241,7 +260,7 @@ const CadastroClientes = () => {
         setIsSubmitting(true);
         try {
             if (isEditing && id) {
-                await updateClient(id, data, originalStatus, existingContacts);
+                await updateClient(id, data, contactIds);
                 toast({
                     title: "Cliente atualizado!",
                     description: "O cliente foi atualizado com sucesso.",
@@ -395,7 +414,7 @@ const CadastroClientes = () => {
                                         name="inscricaoMunicipal"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Inscrição Municipal *</FormLabel>
+                                                <FormLabel>Inscrição Municipal </FormLabel>
                                                 <FormControl>
                                                     <Input placeholder="Número da inscrição" {...field}
                                                         readOnly={readonly} />
@@ -691,6 +710,20 @@ const CadastroClientes = () => {
 
                                     <FormField
                                         control={form.control}
+                                        name="dataVencimentoEcac"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Data de Vencimento e-CAC *</FormLabel>
+                                                <FormControl>
+                                                    <Input type="date" {...field} readOnly={readonly} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+
+                                    <FormField
+                                        control={form.control}
                                         name="vencimentoContrato"
                                         render={({ field }) => (
                                             <FormItem>
@@ -701,6 +734,26 @@ const CadastroClientes = () => {
                                                         placeholder="Número de dias"
                                                         min={1}
                                                         {...field}
+                                                        readOnly={readonly}
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+
+                                    <FormField
+                                        control={form.control}
+                                        name="observacoes"
+                                        render={({ field }) => (
+                                            <FormItem className="md:col-span-2">
+                                                <FormLabel>Observação</FormLabel>
+                                                <FormControl>
+                                                    <Textarea
+                                                        placeholder="Digite observações relevantes sobre o cliente..."
+                                                        className="min-h-[120px] resize-y"
+                                                        {...field}
+                                                        maxLength={500}
                                                         readOnly={readonly}
                                                     />
                                                 </FormControl>

@@ -7,6 +7,7 @@ import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft } from "lucide-react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
@@ -68,6 +69,7 @@ const parceiroSchema = z.object({
         z.string().min(10, "Telefone inválido").max(20).optional()
     ),
     status: z.enum(["ativo", "inativo"]),
+    observacoes: z.string().max(500, "A observação deve ter no máximo 500 caracteres").optional(),
 });
 
 export type ParceiroFormData = z.infer<typeof parceiroSchema>;
@@ -103,6 +105,7 @@ export default function CadastroParceiros() {
             celular: "",
             telefoneReserva: "",
             status: "ativo",
+            observacoes: "",
         },
     });
 
@@ -213,6 +216,7 @@ export default function CadastroParceiros() {
                     celular,
                     telefoneReserva,
                     status: statusBool ? "ativo" : "inativo",          // mapeando status booleano pra string
+                    observacoes: parceiroApi.notes || "",
                 });
 
                 setOriginalStatus(statusBool);
@@ -637,6 +641,27 @@ export default function CadastroParceiros() {
                                             </FormItem>
                                         )}
                                     />
+
+                                    <FormField
+                                        control={form.control}
+                                        name="observacoes"
+                                        render={({ field }) => (
+                                            <FormItem className="md:col-span-2">
+                                                <FormLabel>Observação</FormLabel>
+                                                <FormControl>
+                                                    <Textarea
+                                                        placeholder="Digite observações relevantes sobre o parceiro..."
+                                                        className="min-h-[120px] resize-y"
+                                                        {...field}
+                                                        value={field.value || ''}
+                                                        maxLength={500}
+                                                        readOnly={readonly}
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
                                 </div>
                             </div>
 
@@ -662,10 +687,10 @@ export default function CadastroParceiros() {
                                     </Button>
                                 </div>
                             )}
-                        </form>
-                    </Form>
-                </CardContent>
-            </Card>
-        </div>
+                        </form >
+                    </Form >
+                </CardContent >
+            </Card >
+        </div >
     );
 }

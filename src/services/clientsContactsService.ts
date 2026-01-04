@@ -94,3 +94,11 @@ export async function removeContactFromClient(
     }
     return res;
 }
+
+export async function patchContact(id: string, body: any) {
+    const res = await http.patch(`Contact/${id}`, body);
+    if ("message" in res && !("headers" in res)) {
+        throw res;
+    }
+    return res;
+}

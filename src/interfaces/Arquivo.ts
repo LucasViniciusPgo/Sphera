@@ -1,3 +1,11 @@
+export enum EExpirationStatus {
+    WithinDeadline = 0,
+    AboutToExpire = 1,
+    Expired = 2
+}
+
+export type StatusType = "vencido" | "a-vencer" | "dentro-prazo";
+
 export interface Arquivo {
     id: string;
     fileName: string;
@@ -5,7 +13,7 @@ export interface Arquivo {
     dueDate: string;
     notes?: string;
     file?: File;
-    status?: StatusType;
+    status: EExpirationStatus;
 
     clientName?: string;
     clientId?: string;
@@ -25,5 +33,3 @@ export interface Arquivo {
     updatedBy: string;
     updatedAt: string;
 }
-
-export type StatusType = "vencido" | "a-vencer" | "dentro-prazo";

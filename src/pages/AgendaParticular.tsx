@@ -100,7 +100,7 @@ function toApiDateTime(date: Date) {
     return format(date, "yyyy-MM-dd'T'HH:mm:ss");
 }
 
-const Agenda = () => {
+const AgendaParticular = () => {
     const [view, setView] = useState<CalendarView>("month");
     const [currentDate, setCurrentDate] = useState<Date>(() => new Date());
     const [events, setEvents] = useState<ScheduleEvent[]>([]);
@@ -163,12 +163,14 @@ const Agenda = () => {
     }, []);
 
     async function loadEvents() {
+        const currentUserId = localStorage.getItem("currentUserId");
         setLoading(true);
         try {
             const params = {
                 startAt: toApiDateTime(start),
                 endAt: toApiDateTime(end),
-                eventType: 0,
+                eventType: 1, // Particular
+                createdBy: currentUserId || undefined,
             };
 
             const data = await getScheduleEvents(params);
@@ -215,7 +217,7 @@ const Agenda = () => {
             userId: formUserId === NONE_USER ? null : formUserId,
             clientId: formClientId === NONE_CLIENT ? null : formClientId,
             notes: formNotes || null,
-            eventType: 0,
+            eventType: 1, // Particular
         };
 
         setLoading(true);
@@ -268,7 +270,7 @@ const Agenda = () => {
             userId: schedule.userId ?? null,
             clientId: schedule.clientId ?? null,
             notes: schedule.notes ?? null,
-            eventType: 0,
+            eventType: 1, // Particular
         };
 
         setEvents((prev) =>
@@ -705,10 +707,9 @@ const Agenda = () => {
                 <div className="flex items-center gap-2">
                     <CalendarDays className="h-5 w-5 text-primary" />
                     <div>
-                        <CardTitle className="text-xl">Agenda</CardTitle>
+                        <CardTitle className="text-xl">Agenda Particular</CardTitle>
                         <p className="text-xs text-muted-foreground">
-                            Visualize e gerencie seus agendamentos de atendimento
-                            por cliente.
+                            Visualize e gerencie seus agendamentos particulares.
                         </p>
                     </div>
                 </div>
@@ -951,4 +952,4 @@ const Agenda = () => {
     );
 };
 
-export default Agenda;
+export default AgendaParticular;
