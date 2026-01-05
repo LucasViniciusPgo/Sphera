@@ -65,7 +65,7 @@ export interface CreateClientCommand {
     phone: string;
     billingDueDay?: number | null;
     contractDateInDays: number;
-    ecacExpirationDate: string;
+    ecacExpirationDate?: string;
     notes?: string | null;
 }
 
@@ -113,7 +113,7 @@ export async function createClient(data: ClienteFormData) {
         phone: cleanPhone(data.telefoneResponsavel)!,
         billingDueDay: billingDueDay,
         contractDateInDays: contractDays,
-        ecacExpirationDate: data.dataVencimentoEcac,
+        ecacExpirationDate: data.dataVencimentoEcac || undefined,
         notes: data.observacoes || null,
     };
 
@@ -158,7 +158,7 @@ export async function updateClient(
         phone: cleanPhone(data.telefoneResponsavel)!,
         billingDueDay,
         contractDateInDays: contractDays,
-        ecacExpirationDate: data.dataVencimentoEcac,
+        ecacExpirationDate: data.dataVencimentoEcac || undefined,
         notes: data.observacoes || null,
         status: newStatusBool,
     };
