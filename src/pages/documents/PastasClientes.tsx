@@ -6,8 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { http } from "@/lib/http";
 import { getClients } from "@/services/clientsService";
-import { getPartnerById } from "@/services/partnersService";
-import { getDocuments } from "@/services/documentsService";
 
 interface Client {
   id: string;
@@ -21,7 +19,6 @@ export default function PastasClientes() {
   const location = useLocation();
   const { partnerId } = useParams<{ partnerId: string }>();
   const [clients, setClients] = useState<any[]>([]);
-  const [documentsPerClient, setDocumentsPerClient] = useState<Record<string, number>>({});
   const [nomeParceiro, setNomeParceiro] = useState<string>("");
   const [searchTerm, setSearchTerm] = useState<string>("");
 
@@ -30,25 +27,15 @@ export default function PastasClientes() {
       const pageSize = location.state?.totalClients || 1000;
       const clientsResponse = (await getClients({
         partnerId,
-        includePartner: true,
-        pageSize: pageSize > 0 ? pageSize : 1000
+        pageSize: pageSize > 0 ? pageSize : 1000,
+        includePartner: true
       })).items;
       setClients(clientsResponse);
-      let legalName = "";
-      if (clientsResponse.length > 0 && clientsResponse[0].partner) {
-        legalName = clientsResponse[0].partner.legalName;
-      } else {
-        const partnerResponse = await getPartnerById(partnerId);
-        legalName = partnerResponse.data.legalName;
-      }
-      setNomeParceiro(legalName);
 
-      const documentsResponse = await getDocuments({ partnerId });
-      const count: Record<string, number> = {};
-      clientsResponse.forEach((client) => {
-        count[client.id] = client.documentsCount || 0;
-      });
-      setDocumentsPerClient(count);
+      // Obter nome do parceiro do primeiro cliente (todos têm o mesmo partner)
+      if (clientsResponse.length > 0 && clientsResponse[0].partner) {
+        setNomeParceiro(clientsResponse[0].partner.legalName);
+      }
     })();
   }, [partnerId]);
 
@@ -140,7 +127,7 @@ export default function PastasClientes() {
                     <CardTitle className="text-lg">{client.legalName}</CardTitle>
                     <CardDescription className="flex items-center gap-1 mt-1">
                       <FileText className="h-3 w-3" />
-                      {documentsPerClient[client.id] || 0} {(documentsPerClient[client.id] || 0) === 1 ? "documento" : "documentos"}
+                      {client.documentsCount || 0} {(client.documentsCount || 0) === 1 ? "documento" : "documentos"}
                     </CardDescription>
                   </div>
                 </div>
