@@ -1,4 +1,4 @@
-import { Users, List, UserPlus, Briefcase, ArchiveX, Archive, TrendingUp, CalendarDays, LogOut } from "lucide-react";
+import { Users, List, UserPlus, Briefcase, ArchiveX, Archive, TrendingUp, CalendarDays, LogOut, FileText } from "lucide-react";
 import { NavLink, useMatch } from "react-router-dom";
 import {
     Sidebar,
@@ -33,6 +33,7 @@ const parceirosItems = [
 const clientesItems = [
     { title: "Cadastrar Clientes", url: "/cadastro-clientes", icon: UserPlus },
     { title: "Listar Clientes", url: "/clientes", icon: List },
+    { title: "Relatório de Clientes", url: "/relatorio-clientes", icon: FileText },
 ];
 
 const serviceItems = [
@@ -43,6 +44,7 @@ const serviceItems = [
 const cadastroArquivosItems = [
     { title: "Cadastrar Arquivos", url: "/cadastro-arquivos", icon: Archive },
     { title: "Listar Arquivos", url: "/arquivos", icon: ArchiveX },
+    { title: "Relatório de Arquivos", url: "/relatorio-arquivos", icon: FileText },
 ];
 
 const dashboardItem = [
@@ -50,7 +52,8 @@ const dashboardItem = [
 ];
 
 const agendaItems = [
-    { title: "Agenda", url: "/agenda", icon: CalendarDays },
+    { title: "Agenda Global", url: "/agenda", icon: CalendarDays },
+    { title: "Agenda Particular", url: "/agenda-particular", icon: CalendarDays },
 ];
 
 const usuarioAdminItemsBase = [

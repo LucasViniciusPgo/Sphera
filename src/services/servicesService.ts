@@ -6,11 +6,13 @@ export interface CreateServiceCommand {
     name: string;
     code: string;
     defaultDueInDays?: number | null;
+    notes?: string | null;
 }
 
 export interface UpdateServiceCommand {
     name: string;
     defaultDueInDays?: number | null;
+    notes?: string | null;
 }
 
 function buildCreatePayload(data: ServicoFormData): CreateServiceCommand {
@@ -18,6 +20,7 @@ function buildCreatePayload(data: ServicoFormData): CreateServiceCommand {
         name: data.nomeServico,
         code: data.codigo,
         defaultDueInDays: data.vencimentoDoc ?? null,
+        notes: data.observacoes || null,
     };
 }
 
@@ -25,6 +28,7 @@ function buildUpdatePayload(data: ServicoFormData): UpdateServiceCommand {
     return {
         name: data.nomeServico,
         defaultDueInDays: data.vencimentoDoc ?? null,
+        notes: data.observacoes || null,
     };
 }
 
@@ -35,6 +39,7 @@ export type ServicoViewModel = {
     vencimentoDoc: number | null;
     status: "ativo" | "inativo";
     dueDate: string | null;
+    observacoes: string | null;
     createdAt: string;
     createdBy: string;
     updatedAt: string | null;
@@ -49,6 +54,7 @@ export function mapServiceToViewModel(dto: Servico): ServicoViewModel {
         vencimentoDoc: dto.remainingDays ?? null,
         status: dto.isActive ? "ativo" : "inativo",
         dueDate: dto.dueDate ?? null,
+        observacoes: dto.notes ?? null,
         createdBy: dto.createdBy ?? "",
         createdAt: dto.createdAt ?? "",
         updatedBy: dto.updatedBy ?? "",

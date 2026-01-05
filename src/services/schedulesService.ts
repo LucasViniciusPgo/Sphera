@@ -6,6 +6,7 @@ export interface ScheduleEvent {
     userId?: string;
     clientId?: string;
     notes?: string | null;
+    eventType: number;
     createdAt: string;
     createdBy: string;
     updatedAt?: string | null;
@@ -17,19 +18,21 @@ export interface CreateScheduleEventCommand {
     userId?: string;
     clientId?: string;
     notes?: string | null;
+    eventType: number;
 }
 
 export type UpdateScheduleEventCommand = CreateScheduleEventCommand;
 
 export async function getUserScheduleEvents(
     userId: string,
-    params?: { startAt?: string; endAt?: string }
+    params?: { startAt?: string; endAt?: string; eventType?: number }
 ) {
-    const { startAt, endAt } = params || {};
+    const { startAt, endAt, eventType } = params || {};
     const res = await http.get<ScheduleEvent[]>(`Schedules/user/${userId}`, {
         params: {
             StartAt: startAt,
             EndAt: endAt,
+            EventType: eventType,
         },
     });
     return res.data;
@@ -38,12 +41,16 @@ export async function getUserScheduleEvents(
 export async function getScheduleEvents(params?: {
     startAt?: string;
     endAt?: string;
+    eventType?: number;
+    createdBy?: string;
 }) {
-    const { startAt, endAt } = params || {};
+    const { startAt, endAt, eventType, createdBy } = params || {};
     const query: Record<string, any> = {};
 
     if (startAt) query.StartAt = startAt;
     if (endAt) query.EndAt = endAt;
+    if (eventType !== undefined) query.EventType = eventType;
+    if (createdBy) query.CreatedBy = createdBy;
 
     const res = await http.get<ScheduleEvent[]>("Schedules", {
         params: query,

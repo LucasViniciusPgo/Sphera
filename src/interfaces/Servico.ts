@@ -5,6 +5,7 @@ export interface Servico {
     dueDate: string;
     remainingDays: number;
     isActive: boolean;
+    notes: string | null;
     createdAt: string;
     createdBy: string;
     updatedAt: string | null;

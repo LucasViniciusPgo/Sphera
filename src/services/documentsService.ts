@@ -1,10 +1,10 @@
 import { getCurrentUser } from "@/hooks/useCurrentUser";
-import { Arquivo, StatusType } from "@/interfaces/Arquivo";
+import { Arquivo, StatusType, EExpirationStatus } from "@/interfaces/Arquivo";
 import { http } from "@/lib/http";
 import { ArquivoFormData } from "@/pages/documents/CadastroArquivo";
 
 
-export async function createDocument(data: ArquivoFormData, file: File) {
+export async function createDocument(data: ArquivoFormData, file?: File | null) {
   const createdAt = new Date().toISOString();
   const newDocument: Arquivo = {
     id: crypto.randomUUID(),
@@ -16,26 +16,34 @@ export async function createDocument(data: ArquivoFormData, file: File) {
     dueDate: data.dueDate,
     notes: data.notes || "",
     file: file || undefined,
+    status: EExpirationStatus.WithinDeadline, // Status será calculado pelo backend
     createdBy: getCurrentUser(),
     createdAt,
     updatedBy: getCurrentUser(),
     updatedAt: createdAt
   };
 
-  const formData = new FormData();
-  formData.append("file", file);
   const createResponse = await http.post("/documents", newDocument);
   const document: Arquivo = createResponse.data;
-  const uploadResponse = await http.post(`/documents/${createResponse.data.id}/upload`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
 
-  return { success: createResponse.status == 201 && uploadResponse.status == 201, document};
+  let uploadSuccess = true;
+  if (file) {
+    const formData = new FormData();
+    formData.append("file", file);
+    const uploadResponse = await http.post(`/documents/${createResponse.data.id}/upload`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    uploadSuccess = uploadResponse.status == 201;
+  }
+
+  return { success: createResponse.status == 201 && uploadSuccess, document };
 }
 
 export async function updateDocument(
   id: string,
   existingDocument: Arquivo,
   data: ArquivoFormData,
-  file?: File
+  file?: File | null
 ) {
   const updatedAt = new Date().toISOString();
   const document = {
@@ -48,32 +56,47 @@ export async function updateDocument(
   } as Arquivo;
 
   const updateResponse = await http.put(`/documents/${id}`, document);
-  const formData = new FormData();
-  let uploadResponse;
-  if (file)
-  {
+
+  let uploadSuccess = true;
+  if (file) {
+    const formData = new FormData();
     formData.append("file", file);
-    uploadResponse = await http.post(`/documents/${id}/upload`, formData, {headers: {'Content-Type': 'multipart/form-data'}});
+    const uploadResponse = await http.post(`/documents/${id}/upload`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    uploadSuccess = uploadResponse.status == 201;
   }
-  
-  return { success: updateResponse.status == 200 && (file ? uploadResponse?.status == 201 : true), document};
+
+  return { success: updateResponse.status == 200 && uploadSuccess, document };
 }
 
 export async function getDocumentById(id: string) {
   return (await http.get<Arquivo>(`/documents/${id}`)).data;
 }
 
-export async function getDocuments(params?: {
-    partnerId?: string,
-    clientId?: string,
-    serviceId?: string,
-    status?: StatusType,
-    dueDateFrom?: string,
-    dueDateTo?: string,
-    search?: string,
-    page?: number,
-    pageSize?: number
+// Converte StatusType string para EExpirationStatus numérico
+function convertStatusToEnum(status: StatusType): EExpirationStatus {
+  switch (status) {
+    case "vencido":
+      return EExpirationStatus.Expired;
+    case "a-vencer":
+      return EExpirationStatus.AboutToExpire;
+    case "dentro-prazo":
+      return EExpirationStatus.WithinDeadline;
   }
+}
+
+export async function getDocuments(params?: {
+  partnerId?: string,
+  clientId?: string,
+  serviceId?: string,
+  status?: StatusType,
+  dueDateFrom?: string,
+  dueDateTo?: string,
+  search?: string,
+  page?: number,
+  pageSize?: number
+}
 ) {
   const { partnerId, clientId, serviceId, status, dueDateFrom, dueDateTo, search, page, pageSize } = params || {};
 
@@ -85,7 +108,7 @@ export async function getDocuments(params?: {
   if (serviceId)
     actualParams.serviceId = serviceId;
   if (status)
-    actualParams.status = status;
+    actualParams.status = convertStatusToEnum(status);
   if (dueDateFrom)
     actualParams.dueDateFrom = dueDateFrom;
   if (dueDateTo)
@@ -107,5 +130,8 @@ export async function deleteDocument(id: string) {
 
 export async function downloadDocumentFile(id: string) {
   const response = await http.get<Blob>(`/documents/${id}/download`, { responseType: 'blob' });
+  if (response.status !== 200) {
+    throw response;
+  }
   return response.data;
 }

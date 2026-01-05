@@ -20,9 +20,13 @@ import ListaArquivos from "./pages/documents/ListaArquivos";
 import PastasArquivos from "./pages/documents/PastasArquivos";
 import PastasClientes from "./pages/documents/PastasClientes";
 import Agenda from "./pages/Agenda";
-import { RequireRole } from "./components/RequireRole";
+import AgendaParticular from "./pages/AgendaParticular";
 import ListaUsuarios from "./pages/ListaUsuarios";
 import { RouteGuard } from "./components/RouteGuard";
+import { RequireRole } from "./components/RequireRole";
+import RelatorioArquivos from "@/pages/documents/RelatorioArquivos";
+import RelatorioClientes from "./pages/RelatorioClientes";
+
 
 const queryClient = new QueryClient();
 
@@ -30,6 +34,7 @@ const loggedInRoutes = () => {
     return (
         <>
             <Route path="agenda" element={<Agenda />} />
+            <Route path="agenda-particular" element={<AgendaParticular />} />
             <Route path="cadastro-parceiros" element={<CadastroParceiros />} />
             <Route path="cadastro-parceiros/:id" element={<CadastroParceiros />} />
             <Route path="parceiros" element={<ListaParceiros />} />
@@ -68,6 +73,8 @@ const loggedInRoutes = () => {
             <Route path="arquivos" element={<PastasArquivos />} />
             <Route path="arquivos/:partnerId" element={<PastasClientes />} />
             <Route path="arquivos/:partnerId/:clientId" element={<ListaArquivos />} />
+            <Route path="relatorio-clientes" element={<RelatorioClientes />} />
+            <Route path="relatorio-arquivos" element={<RelatorioArquivos />} />
         </>)
 }
 

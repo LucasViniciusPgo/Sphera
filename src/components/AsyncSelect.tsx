@@ -60,6 +60,13 @@ export function AsyncSelect<T>({
         }
     }, [initialLabel])
 
+    // Limpar label quando value for vazio
+    React.useEffect(() => {
+        if (!value || value === "") {
+            setSelectedLabel("")
+        }
+    }, [value])
+
     // Debounce search
     React.useEffect(() => {
         const timer = setTimeout(() => {
