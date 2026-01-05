@@ -83,7 +83,7 @@ const clienteSchema = z.object({
     status: z.enum(["ativo", "inativo"]),
     vencimentoContrato: z.string().min(1, "Data de vencimento do contrato é obrigatória"),
     dataVencimento: z.string().min(1, "Data de vencimento é obrigatória"),
-    dataVencimentoEcac: z.string().min(1, "Data de vencimento e-CAC é obrigatória"),
+    dataVencimentoEcac: z.string().optional(),
     observacoes: z.string().max(500, "A observação deve ter no máximo 500 caracteres").optional(),
     parceiroId: z.string().min(1, "Selecione um parceiro"),
 });
@@ -713,7 +713,7 @@ const CadastroClientes = () => {
                                         name="dataVencimentoEcac"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Data de Vencimento e-CAC *</FormLabel>
+                                                <FormLabel>Data de Vencimento e-CAC</FormLabel>
                                                 <FormControl>
                                                     <Input type="date" {...field} readOnly={readonly} />
                                                 </FormControl>
