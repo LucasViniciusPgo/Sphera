@@ -18,13 +18,12 @@ export default function PastasArquivos() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [partners, setPartners] = useState<PartnerDetails[]>([]);
-  const [clientsPerPartner, setClientsPerPartner] = useState<Record<string, number>>({});
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const mounted = useRef(false);
-  const pageSize = 12; // Multiplo de 2 e 3 para ficar bom no grid
+  const pageSize = 12;
 
   // Debounce search
   useEffect(() => {
@@ -50,8 +49,7 @@ export default function PastasArquivos() {
       const { items } = await getPartners({
         page: pageParam,
         pageSize,
-        search: searchParam || undefined,
-        includeClients: true
+        search: searchParam || undefined
       });
 
       if (pageParam > 1 && items.length === 0) {
@@ -66,13 +64,6 @@ export default function PastasArquivos() {
       }
 
       setPartners(items);
-
-      const count: Record<string, number> = {};
-      items.forEach((partner) => {
-        count[partner.id] = partner.clientsCount;
-      });
-      setClientsPerPartner(count);
-
       setHasMore(items.length >= pageSize);
     } catch (error) {
       console.error(error);
@@ -90,9 +81,9 @@ export default function PastasArquivos() {
     loadPartners(page, searchTerm);
   }, [page, loadPartners]);
 
-  const handleFolderClick = (partnerId: string) => {
-    const totalClients = clientsPerPartner[partnerId] || 0;
-    navigate(`/home/arquivos/${partnerId}`, { state: { partnerId, totalClients } });
+  const handleFolderClick = (partner: PartnerDetails) => {
+    const totalClients = partner.clientsCount || 0;
+    navigate(`/home/arquivos/${partner.id}`, { state: { partnerId: partner.id, totalClients } });
   };
 
   return (
@@ -155,13 +146,12 @@ export default function PastasArquivos() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {partners.map((partner) => {
-            const totalClients = clientsPerPartner[partner.id] || 0;
 
             return (
               <Card
                 key={partner.id}
                 className="cursor-pointer hover:shadow-lg transition-shadow"
-                onClick={() => handleFolderClick(partner.id)}
+                onClick={() => handleFolderClick(partner)}
               >
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-lg font-medium">{partner.legalName}</CardTitle>
@@ -171,7 +161,7 @@ export default function PastasArquivos() {
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <Users className="h-4 w-4" />
                     <span className="text-sm">
-                      {totalClients} {totalClients === 1 ? "cliente" : "clientes"}
+                      {partner.clientsCount || 0} {(partner.clientsCount || 0) === 1 ? "cliente" : "clientes"}
                     </span>
                   </div>
                 </CardContent>
