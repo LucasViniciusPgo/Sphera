@@ -118,12 +118,7 @@ const CadastroClientes = () => {
     const location = useLocation();
     const readonly = new URLSearchParams(location.search).get("view") === "readonly";
 
-    const [contactIds, setContactIds] = useState<{
-        financialEmailId?: string;
-        financialPhoneId?: string;
-        personalEmailId?: string;
-        personalPhoneId?: string;
-    }>({});
+    const [existingContacts, setExistingContacts] = useState<ClientContact[]>([]);
     const [initialPartnerName, setInitialPartnerName] = useState("");
 
     const form = useForm<ClienteFormData>({
@@ -182,18 +177,16 @@ const CadastroClientes = () => {
                 let emailResponsavel = "";
                 let telefoneResponsavel = "";
 
-                const ids: typeof contactIds = {};
+                setExistingContacts(contacts as ClientContact[]);
 
-                for (const c of contacts) {
+                for (const c of (contacts as PartnerContact[])) {
                     if (c.role === EContactRole.Financial) {
                         if (!nomeFinanceiro && c.name) nomeFinanceiro = c.name;
                         if (c.type === EContactType.Email && !emailFinanceiro) {
                             emailFinanceiro = c.value;
-                            ids.financialEmailId = c.id;
                         }
                         if (c.type === EContactType.Phone && !telefoneFinanceiro) {
                             telefoneFinanceiro = formatPhone(c.value);
-                            ids.financialPhoneId = c.id;
                         }
                     }
 
@@ -201,16 +194,12 @@ const CadastroClientes = () => {
                         if (!nomeResponsavel && c.name) nomeResponsavel = c.name;
                         if (c.type === EContactType.Email && !emailResponsavel) {
                             emailResponsavel = c.value;
-                            ids.personalEmailId = c.id;
                         }
                         if (c.type === EContactType.Phone && !telefoneResponsavel) {
                             telefoneResponsavel = formatPhone(c.value);
-                            ids.personalPhoneId = c.id;
                         }
                     }
                 }
-
-                setContactIds(ids);
 
                 form.reset({
                     nomeFantasia: clienteApi.tradeName || "",
@@ -260,7 +249,7 @@ const CadastroClientes = () => {
         setIsSubmitting(true);
         try {
             if (isEditing && id) {
-                await updateClient(id, data, contactIds);
+                await updateClient(id, data, existingContacts);
                 toast({
                     title: "Cliente atualizado!",
                     description: "O cliente foi atualizado com sucesso.",

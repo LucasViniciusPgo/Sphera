@@ -6,6 +6,7 @@ import {
     patchContact,
     type ClientContact,
 } from "./clientsContactsService.ts";
+import { EContactRole, EContactType } from "./partnersContactsService.ts";
 
 export interface AddressDTO {
     street: string;
@@ -129,12 +130,7 @@ export async function createClient(data: ClienteFormData) {
 export async function updateClient(
     id: string,
     data: ClienteFormData,
-    contactIds: {
-        financialEmailId?: string;
-        financialPhoneId?: string;
-        personalEmailId?: string;
-        personalPhoneId?: string;
-    }
+    existingContacts: ClientContact[]
 ) {
     const newStatusBool = data.status === "ativo";
     const billingDueDay = getBillingDueDayFromDate(data.dataVencimento);
@@ -170,51 +166,69 @@ export async function updateClient(
         throw res;
     }
 
-    // Update contacts via PATCH
-    const patchPromises = [];
+    // Helper to find existing contact ID by role and type
+    const findContact = (role: EContactRole, type: EContactType) => {
+        return existingContacts.find(c =>
+            c.role === role &&
+            c.type === type
+        );
+    };
 
-    if (contactIds.financialEmailId) {
-        patchPromises.push(patchContact(contactIds.financialEmailId, {
+    // Update contacts via PATCH only if changed
+    const contactPromises = [];
+
+    // Financial Email
+    const existingFinEmail = findContact(EContactRole.Financial, EContactType.Email);
+    if (existingFinEmail && (existingFinEmail.value !== data.emailFinanceiro || existingFinEmail.name !== data.nomeFinanceiro)) {
+        contactPromises.push(patchContact(existingFinEmail.id, {
             name: data.nomeFinanceiro,
             value: data.emailFinanceiro,
-            type: 0, // Email
-            role: 1, // Financial
+            type: EContactType.Email,
+            role: EContactRole.Financial,
             phoneType: null
         }));
     }
 
-    if (contactIds.financialPhoneId) {
-        patchPromises.push(patchContact(contactIds.financialPhoneId, {
+    // Financial Phone
+    const existingFinPhone = findContact(EContactRole.Financial, EContactType.Phone);
+    const cleanedFinPhone = cleanPhone(data.telefoneFinanceiro);
+    if (existingFinPhone && (existingFinPhone.value !== cleanedFinPhone || existingFinPhone.name !== data.nomeFinanceiro)) {
+        contactPromises.push(patchContact(existingFinPhone.id, {
             name: data.nomeFinanceiro,
-            value: cleanPhone(data.telefoneFinanceiro),
-            type: 1, // Phone
-            role: 1, // Financial
-            phoneType: 0 // Landline (defaulting based on previous logic)
+            value: cleanedFinPhone,
+            type: EContactType.Phone,
+            role: EContactRole.Financial,
+            phoneType: 0 // Landline
         }));
     }
 
-    if (contactIds.personalEmailId) {
-        patchPromises.push(patchContact(contactIds.personalEmailId, {
+    // Responsible Email
+    const existingResEmail = findContact(EContactRole.Personal, EContactType.Email);
+    if (existingResEmail && (existingResEmail.value !== data.emailResponsavel || existingResEmail.name !== data.nomeResponsavel)) {
+        contactPromises.push(patchContact(existingResEmail.id, {
             name: data.nomeResponsavel,
             value: data.emailResponsavel,
-            type: 0, // Email
-            role: 0, // Personal/Personal
+            type: EContactType.Email,
+            role: EContactRole.Personal,
             phoneType: null
         }));
     }
 
-    if (contactIds.personalPhoneId) {
-        patchPromises.push(patchContact(contactIds.personalPhoneId, {
+    // Responsible Phone
+    const existingResPhone = findContact(EContactRole.Personal, EContactType.Phone);
+    const cleanedResPhone = cleanPhone(data.telefoneResponsavel);
+    if (existingResPhone && (existingResPhone.value !== cleanedResPhone || existingResPhone.name !== data.nomeResponsavel)) {
+        contactPromises.push(patchContact(existingResPhone.id, {
             name: data.nomeResponsavel,
-            value: cleanPhone(data.telefoneResponsavel),
-            type: 1, // Phone
-            role: 0, // Personal/Personal
-            phoneType: 1 // Mobile (defaulting based on previous logic)
+            value: cleanedResPhone,
+            type: EContactType.Phone,
+            role: EContactRole.Personal,
+            phoneType: 1 // Mobile
         }));
     }
 
-    if (patchPromises.length > 0) {
-        await Promise.all(patchPromises);
+    if (contactPromises.length > 0) {
+        await Promise.all(contactPromises);
     }
 
     return res.data;

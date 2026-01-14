@@ -8,7 +8,8 @@ import {
     EContactRole,
     EContactType,
     EPhoneType,
-    PartnerContact
+    PartnerContact,
+    patchContact
 } from "./partnersContactsService.ts"
 import { cleanPhone } from "@/utils/format.ts";
 
@@ -54,6 +55,13 @@ export interface CreatePartnerCommand {
     cnpj?: string | null;
     address?: AddressDTO | null;
     notes?: string | null;
+    financialEmail?: string | null;
+    financialPhone?: string | null;
+    responsibleEmail?: string | null;
+    responsiblePhone?: string | null;
+    landLine?: string | null;
+    phone: string;
+    backupPhone?: string | null;
 }
 
 export interface UpdatePartnerCommand extends CreatePartnerCommand {
@@ -81,6 +89,13 @@ export async function createPartner(data: ParceiroFormData) {
         cnpj: cleanCNPJ(data.cnpj),
         address: buildAddressFromForm(data),
         notes: data.observacoes || null,
+        financialEmail: data.emailFinanceiro || null,
+        financialPhone: cleanPhone(data.telefoneFinanceiro) || null,
+        responsibleEmail: data.emailResponsavel || null,
+        responsiblePhone: cleanPhone(data.telefoneResponsavel) || null,
+        landLine: cleanPhone(data.telefoneFixo) || null,
+        phone: cleanPhone(data.celular)!,
+        backupPhone: cleanPhone(data.telefoneReserva) || null,
     };
 
     const res = await http.post<any>("Partners", payload);
@@ -89,27 +104,15 @@ export async function createPartner(data: ParceiroFormData) {
         throw res;
     }
 
-    const partner = res.data;
-    const partnerId: string = partner.id;
-
-    const contacts = buildContactsFromForm(data);
-
-    if (contacts.length > 0) {
-        try {
-            await Promise.all(
-                contacts.map((c) => addContactToPartner(partnerId, c))
-            );
-        } catch (error) {
-            // Rollback: remove parceiro incompleto
-            await deletePartner(partnerId);
-            throw error;
-        }
-    }
-
-    return partner;
+    return res.data;
 }
 
-export async function updatePartner(id: string, data: ParceiroFormData, currentStatus?: boolean, existingContacts?: PartnerContact[]) {
+export async function updatePartner(
+    id: string,
+    data: ParceiroFormData,
+    currentStatus?: boolean,
+    existingContacts: PartnerContact[] = []
+) {
     const newStatusBool = data.status === "ativo";
 
     const payload: UpdatePartnerCommand = {
@@ -117,7 +120,15 @@ export async function updatePartner(id: string, data: ParceiroFormData, currentS
         cnpj: cleanCNPJ(data.cnpj),
         address: buildAddressFromForm(data),
         notes: data.observacoes || null,
-        status: true,
+        status: newStatusBool,
+        // Contacts are handled separately below to support conditional PATCH/POST
+        financialEmail: data.emailFinanceiro || null,
+        financialPhone: cleanPhone(data.telefoneFinanceiro) || null,
+        responsibleEmail: data.emailResponsavel || null,
+        responsiblePhone: cleanPhone(data.telefoneResponsavel) || null,
+        landLine: cleanPhone(data.telefoneFixo) || null,
+        phone: cleanPhone(data.celular)!,
+        backupPhone: cleanPhone(data.telefoneReserva) || null,
     };
 
     const res = await http.put(`Partners/${id}`, payload);
@@ -134,18 +145,175 @@ export async function updatePartner(id: string, data: ParceiroFormData, currentS
         }
     }
 
-    if (existingContacts && existingContacts.length > 0) {
-        await Promise.all(
-            existingContacts.map((c) => removeContactFromPartner(id, c.id))
+    // Helper to find existing contact ID by role and type
+    const findContact = (role: EContactRole, type: EContactType, phoneType?: EPhoneType | null) => {
+        return existingContacts.find(c =>
+            c.role === role &&
+            c.type === type &&
+            (type === EContactType.Email || c.phoneType === phoneType)
         );
+    };
+
+    // Update contacts: PATCH if exists and changed, POST if new
+    const contactPromises = [];
+
+    // Financial Email
+    if (data.emailFinanceiro) {
+        const existing = findContact(EContactRole.Financial, EContactType.Email);
+        if (existing) {
+            if (existing.value !== data.emailFinanceiro) {
+                contactPromises.push(patchContact(existing.id, {
+                    value: data.emailFinanceiro,
+                    type: EContactType.Email,
+                    role: EContactRole.Financial
+                }));
+            }
+        } else {
+            contactPromises.push(addContactToPartner(id, {
+                value: data.emailFinanceiro,
+                type: EContactType.Email,
+                role: EContactRole.Financial
+            }));
+        }
     }
 
-    const contacts = buildContactsFromForm(data);
+    // Financial Phone
+    if (data.telefoneFinanceiro) {
+        const cleaned = cleanPhone(data.telefoneFinanceiro);
+        const existing = findContact(EContactRole.Financial, EContactType.Phone, EPhoneType.Landline);
+        if (existing) {
+            if (existing.value !== cleaned) {
+                contactPromises.push(patchContact(existing.id, {
+                    value: cleaned,
+                    type: EContactType.Phone,
+                    role: EContactRole.Financial,
+                    phoneType: EPhoneType.Landline
+                }));
+            }
+        } else {
+            contactPromises.push(addContactToPartner(id, {
+                value: cleaned!,
+                type: EContactType.Phone,
+                role: EContactRole.Financial,
+                phoneType: EPhoneType.Landline
+            }));
+        }
+    }
 
-    if (contacts.length) {
-        await Promise.all(
-            contacts.map((c) => addContactToPartner(id, c))
-        );
+    // Responsible Email
+    if (data.emailResponsavel) {
+        const existing = findContact(EContactRole.Personal, EContactType.Email);
+        if (existing) {
+            if (existing.value !== data.emailResponsavel) {
+                contactPromises.push(patchContact(existing.id, {
+                    value: data.emailResponsavel,
+                    type: EContactType.Email,
+                    role: EContactRole.Personal
+                }));
+            }
+        } else {
+            contactPromises.push(addContactToPartner(id, {
+                value: data.emailResponsavel,
+                type: EContactType.Email,
+                role: EContactRole.Personal
+            }));
+        }
+    }
+
+    // Responsible Phone
+    if (data.telefoneResponsavel) {
+        const cleaned = cleanPhone(data.telefoneResponsavel);
+        const existing = findContact(EContactRole.Personal, EContactType.Phone, EPhoneType.Mobile);
+        if (existing) {
+            if (existing.value !== cleaned) {
+                contactPromises.push(patchContact(existing.id, {
+                    value: cleaned,
+                    type: EContactType.Phone,
+                    role: EContactRole.Personal,
+                    phoneType: EPhoneType.Mobile
+                }));
+            }
+        } else {
+            contactPromises.push(addContactToPartner(id, {
+                value: cleaned!,
+                type: EContactType.Phone,
+                role: EContactRole.Personal,
+                phoneType: EPhoneType.Mobile
+            }));
+        }
+    }
+
+    // Landline
+    if (data.telefoneFixo) {
+        const cleaned = cleanPhone(data.telefoneFixo);
+        const existing = findContact(EContactRole.General, EContactType.Phone, EPhoneType.Landline);
+        if (existing) {
+            if (existing.value !== cleaned) {
+                contactPromises.push(patchContact(existing.id, {
+                    value: cleaned,
+                    type: EContactType.Phone,
+                    role: EContactRole.General,
+                    phoneType: EPhoneType.Landline
+                }));
+            }
+        } else {
+            contactPromises.push(addContactToPartner(id, {
+                value: cleaned!,
+                type: EContactType.Phone,
+                role: EContactRole.General,
+                phoneType: EPhoneType.Landline
+            }));
+        }
+    }
+
+    // Mobile Phone (Main Phone)
+    if (data.celular) {
+        const cleaned = cleanPhone(data.celular);
+        const existing = findContact(EContactRole.General, EContactType.Phone, EPhoneType.Mobile);
+        if (existing) {
+            if (existing.value !== cleaned) {
+                contactPromises.push(patchContact(existing.id, {
+                    value: cleaned,
+                    type: EContactType.Phone,
+                    role: EContactRole.General,
+                    phoneType: EPhoneType.Mobile
+                }));
+            }
+        } else {
+            contactPromises.push(addContactToPartner(id, {
+                value: cleaned!,
+                type: EContactType.Phone,
+                role: EContactRole.General,
+                phoneType: EPhoneType.Mobile
+            }));
+        }
+    }
+
+    // Backup Phone
+    if (data.telefoneReserva) {
+        const cleaned = cleanPhone(data.telefoneReserva);
+        const existing = findContact(EContactRole.General, EContactType.Phone, EPhoneType.Backup);
+        if (existing) {
+            if (existing.value !== cleaned) {
+                contactPromises.push(patchContact(existing.id, {
+                    value: cleaned,
+                    type: EContactType.Phone,
+                    role: EContactRole.General,
+                    phoneType: EPhoneType.Backup
+                }));
+            }
+        } else {
+            contactPromises.push(addContactToPartner(id, {
+                value: cleaned!,
+                type: EContactType.Phone,
+                role: EContactRole.General,
+                phoneType: EPhoneType.Backup
+            }));
+        }
+    }
+
+    if (contactPromises.length > 0) {
+        await Promise.all(contactPromises);
     }
 }
 
