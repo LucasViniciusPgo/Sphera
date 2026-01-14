@@ -133,3 +133,11 @@ export async function removeContactFromPartner(partnerId: string, contactId: str
     }
     return res;
 }
+
+export async function patchContact(id: string, body: any) {
+    const res = await http.patch(`Contact/${id}`, body);
+    if ("message" in res && !("headers" in res)) {
+        throw res;
+    }
+    return res;
+}

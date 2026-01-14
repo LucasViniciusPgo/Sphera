@@ -83,6 +83,7 @@ export default function CadastroParceiros() {
     const location = useLocation();
     const readonly = new URLSearchParams(location.search).get("view") === "readonly";
     const [originalStatus, setOriginalStatus] = useState<boolean | undefined>(undefined);
+    const [existingContacts, setExistingContacts] = useState<PartnerContact[]>([]);
 
     const form = useForm<ParceiroFormData>({
         resolver: zodResolver(parceiroSchema),
@@ -197,6 +198,8 @@ export default function CadastroParceiros() {
                     }
                 }
 
+                setExistingContacts(contacts);
+
                 form.reset({
                     razaoSocial: parceiroApi.legalName || "",
                     cnpj: formatCNPJ(parceiroApi.cnpj ?? ""),
@@ -236,7 +239,7 @@ export default function CadastroParceiros() {
         setIsSubmitting(true);
         try {
             if (isEditing && id) {
-                await updatePartner(id, data, originalStatus);
+                await updatePartner(id, data, originalStatus, existingContacts);
                 toast({
                     title: "Parceiro atualizado!",
                     description: "O parceiro foi atualizado com sucesso.",
