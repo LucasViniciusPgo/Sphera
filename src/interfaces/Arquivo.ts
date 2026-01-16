@@ -4,6 +4,11 @@ export enum EExpirationStatus {
     Expired = 2
 }
 
+export enum EDocumentProgressStatus {
+    InDevelopment = 0,
+    Finalized = 1
+}
+
 export type StatusType = "vencido" | "a-vencer" | "dentro-prazo";
 
 export interface Arquivo {
@@ -14,6 +19,7 @@ export interface Arquivo {
     notes?: string;
     file?: File;
     status: EExpirationStatus;
+    progressStatus: EDocumentProgressStatus;
 
     clientName?: string;
     clientId?: string;

@@ -5,12 +5,12 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FileStack, Loader2, Eraser, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { getDocuments } from "@/services/documentsService.ts";
 import { getPartners } from "@/services/partnersService.ts";
 import { getClients } from "@/services/clientsService.ts";
 import { getServices } from "@/services/servicesService.ts";
+import { getFilesReport } from "@/services/reportsService.ts";
 import { AsyncSelect } from "@/components/AsyncSelect";
-import { EExpirationStatus, StatusType } from "@/interfaces/Arquivo";
+import { EExpirationStatus, StatusType, EDocumentProgressStatus } from "@/interfaces/Arquivo";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -25,6 +25,7 @@ const RelatorioArquivos = () => {
     const [filtroStatus, setFiltroStatus] = useState<string>("todos");
     const [dueDateFrom, setDueDateFrom] = useState<string>("");
     const [dueDateTo, setDueDateTo] = useState<string>("");
+    const [filtroProgressStatus, setFiltroProgressStatus] = useState<string>("todos");
 
     const [servicos, setServicos] = useState<any[]>([]);
 
@@ -46,6 +47,7 @@ const RelatorioArquivos = () => {
         setFiltroStatus("todos");
         setDueDateFrom("");
         setDueDateTo("");
+        setFiltroProgressStatus("todos");
     };
 
     const getStatusLabel = (status: EExpirationStatus | string) => {
@@ -60,6 +62,14 @@ const RelatorioArquivos = () => {
         }
     };
 
+    const getProgressStatusLabel = (status: EDocumentProgressStatus) => {
+        switch (status) {
+            case EDocumentProgressStatus.Finalized: return "Finalizado";
+            case EDocumentProgressStatus.InDevelopment: return "Em Desenvolvimento";
+            default: return "Desconhecido";
+        }
+    };
+
     const generatePDF = async () => {
         setIsGenerating(true);
         try {
@@ -68,15 +78,15 @@ const RelatorioArquivos = () => {
             else if (filtroStatus === "a-vencer") status = "a-vencer";
             else if (filtroStatus === "dentro-prazo") status = "dentro-prazo";
 
-            // Fetch all matching documents
-            const items = await getDocuments({
+            // Fetch report data using the dedicated endpoint
+            const items = await getFilesReport({
                 partnerId: partnerId || undefined,
                 clientId: clientId || undefined,
                 serviceId: serviceId || undefined,
                 status: status,
-                dueDateFrom: dueDateFrom || undefined,
-                dueDateTo: dueDateTo || undefined,
-                pageSize: 5000,
+                fromDate: dueDateFrom || undefined,
+                toDate: dueDateTo || undefined,
+                progressStatus: filtroProgressStatus !== "todos" ? filtroProgressStatus : undefined,
             });
 
             if (items.length === 0) {
@@ -107,6 +117,7 @@ const RelatorioArquivos = () => {
             if (clientId) activeFilters.push("Cliente Selecionado");
             if (serviceId) activeFilters.push("Serviço Selecionado");
             if (filtroStatus !== "todos") activeFilters.push(`Status: ${getStatusLabel(filtroStatus)}`);
+            if (filtroProgressStatus !== "todos") activeFilters.push(`Progresso: ${getProgressStatusLabel(parseInt(filtroProgressStatus))}`);
             if (dueDateFrom || dueDateTo) activeFilters.push(`Vencimento: ${dueDateFrom || "?"} até ${dueDateTo || "?"}`);
 
             if (activeFilters.length > 0) {
@@ -119,7 +130,7 @@ const RelatorioArquivos = () => {
             // Table
             autoTable(doc, {
                 startY: filterY,
-                head: [["Arquivo", "Parceiro", "Cliente", "Serviço", "Responsável", "Vencimento", "Status"]],
+                head: [["Arquivo", "Parceiro", "Cliente", "Serviço", "Responsável", "Vencimento", "Vencimento Doc", "Progresso"]],
                 body: items.map(a => [
                     a.fileName,
                     a.partnerName || "-",
@@ -127,7 +138,8 @@ const RelatorioArquivos = () => {
                     a.serviceName || "-",
                     a.responsibleName || "-",
                     a.dueDate ? new Date(a.dueDate).toLocaleDateString("pt-BR") : "-",
-                    getStatusLabel(a.status)
+                    getStatusLabel(a.status),
+                    getProgressStatusLabel(a.progressStatus)
                 ]),
                 styles: { fontSize: 8 },
                 headStyles: { fillColor: [163, 41, 49] },
@@ -250,6 +262,25 @@ const RelatorioArquivos = () => {
                         </Select>
                     </div>
 
+                    {/* Status de Progresso */}
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium">Status de Progresso</label>
+                        <Select value={filtroProgressStatus} onValueChange={setFiltroProgressStatus}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Selecione o progresso" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="todos">Todos os Progressos</SelectItem>
+                                <SelectItem value={EDocumentProgressStatus.InDevelopment.toString()}>
+                                    Em Desenvolvimento
+                                </SelectItem>
+                                <SelectItem value={EDocumentProgressStatus.Finalized.toString()}>
+                                    Finalizado
+                                </SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
                     {/* Datas */}
                     <div className="space-y-2">
                         <label className="text-sm font-medium">Vencimento (De)</label>
@@ -302,7 +333,7 @@ const RelatorioArquivos = () => {
                     Ao clicar em gerar, o sistema buscará todos os registros correspondentes e preparará o arquivo para download.
                 </p>
             </CardContent>
-        </Card>
+        </Card >
     );
 };
 
