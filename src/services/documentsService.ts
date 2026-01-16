@@ -1,5 +1,5 @@
 import { getCurrentUser } from "@/hooks/useCurrentUser";
-import { Arquivo, StatusType, EExpirationStatus } from "@/interfaces/Arquivo";
+import { Arquivo, StatusType, EExpirationStatus, EDocumentProgressStatus } from "@/interfaces/Arquivo";
 import { http } from "@/lib/http";
 import { ArquivoFormData } from "@/pages/documents/CadastroArquivo";
 
@@ -17,6 +17,7 @@ export async function createDocument(data: ArquivoFormData, file?: File | null) 
     notes: data.notes || "",
     file: file || undefined,
     status: EExpirationStatus.WithinDeadline, // Status será calculado pelo backend
+    progressStatus: (data as any).progressStatus ?? EDocumentProgressStatus.InDevelopment,
     createdBy: getCurrentUser(),
     createdAt,
     updatedBy: getCurrentUser(),
@@ -94,11 +95,12 @@ export async function getDocuments(params?: {
   dueDateFrom?: string,
   dueDateTo?: string,
   search?: string,
+  progressStatus?: EDocumentProgressStatus,
   page?: number,
   pageSize?: number
 }
 ) {
-  const { partnerId, clientId, serviceId, status, dueDateFrom, dueDateTo, search, page, pageSize } = params || {};
+  const { partnerId, clientId, serviceId, status, dueDateFrom, dueDateTo, search, progressStatus, page, pageSize } = params || {};
 
   const actualParams: Record<string, any> = {};
   if (partnerId)
@@ -115,6 +117,8 @@ export async function getDocuments(params?: {
     actualParams.dueDateTo = dueDateTo;
   if (search)
     actualParams.search = search;
+  if (progressStatus !== undefined)
+    actualParams.progressStatus = progressStatus;
   if (page !== undefined)
     actualParams.page = page;
   if (pageSize !== undefined)

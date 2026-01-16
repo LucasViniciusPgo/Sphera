@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { http } from "@/lib/http";
-import { Arquivo, EExpirationStatus } from "@/interfaces/Arquivo";
+import { Arquivo, EExpirationStatus, EDocumentProgressStatus } from "@/interfaces/Arquivo";
 import { getServices } from "@/services/servicesService";
 import { downloadDocumentFile, getDocuments } from "@/services/documentsService";
 
@@ -33,6 +33,7 @@ export default function ListaArquivos() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filtroServico, setFiltroServico] = useState<string>("todos");
   const [filtroStatus, setFiltroStatus] = useState<string>("todos");
+  const [filtroProgressStatus, setFiltroProgressStatus] = useState<string>("todos");
 
   const [arquivos, setArquivos] = useState<Arquivo[]>([]);
   const [servicos, setServicos] = useState<any[]>([]);
@@ -50,6 +51,16 @@ export default function ListaArquivos() {
       return { label: "Dentro do Prazo", className: "bg-green-500 hover:bg-green-600 text-white" };
     }
     return { label: "Desconhecido", className: "bg-gray-500 text-white" };
+  };
+
+  const getProgressStatusLabelAndClass = (status: EDocumentProgressStatus) => {
+    switch (status) {
+      case EDocumentProgressStatus.Finalized:
+        return { label: "Finalizado", className: "bg-green-600 hover:bg-green-700 text-white" };
+      case EDocumentProgressStatus.InDevelopment:
+      default:
+        return { label: "Em Desenvolvimento", className: "bg-blue-500 hover:bg-blue-600 text-white" };
+    }
   };
 
   useEffect(() => {
@@ -83,9 +94,12 @@ export default function ListaArquivos() {
         (filtroStatus === "a-vencer" && arquivo.status === EExpirationStatus.AboutToExpire) ||
         (filtroStatus === "dentro-prazo" && arquivo.status === EExpirationStatus.WithinDeadline);
 
-      return matchSearch && matchServico && matchStatus;
+      const matchProgress = filtroProgressStatus === "todos" ||
+        arquivo.progressStatus === parseInt(filtroProgressStatus);
+
+      return matchSearch && matchServico && matchStatus && matchProgress;
     });
-  }, [arquivos, searchTerm, filtroServico, filtroStatus]);
+  }, [arquivos, searchTerm, filtroServico, filtroStatus, filtroProgressStatus]);
 
   const handleEdit = (id: string) => {
     navigate(`/home/cadastro-arquivos/${id}`);
@@ -182,8 +196,22 @@ export default function ListaArquivos() {
                   <SelectItem value="dentro-prazo">Dentro do Prazo</SelectItem>
                 </SelectContent>
               </Select>
+              <Select value={filtroProgressStatus} onValueChange={setFiltroProgressStatus}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Status de Progresso" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos os Progressos</SelectItem>
+                  <SelectItem value={EDocumentProgressStatus.InDevelopment.toString()}>
+                    Em Desenvolvimento
+                  </SelectItem>
+                  <SelectItem value={EDocumentProgressStatus.Finalized.toString()}>
+                    Finalizado
+                  </SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            {(searchTerm || filtroServico !== 'todos' || filtroStatus !== 'todos') && (
+            {(searchTerm || filtroServico !== 'todos' || filtroStatus !== 'todos' || filtroProgressStatus !== 'todos') && (
               <div className="flex flex-wrap gap-2 text-sm text-muted-foreground items-center">
                 <span>Filtro ativo:</span>
                 {searchTerm && (
@@ -197,11 +225,16 @@ export default function ListaArquivos() {
                   <span
                     className="bg-secondary px-2 py-1 rounded">Status: {getStatusLabelAndClass(filtroStatus)?.label}</span>
                 )}
+                {filtroProgressStatus !== 'todos' && (
+                  <span
+                    className="bg-secondary px-2 py-1 rounded">Progresso: {getProgressStatusLabelAndClass(parseInt(filtroProgressStatus))?.label}</span>
+                )}
                 <button
                   onClick={() => {
                     setSearchTerm('');
                     setFiltroServico('todos');
                     setFiltroStatus('todos');
+                    setFiltroProgressStatus('todos');
                   }}
                   className="text-primary hover:underline ml-2"
                 >
@@ -230,6 +263,7 @@ export default function ListaArquivos() {
                   <TableHead>Responsável</TableHead>
                   <TableHead>Data Vencimento</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Progresso</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
@@ -246,6 +280,12 @@ export default function ListaArquivos() {
                       <TableCell>{new Date(arquivo.dueDate).toLocaleDateString("pt-BR")}</TableCell>
                       <TableCell>
                         <Badge className={statusConfig.className}>{statusConfig.label}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        {(() => {
+                          const progConfig = getProgressStatusLabelAndClass(arquivo.progressStatus);
+                          return <Badge className={progConfig.className}>{progConfig.label}</Badge>;
+                        })()}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex gap-2 justify-end">
