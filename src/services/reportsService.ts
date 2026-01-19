@@ -47,6 +47,15 @@ export async function getFilesReport(params: FileReportParams): Promise<FileRepo
     if (params.toDate) actualParams.ToDate = params.toDate;
     if (params.progressStatus && params.progressStatus !== "todos") actualParams.ProgressStatus = params.progressStatus;
 
-    const response = await http.get("/Reports/Files", { params: actualParams });
-    return response.data;
+    const response = await http.get<FileReportItem[]>("/Reports/Files", { params: actualParams });
+
+    if ("status" in response && (response.status === 404)) {
+        return [];
+    }
+
+    if ("message" in response && !("data" in response)) {
+        throw new Error(response.message);
+    }
+
+    return (response as any).data || [];
 }
