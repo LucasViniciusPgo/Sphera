@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Upload, FileText } from "lucide-react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { Arquivo } from "@/interfaces/Arquivo";
+import { Arquivo, EDocumentProgressStatus } from "@/interfaces/Arquivo";
 import { createDocument, getDocumentById, updateDocument } from "@/services/documentsService";
 import { getClients } from "@/services/clientsService";
 import { getUsers } from "@/services/usersServices";
@@ -25,7 +25,8 @@ const arquivoSchema = z.object({
   responsibleId: z.string().min(1, "Responsável é obrigatório"),
   issueDate: z.string().min(1, "Data de Emissão é obrigatória"),
   dueDate: z.string().min(1, "Data de Vencimento é obrigatória"),
-  notes: z.string().max(500).optional()
+  notes: z.string().max(500).optional(),
+  progressStatus: z.number().int().default(0)
 });
 
 // Helper para adicionar dias e retornar em formato YYYY-MM-DD
@@ -65,6 +66,7 @@ export default function CadastroArquivo() {
       issueDate: "",
       dueDate: "",
       notes: "",
+      progressStatus: 0,
     },
   });
 
@@ -420,6 +422,36 @@ export default function CadastroArquivo() {
                     )}
                   />
                 </div>
+
+                <FormField
+                  control={form.control}
+                  name="progressStatus"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Status de Progresso *</FormLabel>
+                      <Select
+                        onValueChange={(val) => field.onChange(parseInt(val))}
+                        value={field.value?.toString()}
+                        disabled={readonly}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione o status" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value={EDocumentProgressStatus.InDevelopment.toString()}>
+                            Em Desenvolvimento
+                          </SelectItem>
+                          <SelectItem value={EDocumentProgressStatus.Finalized.toString()}>
+                            Finalizado
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
                 <FormField
                   control={form.control}
