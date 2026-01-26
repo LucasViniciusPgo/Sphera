@@ -39,6 +39,7 @@ export interface ApiClient {
     ecacExpirationDate?: string | null;
     notes?: string | null;
     documentsCount?: number;
+    paymentStatus: number;
 }
 
 export interface ClientDetails extends ApiClient {
@@ -68,6 +69,7 @@ export interface CreateClientCommand {
     contractDateInDays: number;
     ecacExpirationDate?: string;
     notes?: string | null;
+    paymentStatus: number;
 }
 
 export interface UpdateClientCommand extends CreateClientCommand {
@@ -116,6 +118,7 @@ export async function createClient(data: ClienteFormData) {
         contractDateInDays: contractDays,
         ecacExpirationDate: data.dataVencimentoEcac || undefined,
         notes: data.observacoes || null,
+        paymentStatus: data.paymentStatus ?? 0,
     };
 
     const res = await http.post<any>("Clients", payload);
@@ -157,6 +160,7 @@ export async function updateClient(
         ecacExpirationDate: data.dataVencimentoEcac || undefined,
         notes: data.observacoes || null,
         status: newStatusBool,
+        paymentStatus: data.paymentStatus ?? 0,
     };
 
     // Update main client data
