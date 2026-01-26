@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Check } from "lucide-react";
 import {
     createClient,
     updateClient,
@@ -26,6 +26,8 @@ import { getPartners, type ApiPartner, type AddressDTO } from "@/services/partne
 import { formatCNPJ, formatPhone, formatCEP } from "@/utils/format.ts";
 import { validateCNPJ } from "@/utils/validators";
 import { AsyncSelect } from "@/components/AsyncSelect";
+import { useAuthRole } from "@/hooks/useAuthRole";
+import { EPaymentStatus } from "@/interfaces/Pagamento";
 
 export interface Cliente {
     id: string;
@@ -86,6 +88,7 @@ const clienteSchema = z.object({
     dataVencimentoEcac: z.string().optional(),
     observacoes: z.string().max(500, "A observação deve ter no máximo 500 caracteres").optional(),
     parceiroId: z.string().min(1, "Selecione um parceiro"),
+    paymentStatus: z.number().default(0),
 });
 
 function buildDateFromDueDay(dueDay: number | null | undefined): string {
@@ -149,6 +152,7 @@ const CadastroClientes = () => {
             dataVencimentoEcac: "",
             observacoes: "",
             parceiroId: "",
+            paymentStatus: 0,
         },
     });
 
@@ -229,6 +233,7 @@ const CadastroClientes = () => {
                     dataVencimentoEcac: clienteApi.ecacExpirationDate ? clienteApi.ecacExpirationDate.split("T")[0] : "",
                     observacoes: clienteApi.notes || "",
                     parceiroId: partner?.id || "",
+                    paymentStatus: clienteApi.paymentStatus ?? 0,
                 });
             } catch (error: any) {
                 console.error(error);
@@ -324,6 +329,8 @@ const CadastroClientes = () => {
                 <CardContent>
                     <Form {...form}>
                         <form onSubmit={readonly ? undefined : form.handleSubmit(onSubmit)} className="space-y-6">
+                            {/* Payment Status (Confidential Admin Field) */}
+                            <AdminPaymentStatus form={form} isEditing={isEditing} />
 
 
                             {/* Dados da Empresa */}
@@ -810,6 +817,45 @@ const CadastroClientes = () => {
                 </CardContent>
             </Card>
         </div>
+    );
+};
+
+const AdminPaymentStatus = ({ form, isEditing }: { form: any; isEditing: boolean }) => {
+    const { isAdmin } = useAuthRole();
+
+    if (!isAdmin) return null;
+
+    return (
+        <FormField
+            control={form.control}
+            name="paymentStatus"
+            render={({ field }) => (
+                <FormItem className="flex gap-2">
+                    <FormControl>
+                        <div className="flex gap-2">
+                            <div
+                                onClick={() => isEditing && field.onChange(EPaymentStatus.UpToDate)}
+                                className={`w-4 h-4 border transition-colors flex items-center justify-center ${isEditing ? "cursor-pointer" : "cursor-default opacity-80"} ${field.value === EPaymentStatus.UpToDate
+                                    ? "bg-muted-foreground/40 border-muted-foreground/60 text-muted-foreground"
+                                    : "bg-transparent border-muted-foreground/30 hover:border-muted-foreground/50"
+                                    }`}
+                            >
+                                {field.value === EPaymentStatus.UpToDate && <Check className="w-3 h-3" />}
+                            </div>
+                            <div
+                                onClick={() => isEditing && field.onChange(EPaymentStatus.Overdue)}
+                                className={`w-4 h-4 border transition-colors flex items-center justify-center ${isEditing ? "cursor-pointer" : "cursor-default opacity-80"} ${field.value === EPaymentStatus.Overdue
+                                    ? "bg-muted-foreground/40 border-muted-foreground/60 text-muted-foreground"
+                                    : "bg-transparent border-muted-foreground/30 hover:border-muted-foreground/50"
+                                    }`}
+                            >
+                                {field.value === EPaymentStatus.Overdue && <Check className="w-3 h-3" />}
+                            </div>
+                        </div>
+                    </FormControl>
+                </FormItem>
+            )}
+        />
     );
 };
 

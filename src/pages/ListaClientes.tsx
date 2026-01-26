@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Edit, UserPlus, Trash2, Eye } from "lucide-react";
+import { Search, Edit, UserPlus, Trash2, Eye, Check } from "lucide-react";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -23,6 +23,8 @@ import { getClients, deleteClient, getClientById, type ClientDetails } from "@/s
 import { removeContactFromClient, addContactToClient } from "@/services/clientsContactsService.ts";
 import { formatCNPJ } from "@/utils/format.ts";
 import { EExpirationStatus } from "@/interfaces/Arquivo";
+import { useAuthRole } from "@/hooks/useAuthRole";
+import { EPaymentStatus } from "@/interfaces/Pagamento";
 import {
     Pagination,
     PaginationContent,
@@ -311,6 +313,7 @@ const ListaClientes = () => {
                                     <TableHead>Parceiro Vinculado</TableHead>
                                     <TableHead>Venc. e-CAC</TableHead>
                                     <TableHead>Contrato</TableHead>
+                                    <AdminHeader />
                                     <TableHead>Ações</TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -333,6 +336,7 @@ const ListaClientes = () => {
                                                     );
                                                 })()}
                                             </TableCell>
+                                            <AdminCell cliente={cliente} />
                                             <TableCell className="text-right">
                                                 <div className="flex gap-2 justify-end">
 
@@ -409,6 +413,40 @@ const ListaClientes = () => {
                 </div>
             </CardContent>
         </Card>
+    );
+};
+
+const AdminHeader = () => {
+    const { isAdmin } = useAuthRole();
+    if (!isAdmin) return null;
+    return <TableHead className="w-[60px]"></TableHead>;
+};
+
+const AdminCell = ({ cliente }: { cliente: any }) => {
+    const { isAdmin } = useAuthRole();
+    if (!isAdmin) return null;
+
+    return (
+        <TableCell>
+            <div className="flex gap-1">
+                <div
+                    className={`w-3 h-3 border flex items-center justify-center ${cliente.paymentStatus === EPaymentStatus.UpToDate
+                        ? "bg-muted-foreground/40 border-muted-foreground/60 text-muted-foreground"
+                        : "bg-transparent border-muted-foreground/30"
+                        }`}
+                >
+                    {cliente.paymentStatus === EPaymentStatus.UpToDate && <Check className="w-2 h-2" />}
+                </div>
+                <div
+                    className={`w-3 h-3 border flex items-center justify-center ${cliente.paymentStatus === EPaymentStatus.Overdue
+                        ? "bg-muted-foreground/40 border-muted-foreground/60 text-muted-foreground"
+                        : "bg-transparent border-muted-foreground/30"
+                        }`}
+                >
+                    {cliente.paymentStatus === EPaymentStatus.Overdue && <Check className="w-2 h-2" />}
+                </div>
+            </div>
+        </TableCell>
     );
 };
 
