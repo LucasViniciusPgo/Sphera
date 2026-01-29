@@ -130,7 +130,7 @@ const RelatorioArquivos = () => {
             // Table
             autoTable(doc, {
                 startY: filterY,
-                head: [["Arquivo", "Parceiro", "Cliente", "Serviço", "Responsável", "Vencimento", "Vencimento Doc", "Progresso"]],
+                head: [["Arquivo", "Parceiro", "Cliente", "Serviço", "Responsável", "Vencimento", "Vencimento Doc", "Progresso", "Descrição"]],
                 body: items.map(a => [
                     a.fileName,
                     a.partnerName || "-",
@@ -139,7 +139,8 @@ const RelatorioArquivos = () => {
                     a.responsibleName || "-",
                     a.dueDate ? new Date(a.dueDate).toLocaleDateString("pt-BR") : "-",
                     getStatusLabel(a.status),
-                    getProgressStatusLabel(a.progressStatus)
+                    getProgressStatusLabel(a.progressStatus),
+                    a.notes || "-"
                 ]),
                 styles: { fontSize: 8 },
                 headStyles: { fillColor: [163, 41, 49] },

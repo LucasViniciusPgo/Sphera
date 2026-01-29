@@ -25,7 +25,7 @@ const arquivoSchema = z.object({
   responsibleId: z.string().min(1, "Responsável é obrigatório"),
   issueDate: z.string().min(1, "Data de Emissão é obrigatória"),
   dueDate: z.string().min(1, "Data de Vencimento é obrigatória"),
-  notes: z.string().max(500).optional(),
+  notes: z.string().max(255, "A descrição deve ter no máximo 255 caracteres").optional().or(z.literal("")),
   progressStatus: z.number().int().default(0)
 });
 

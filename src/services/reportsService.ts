@@ -14,6 +14,7 @@ export interface FileReportItem {
     dueDate: string;
     status: EExpirationStatus;
     progressStatus: EDocumentProgressStatus;
+    notes?: string;
 }
 
 export interface FileReportParams {
