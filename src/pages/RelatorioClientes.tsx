@@ -15,9 +15,11 @@ import autoTable from "jspdf-autotable";
 import { getClientsReport } from "@/services/reportsService.ts";
 import { EPaymentStatus } from "@/interfaces/Pagamento";
 import { Check } from "lucide-react";
+import { useAuthRole } from "@/hooks/useAuthRole";
 
 const RelatorioClientes = () => {
     const { toast } = useToast();
+    const { isAdmin, isFinanceiro } = useAuthRole();
     const [isGenerating, setIsGenerating] = useState(false);
 
     // Filters
@@ -114,7 +116,15 @@ const RelatorioClientes = () => {
             // Table
             autoTable(doc, {
                 startY: filterY,
-                head: [["Nome Fantasia", "Razão Social", "CNPJ", "Parceiro", "Venc. e-CAC", "Contrato", ""]],
+                head: [[
+                    "Nome Fantasia",
+                    "Razão Social",
+                    "CNPJ",
+                    "Parceiro",
+                    "Venc. e-CAC",
+                    "Contrato",
+                    ...(isAdmin || isFinanceiro ? [""] : [])
+                ]],
                 body: items.map(c => [
                     c.tradeName,
                     c.legalName,
@@ -122,7 +132,7 @@ const RelatorioClientes = () => {
                     c.partnerName || "-",
                     c.ecacExpirationDate ? new Date(c.ecacExpirationDate.includes("T") ? c.ecacExpirationDate : `${c.ecacExpirationDate}T00:00:00`).toLocaleDateString("pt-BR") : "-",
                     c.status !== null ? getStatusLabel(c.status) : "-",
-                    { content: "", data: { paymentStatus: c.paymentStatus } }
+                    ...(isAdmin || isFinanceiro ? [{ content: "", data: { paymentStatus: c.paymentStatus } }] : [])
                 ]),
                 didDrawCell: (data) => {
                     if (data.section === "body" && data.column.index === 6) {
@@ -258,33 +268,35 @@ const RelatorioClientes = () => {
                     </div>
 
                     {/* Status Financeiro (Discreto) */}
-                    <div className="space-y-2 md:col-span-1">
-                        <label className="text-sm font-medium h-5 block"></label> {/* Spacer to align with date labels */}
-                        <div className="flex items-center justify-center gap-2 border rounded-md px-3 bg-background h-10 w-fit min-w-[100px]">
-                            <div className="flex gap-2">
-                                <button
-                                    onClick={() => setFiltroPagamento(prev => prev === EPaymentStatus.UpToDate ? undefined : EPaymentStatus.UpToDate)}
-                                    title="Filtrar por Em Dia"
-                                    className={`w-5 h-5 border transition-all flex items-center justify-center rounded-sm ${filtroPagamento === EPaymentStatus.UpToDate
-                                        ? "bg-green-500 border-green-600 text-white shadow-md scale-110"
-                                        : "bg-transparent border-muted-foreground/30 hover:border-muted-foreground/60 hover:bg-green-500/10"
-                                        }`}
-                                >
-                                    {filtroPagamento === EPaymentStatus.UpToDate && <Check className="w-3.5 h-3.5" />}
-                                </button>
-                                <button
-                                    onClick={() => setFiltroPagamento(prev => prev === EPaymentStatus.Overdue ? undefined : EPaymentStatus.Overdue)}
-                                    title="Filtrar por Atrasado"
-                                    className={`w-5 h-5 border transition-all flex items-center justify-center rounded-sm ${filtroPagamento === EPaymentStatus.Overdue
-                                        ? "bg-red-500 border-red-600 text-white shadow-md scale-110"
-                                        : "bg-transparent border-muted-foreground/30 hover:border-muted-foreground/60 hover:bg-red-500/10"
-                                        }`}
-                                >
-                                    {filtroPagamento === EPaymentStatus.Overdue && <Check className="w-3.5 h-3.5" />}
-                                </button>
+                    {(isAdmin || isFinanceiro) && (
+                        <div className="space-y-2 md:col-span-1">
+                            <label className="text-sm font-medium h-5 block"></label> {/* Spacer to align with date labels */}
+                            <div className="flex items-center justify-center gap-2 border rounded-md px-3 bg-background h-10 w-fit min-w-[100px]">
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => setFiltroPagamento(prev => prev === EPaymentStatus.UpToDate ? undefined : EPaymentStatus.UpToDate)}
+                                        title="Filtrar por Em Dia"
+                                        className={`w-5 h-5 border transition-all flex items-center justify-center rounded-sm ${filtroPagamento === EPaymentStatus.UpToDate
+                                            ? "bg-green-500 border-green-600 text-white shadow-md scale-110"
+                                            : "bg-transparent border-muted-foreground/30 hover:border-muted-foreground/60 hover:bg-green-500/10"
+                                            }`}
+                                    >
+                                        {filtroPagamento === EPaymentStatus.UpToDate && <Check className="w-3.5 h-3.5" />}
+                                    </button>
+                                    <button
+                                        onClick={() => setFiltroPagamento(prev => prev === EPaymentStatus.Overdue ? undefined : EPaymentStatus.Overdue)}
+                                        title="Filtrar por Atrasado"
+                                        className={`w-5 h-5 border transition-all flex items-center justify-center rounded-sm ${filtroPagamento === EPaymentStatus.Overdue
+                                            ? "bg-red-500 border-red-600 text-white shadow-md scale-110"
+                                            : "bg-transparent border-muted-foreground/30 hover:border-muted-foreground/60 hover:bg-red-500/10"
+                                            }`}
+                                    >
+                                        {filtroPagamento === EPaymentStatus.Overdue && <Check className="w-3.5 h-3.5" />}
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    )}
                 </div>
 
                 <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-border">
