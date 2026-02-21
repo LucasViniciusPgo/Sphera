@@ -38,6 +38,25 @@ function convertStatusToEnum(status: StatusType): EExpirationStatus {
     }
 }
 
+export interface ClientsReportItem {
+    tradeName: string;
+    legalName: string;
+    cnpj: string;
+    partnerId: string;
+    partnerName: string;
+    ecacExpirationDate: string | null;
+    status: EExpirationStatus | null;
+    paymentStatus: number | null;
+}
+
+export interface ClientsReportParams {
+    partnerId?: string;
+    status?: string | "todos";
+    paymentStatus?: string;
+    fromDate?: string;
+    toDate?: string;
+}
+
 export async function getFilesReport(params: FileReportParams): Promise<FileReportItem[]> {
     const actualParams: Record<string, any> = {};
     if (params.partnerId) actualParams.PartnerId = params.partnerId;
@@ -49,6 +68,27 @@ export async function getFilesReport(params: FileReportParams): Promise<FileRepo
     if (params.progressStatus && params.progressStatus !== "todos") actualParams.ProgressStatus = params.progressStatus;
 
     const response = await http.get<FileReportItem[]>("/Reports/Files", { params: actualParams });
+
+    if ("status" in response && (response.status === 404)) {
+        return [];
+    }
+
+    if ("message" in response && !("data" in response)) {
+        throw new Error(response.message);
+    }
+
+    return (response as any).data || [];
+}
+
+export async function getClientsReport(params: ClientsReportParams): Promise<ClientsReportItem[]> {
+    const actualParams: Record<string, any> = {};
+    if (params.partnerId) actualParams.PartnerId = params.partnerId;
+    if (params.status && params.status !== "todos") actualParams.Status = convertStatusToEnum(params.status as StatusType);
+    if (params.paymentStatus) actualParams.PaymentStatus = params.paymentStatus;
+    if (params.fromDate) actualParams.FromDate = params.fromDate;
+    if (params.toDate) actualParams.ToDate = params.toDate;
+
+    const response = await http.get<ClientsReportItem[]>("/Reports/Clients", { params: actualParams });
 
     if ("status" in response && (response.status === 404)) {
         return [];

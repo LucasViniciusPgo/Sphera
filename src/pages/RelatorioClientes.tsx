@@ -12,6 +12,9 @@ import { EExpirationStatus } from "@/interfaces/Arquivo";
 import { formatCNPJ } from "@/utils/format.ts";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
+import { getClientsReport } from "@/services/reportsService.ts";
+import { EPaymentStatus } from "@/interfaces/Pagamento";
+import { Check } from "lucide-react";
 
 const RelatorioClientes = () => {
     const { toast } = useToast();
@@ -19,13 +22,17 @@ const RelatorioClientes = () => {
 
     // Filters
     const [partnerId, setPartnerId] = useState("");
+    const [partnerName, setPartnerName] = useState("");
     const [filtroStatus, setFiltroStatus] = useState<string>("todos");
+    const [filtroPagamento, setFiltroPagamento] = useState<number | undefined>(undefined);
     const [dueDateFrom, setDueDateFrom] = useState<string>("");
     const [dueDateTo, setDueDateTo] = useState<string>("");
 
     const handleClearFilters = () => {
         setPartnerId("");
+        setPartnerName("");
         setFiltroStatus("todos");
+        setFiltroPagamento(undefined);
         setDueDateFrom("");
         setDueDateTo("");
     };
@@ -42,19 +49,13 @@ const RelatorioClientes = () => {
     const generatePDF = async () => {
         setIsGenerating(true);
         try {
-            let expirationStatus: number | undefined = undefined;
-            if (filtroStatus === "vencido") expirationStatus = EExpirationStatus.Expired;
-            else if (filtroStatus === "a-vencer") expirationStatus = EExpirationStatus.AboutToExpire;
-            else if (filtroStatus === "dentro-prazo") expirationStatus = EExpirationStatus.WithinDeadline;
-
-            // Fetch all matching clients (large pageSize to avoid missing records)
-            const { items } = await getClients({
+            // Use the specialized report service
+            const items = await getClientsReport({
                 partnerId: partnerId || undefined,
-                expirationStatus: expirationStatus,
-                dueDateFrom: dueDateFrom || undefined,
-                dueDateTo: dueDateTo || undefined,
-                pageSize: 5000,
-                includePartner: true
+                status: filtroStatus,
+                paymentStatus: filtroPagamento?.toString(),
+                fromDate: dueDateFrom || undefined,
+                toDate: dueDateTo || undefined
             });
 
             if (items.length === 0) {
@@ -81,8 +82,27 @@ const RelatorioClientes = () => {
             doc.setFontSize(9);
             doc.setTextColor(100);
             const activeFilters = [];
-            if (filtroStatus !== "todos") activeFilters.push(`Contrato: ${filtroStatus}`);
-            if (dueDateFrom || dueDateTo) activeFilters.push(`Venc. e-CAC: ${dueDateFrom || ""} até ${dueDateTo || ""}`);
+            if (partnerId && partnerName) activeFilters.push(`Parceiro: ${partnerName}`);
+
+            if (filtroStatus !== "todos") {
+                let statusLabel = "";
+                if (filtroStatus === "vencido") statusLabel = "Vencido";
+                else if (filtroStatus === "a-vencer") statusLabel = "A Vencer";
+                else if (filtroStatus === "dentro-prazo") statusLabel = "Dentro do Prazo";
+                activeFilters.push(`Contrato: ${statusLabel}`);
+            }
+
+            if (dueDateFrom || dueDateTo) {
+                let dateLabel = "Venc. e-CAC: ";
+                if (dueDateFrom && dueDateTo) {
+                    dateLabel += `${new Date(dueDateFrom).toLocaleDateString("pt-BR")} até ${new Date(dueDateTo).toLocaleDateString("pt-BR")}`;
+                } else if (dueDateFrom) {
+                    dateLabel += new Date(dueDateFrom).toLocaleDateString("pt-BR");
+                } else {
+                    dateLabel += new Date(dueDateTo).toLocaleDateString("pt-BR");
+                }
+                activeFilters.push(dateLabel);
+            }
 
             if (activeFilters.length > 0) {
                 doc.text(`Filtros: ${activeFilters.join(" | ")}`, 14, filterY);
@@ -94,18 +114,44 @@ const RelatorioClientes = () => {
             // Table
             autoTable(doc, {
                 startY: filterY,
-                head: [["Nome Fantasia", "Razão Social", "CNPJ", "Parceiro", "Venc. e-CAC", "Status"]],
+                head: [["Nome Fantasia", "Razão Social", "CNPJ", "Parceiro", "Venc. e-CAC", "Contrato", ""]],
                 body: items.map(c => [
                     c.tradeName,
                     c.legalName,
                     formatCNPJ(c.cnpj),
-                    c.partner?.legalName || "-",
+                    c.partnerName || "-",
                     c.ecacExpirationDate ? new Date(c.ecacExpirationDate).toLocaleDateString("pt-BR") : "-",
-                    getStatusLabel(c.expirationStatus)
+                    c.status !== null ? getStatusLabel(c.status) : "-",
+                    { content: "", data: { paymentStatus: c.paymentStatus } }
                 ]),
+                didDrawCell: (data) => {
+                    if (data.section === "body" && data.column.index === 6) {
+                        const cellData = (data.cell.raw as any)?.data;
+                        if (cellData && (cellData.paymentStatus === EPaymentStatus.UpToDate || cellData.paymentStatus === EPaymentStatus.Overdue)) {
+                            const x = data.cell.x + data.cell.width / 2;
+                            const y = data.cell.y + data.cell.height / 2;
+
+                            // Set color based on status
+                            if (cellData.paymentStatus === EPaymentStatus.UpToDate) {
+                                doc.setDrawColor(34, 197, 94); // green-500
+                            } else {
+                                doc.setDrawColor(239, 68, 68); // red-500
+                            }
+
+                            // Draw a simple checkmark
+                            doc.setLineWidth(0.5);
+                            doc.line(x - 2, y, x - 0.5, y + 1.5);
+                            doc.line(x - 0.5, y + 1.5, x + 2, y - 2);
+                            doc.stroke();
+                        }
+                    }
+                },
                 styles: { fontSize: 8 },
                 headStyles: { fillColor: [163, 41, 49] },
                 alternateRowStyles: { fillColor: [245, 245, 245] },
+                columnStyles: {
+                    6: { cellWidth: 10, halign: "center" }
+                }
             });
 
             // Footer (Page numbers)
@@ -151,9 +197,9 @@ const RelatorioClientes = () => {
                 </div>
             </CardHeader>
             <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {/* Parceiro */}
-                    <div className="space-y-2">
+                    <div className="space-y-2 md:col-span-2">
                         <label className="text-sm font-medium">Parceiro</label>
                         <AsyncSelect
                             fetcher={async (search) => {
@@ -161,7 +207,16 @@ const RelatorioClientes = () => {
                                 return res.items;
                             }}
                             value={partnerId}
-                            onChange={setPartnerId}
+                            onChange={(val) => {
+                                setPartnerId(val);
+                                // The AsyncSelect doesn't easily give the item back on change here, 
+                                // but we can add a way or just use an effect if needed. 
+                                // However, we can try to find it in the list if we had it.
+                                // Let's just update the label if we can.
+                            }}
+                            // To properly get the name, we might need a more complex state or 
+                            // modify how AsyncSelect works. Let's try to pass the object if possible.
+                            onSelectObject={(p: any) => setPartnerName(p.legalName)}
                             getLabel={(p: any) => p.legalName}
                             getValue={(p: any) => p.id}
                             placeholder="Todos os parceiros"
@@ -169,7 +224,7 @@ const RelatorioClientes = () => {
                     </div>
 
                     {/* Status */}
-                    <div className="space-y-2">
+                    <div className="space-y-2 md:col-span-1">
                         <label className="text-sm font-medium">Status Contrato</label>
                         <Select value={filtroStatus} onValueChange={setFiltroStatus}>
                             <SelectTrigger>
@@ -185,7 +240,7 @@ const RelatorioClientes = () => {
                     </div>
 
                     {/* Datas */}
-                    <div className="space-y-2">
+                    <div className="space-y-2 md:col-span-1">
                         <label className="text-sm font-medium">Vencimento e-CAC (De)</label>
                         <Input
                             type="date"
@@ -193,13 +248,42 @@ const RelatorioClientes = () => {
                             onChange={(e) => setDueDateFrom(e.target.value)}
                         />
                     </div>
-                    <div className="space-y-2">
+                    <div className="space-y-2 md:col-span-1">
                         <label className="text-sm font-medium">Vencimento e-CAC (Até)</label>
                         <Input
                             type="date"
                             value={dueDateTo}
                             onChange={(e) => setDueDateTo(e.target.value)}
                         />
+                    </div>
+
+                    {/* Status Financeiro (Discreto) */}
+                    <div className="space-y-2 md:col-span-1">
+                        <label className="text-sm font-medium h-5 block"></label> {/* Spacer to align with date labels */}
+                        <div className="flex items-center justify-center gap-2 border rounded-md px-3 bg-background h-10 w-fit min-w-[100px]">
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => setFiltroPagamento(prev => prev === EPaymentStatus.UpToDate ? undefined : EPaymentStatus.UpToDate)}
+                                    title="Filtrar por Em Dia"
+                                    className={`w-5 h-5 border transition-all flex items-center justify-center rounded-sm ${filtroPagamento === EPaymentStatus.UpToDate
+                                        ? "bg-green-500 border-green-600 text-white shadow-md scale-110"
+                                        : "bg-transparent border-muted-foreground/30 hover:border-muted-foreground/60 hover:bg-green-500/10"
+                                        }`}
+                                >
+                                    {filtroPagamento === EPaymentStatus.UpToDate && <Check className="w-3.5 h-3.5" />}
+                                </button>
+                                <button
+                                    onClick={() => setFiltroPagamento(prev => prev === EPaymentStatus.Overdue ? undefined : EPaymentStatus.Overdue)}
+                                    title="Filtrar por Atrasado"
+                                    className={`w-5 h-5 border transition-all flex items-center justify-center rounded-sm ${filtroPagamento === EPaymentStatus.Overdue
+                                        ? "bg-red-500 border-red-600 text-white shadow-md scale-110"
+                                        : "bg-transparent border-muted-foreground/30 hover:border-muted-foreground/60 hover:bg-red-500/10"
+                                        }`}
+                                >
+                                    {filtroPagamento === EPaymentStatus.Overdue && <Check className="w-3.5 h-3.5" />}
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
