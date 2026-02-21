@@ -95,11 +95,11 @@ const RelatorioClientes = () => {
             if (dueDateFrom || dueDateTo) {
                 let dateLabel = "Venc. e-CAC: ";
                 if (dueDateFrom && dueDateTo) {
-                    dateLabel += `${new Date(dueDateFrom).toLocaleDateString("pt-BR")} até ${new Date(dueDateTo).toLocaleDateString("pt-BR")}`;
+                    dateLabel += `${new Date(`${dueDateFrom}T00:00:00`).toLocaleDateString("pt-BR")} até ${new Date(`${dueDateTo}T00:00:00`).toLocaleDateString("pt-BR")}`;
                 } else if (dueDateFrom) {
-                    dateLabel += new Date(dueDateFrom).toLocaleDateString("pt-BR");
+                    dateLabel += new Date(`${dueDateFrom}T00:00:00`).toLocaleDateString("pt-BR");
                 } else {
-                    dateLabel += new Date(dueDateTo).toLocaleDateString("pt-BR");
+                    dateLabel += new Date(`${dueDateTo}T00:00:00`).toLocaleDateString("pt-BR");
                 }
                 activeFilters.push(dateLabel);
             }
@@ -120,7 +120,7 @@ const RelatorioClientes = () => {
                     c.legalName,
                     formatCNPJ(c.cnpj),
                     c.partnerName || "-",
-                    c.ecacExpirationDate ? new Date(c.ecacExpirationDate).toLocaleDateString("pt-BR") : "-",
+                    c.ecacExpirationDate ? new Date(c.ecacExpirationDate.includes("T") ? c.ecacExpirationDate : `${c.ecacExpirationDate}T00:00:00`).toLocaleDateString("pt-BR") : "-",
                     c.status !== null ? getStatusLabel(c.status) : "-",
                     { content: "", data: { paymentStatus: c.paymentStatus } }
                 ]),

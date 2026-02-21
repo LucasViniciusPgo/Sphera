@@ -207,7 +207,9 @@ const ListaClientes = () => {
     const formatDate = (dateStr: string | null | undefined) => {
         if (!dateStr) return "-";
         try {
-            const date = new Date(dateStr);
+            // Append time to ensure local timezone parsing if it's just a date string
+            const normalizedDate = dateStr.includes("T") ? dateStr : `${dateStr}T00:00:00`;
+            const date = new Date(normalizedDate);
             return date.toLocaleDateString("pt-BR");
         } catch (e) {
             return "-";
@@ -311,10 +313,10 @@ const ListaClientes = () => {
                                 </span>
                             )}
                             {dueDateFrom && (
-                                <span className="bg-secondary px-2 py-1 rounded">De: {new Date(dueDateFrom).toLocaleDateString()}</span>
+                                <span className="bg-secondary px-2 py-1 rounded">De: {new Date(`${dueDateFrom}T00:00:00`).toLocaleDateString("pt-BR")}</span>
                             )}
                             {dueDateTo && (
-                                <span className="bg-secondary px-2 py-1 rounded">Até: {new Date(dueDateTo).toLocaleDateString()}</span>
+                                <span className="bg-secondary px-2 py-1 rounded">Até: {new Date(`${dueDateTo}T00:00:00`).toLocaleDateString("pt-BR")}</span>
                             )}
                             <button
                                 onClick={() => {
