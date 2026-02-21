@@ -430,16 +430,16 @@ const AdminCell = ({ cliente }: { cliente: any }) => {
         <TableCell>
             <div className="flex gap-1">
                 <div
-                    className={`w-3 h-3 border flex items-center justify-center ${cliente.paymentStatus === EPaymentStatus.UpToDate
-                        ? "bg-muted-foreground/40 border-muted-foreground/60 text-muted-foreground"
+                    className={`w-3 h-3 border flex items-center justify-center transition-colors ${cliente.paymentStatus === EPaymentStatus.UpToDate
+                        ? "bg-green-500 border-green-600 text-white shadow-sm"
                         : "bg-transparent border-muted-foreground/30"
                         }`}
                 >
                     {cliente.paymentStatus === EPaymentStatus.UpToDate && <Check className="w-2 h-2" />}
                 </div>
                 <div
-                    className={`w-3 h-3 border flex items-center justify-center ${cliente.paymentStatus === EPaymentStatus.Overdue
-                        ? "bg-muted-foreground/40 border-muted-foreground/60 text-muted-foreground"
+                    className={`w-3 h-3 border flex items-center justify-center transition-colors ${cliente.paymentStatus === EPaymentStatus.Overdue
+                        ? "bg-red-500 border-red-600 text-white shadow-sm"
                         : "bg-transparent border-muted-foreground/30"
                         }`}
                 >

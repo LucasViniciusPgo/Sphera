@@ -836,7 +836,7 @@ const AdminPaymentStatus = ({ form, isEditing }: { form: any; isEditing: boolean
                             <div
                                 onClick={() => isEditing && field.onChange(EPaymentStatus.UpToDate)}
                                 className={`w-4 h-4 border transition-colors flex items-center justify-center ${isEditing ? "cursor-pointer" : "cursor-default opacity-80"} ${field.value === EPaymentStatus.UpToDate
-                                    ? "bg-muted-foreground/40 border-muted-foreground/60 text-muted-foreground"
+                                    ? "bg-green-500 border-green-600 text-white shadow-sm"
                                     : "bg-transparent border-muted-foreground/30 hover:border-muted-foreground/50"
                                     }`}
                             >
@@ -845,7 +845,7 @@ const AdminPaymentStatus = ({ form, isEditing }: { form: any; isEditing: boolean
                             <div
                                 onClick={() => isEditing && field.onChange(EPaymentStatus.Overdue)}
                                 className={`w-4 h-4 border transition-colors flex items-center justify-center ${isEditing ? "cursor-pointer" : "cursor-default opacity-80"} ${field.value === EPaymentStatus.Overdue
-                                    ? "bg-muted-foreground/40 border-muted-foreground/60 text-muted-foreground"
+                                    ? "bg-red-500 border-red-600 text-white shadow-sm"
                                     : "bg-transparent border-muted-foreground/30 hover:border-muted-foreground/50"
                                     }`}
                             >
