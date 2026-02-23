@@ -255,8 +255,9 @@ export async function getClients(params?: {
     expirationStatus?: number;
     dueDateFrom?: string;
     dueDateTo?: string;
+    paymentStatus?: number;
 }) {
-    const { partnerId, status, cnpj, search, page, pageSize, includePartner, expirationStatus, dueDateFrom, dueDateTo } =
+    const { partnerId, status, cnpj, search, page, pageSize, includePartner, expirationStatus, dueDateFrom, dueDateTo, paymentStatus } =
         params || {};
 
     const res = await http.get<ClientDetails[] | { items: ClientDetails[] }>(
@@ -273,6 +274,7 @@ export async function getClients(params?: {
                 ExpirationStatus: expirationStatus,
                 DueDateFrom: dueDateFrom,
                 DueDateTo: dueDateTo,
+                PaymentStatus: paymentStatus,
             },
         }
     );
