@@ -39,12 +39,28 @@ const ListaClientes = () => {
     const navigate = useNavigate();
     const { toast } = useToast();
     const { isAdmin, isFinanceiro } = useAuthRole();
-    const [searchTerm, setSearchTerm] = useState("");
-    const [filtroStatus, setFiltroStatus] = useState<string>("todos");
-    const [filtroPagamento, setFiltroPagamento] = useState<number | undefined>(undefined);
-    const [dueDateFrom, setDueDateFrom] = useState<string>("");
-    const [dueDateTo, setDueDateTo] = useState<string>("");
-    const [page, setPage] = useState(1);
+    const [searchTerm, setSearchTerm] = useState(() => sessionStorage.getItem('listaClientes_search') || "");
+    const [filtroStatus, setFiltroStatus] = useState<string>(() => sessionStorage.getItem('listaClientes_status') || "todos");
+    const [filtroPagamento, setFiltroPagamento] = useState<number | undefined>(() => {
+        const saved = sessionStorage.getItem('listaClientes_payment');
+        return saved ? Number(saved) : undefined;
+    });
+    const [dueDateFrom, setDueDateFrom] = useState<string>(() => sessionStorage.getItem('listaClientes_from') || "");
+    const [dueDateTo, setDueDateTo] = useState<string>(() => sessionStorage.getItem('listaClientes_to') || "");
+    const [page, setPage] = useState(() => Number(sessionStorage.getItem('listaClientes_page')) || 1);
+
+    useEffect(() => {
+        sessionStorage.setItem('listaClientes_search', searchTerm);
+        sessionStorage.setItem('listaClientes_status', filtroStatus);
+        if (filtroPagamento !== undefined) {
+            sessionStorage.setItem('listaClientes_payment', filtroPagamento.toString());
+        } else {
+            sessionStorage.removeItem('listaClientes_payment');
+        }
+        sessionStorage.setItem('listaClientes_from', dueDateFrom);
+        sessionStorage.setItem('listaClientes_to', dueDateTo);
+        sessionStorage.setItem('listaClientes_page', page.toString());
+    }, [searchTerm, filtroStatus, filtroPagamento, dueDateFrom, dueDateTo, page]);
     const [hasMore, setHasMore] = useState(true);
     const mounted = useRef(false);
 
@@ -346,6 +362,7 @@ const ListaClientes = () => {
                         <Table>
                             <TableHeader>
                                 <TableRow>
+                                    <TableHead className="w-[50px]">#</TableHead>
                                     <TableHead>Nome Fantasia</TableHead>
                                     <TableHead>Razão Social</TableHead>
                                     <TableHead>CNPJ</TableHead>
@@ -357,9 +374,12 @@ const ListaClientes = () => {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {filteredClientes.map((cliente) => {
+                                {filteredClientes.map((cliente, index) => {
+                                    const currentSize = (filtroStatus !== "todos" || filtroPagamento !== undefined) ? 1000 : 10;
+                                    const itemNumber = (page - 1) * currentSize + index + 1;
                                     return (
                                         <TableRow key={cliente.id}>
+                                            <TableCell className="text-muted-foreground">{itemNumber}</TableCell>
                                             <TableCell className="font-medium">{cliente.tradeName}</TableCell>
                                             <TableCell>{cliente.legalName}</TableCell>
                                             <TableCell>{formatCNPJ(cliente.cnpj)}</TableCell>
