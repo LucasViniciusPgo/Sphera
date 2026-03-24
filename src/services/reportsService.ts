@@ -55,6 +55,7 @@ export interface ClientsReportParams {
     paymentStatus?: string;
     fromDate?: string;
     toDate?: string;
+    clientType?: number;
 }
 
 export async function getFilesReport(params: FileReportParams): Promise<FileReportItem[]> {
@@ -87,6 +88,7 @@ export async function getClientsReport(params: ClientsReportParams): Promise<Cli
     if (params.paymentStatus) actualParams.PaymentStatus = params.paymentStatus;
     if (params.fromDate) actualParams.FromDate = params.fromDate;
     if (params.toDate) actualParams.ToDate = params.toDate;
+    if (params.clientType !== undefined) actualParams.ClientType = params.clientType;
 
     const response = await http.get<ClientsReportItem[]>("/Reports/Clients", { params: actualParams });
 

@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FileText, Loader2, Eraser } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { getClients, type ClientDetails } from "@/services/clientsService.ts";
+import { getClients, type ClientDetails, EClientType } from "@/services/clientsService.ts";
 import { getPartners } from "@/services/partnersService.ts";
 import { AsyncSelect } from "@/components/AsyncSelect";
 import { EExpirationStatus } from "@/interfaces/Arquivo";
@@ -29,6 +29,7 @@ const RelatorioClientes = () => {
     const [filtroPagamento, setFiltroPagamento] = useState<number | undefined>(undefined);
     const [dueDateFrom, setDueDateFrom] = useState<string>("");
     const [dueDateTo, setDueDateTo] = useState<string>("");
+    const [filtroTipo, setFiltroTipo] = useState<string>("todos");
 
     const handleClearFilters = () => {
         setPartnerId("");
@@ -37,6 +38,7 @@ const RelatorioClientes = () => {
         setFiltroPagamento(undefined);
         setDueDateFrom("");
         setDueDateTo("");
+        setFiltroTipo("todos");
     };
 
     const getStatusLabel = (status: EExpirationStatus) => {
@@ -57,7 +59,8 @@ const RelatorioClientes = () => {
                 status: filtroStatus,
                 paymentStatus: filtroPagamento?.toString(),
                 fromDate: dueDateFrom || undefined,
-                toDate: dueDateTo || undefined
+                toDate: dueDateTo || undefined,
+                clientType: filtroTipo !== "todos" ? Number(filtroTipo) : undefined
             });
 
             if (items.length === 0) {
@@ -104,6 +107,11 @@ const RelatorioClientes = () => {
                     dateLabel += new Date(`${dueDateTo}T00:00:00`).toLocaleDateString("pt-BR");
                 }
                 activeFilters.push(dateLabel);
+            }
+
+            if (filtroTipo !== "todos") {
+                const tipoLabel = filtroTipo === EClientType.ESocial.toString() ? "eSocial" : "Assessoria";
+                activeFilters.push(`Tipo: ${tipoLabel}`);
             }
 
             if (activeFilters.length > 0) {
@@ -245,6 +253,21 @@ const RelatorioClientes = () => {
                                 <SelectItem value="vencido">Vencido</SelectItem>
                                 <SelectItem value="a-vencer">A Vencer</SelectItem>
                                 <SelectItem value="dentro-prazo">Dentro do Prazo</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {/* Tipo de Cliente */}
+                    <div className="space-y-2 md:col-span-1">
+                        <label className="text-sm font-medium">Tipo de Cliente</label>
+                        <Select value={filtroTipo} onValueChange={setFiltroTipo}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Todos os tipos" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="todos">Todos os Tipos</SelectItem>
+                                <SelectItem value={EClientType.ESocial.toString()}>eSocial</SelectItem>
+                                <SelectItem value={EClientType.Consulting.toString()}>Assessoria</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
