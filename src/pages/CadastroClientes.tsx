@@ -16,6 +16,7 @@ import {
     updateClient,
     getClientById,
     type ClientPartnerInfo,
+    EClientType,
 } from "@/services/clientsService.ts";
 import {
     EContactRole,
@@ -60,6 +61,7 @@ export interface Cliente {
     createdAt: string;
     updatedBy: string;
     updatedAt: string;
+    clientType: EClientType;
 }
 
 const clienteSchema = z.object({
@@ -89,6 +91,7 @@ const clienteSchema = z.object({
     observacoes: z.string().max(500, "A observação deve ter no máximo 500 caracteres").optional(),
     parceiroId: z.string().min(1, "Selecione um parceiro"),
     paymentStatus: z.number().default(0),
+    clientType: z.number().nullable().default(null),
 });
 
 function buildDateFromDueDay(dueDay: number | null | undefined): string {
@@ -153,6 +156,7 @@ const CadastroClientes = () => {
             observacoes: "",
             parceiroId: "",
             paymentStatus: 0,
+            clientType: null,
         },
     });
 
@@ -234,6 +238,7 @@ const CadastroClientes = () => {
                     observacoes: clienteApi.notes || "",
                     parceiroId: partner?.id || "",
                     paymentStatus: clienteApi.paymentStatus ?? 0,
+                    clientType: clienteApi.clientType,
                 });
             } catch (error: any) {
                 console.error(error);
@@ -414,6 +419,32 @@ const CadastroClientes = () => {
                                                 <FormControl>
                                                     <Input placeholder="Número da inscrição" {...field}
                                                         readOnly={readonly} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+
+                                    <FormField
+                                        control={form.control}
+                                        name="clientType"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Tipo de Cliente *</FormLabel>
+                                                <FormControl>
+                                                    <Select
+                                                        value={field.value !== null ? field.value.toString() : ""}
+                                                        onValueChange={(val) => field.onChange(val === "" ? null : parseInt(val))}
+                                                        disabled={readonly}
+                                                    >
+                                                        <SelectTrigger>
+                                                            <SelectValue placeholder="Selecione o tipo" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value={EClientType.ESocial.toString()}>eSocial</SelectItem>
+                                                            <SelectItem value={EClientType.Consulting.toString()}>Assessoria</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>

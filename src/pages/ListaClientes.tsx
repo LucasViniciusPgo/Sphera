@@ -19,7 +19,7 @@ import {
     AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { getClients, deleteClient, getClientById, type ClientDetails } from "@/services/clientsService.ts";
+import { getClients, deleteClient, getClientById, type ClientDetails, EClientType } from "@/services/clientsService.ts";
 import { removeContactFromClient, addContactToClient } from "@/services/clientsContactsService.ts";
 import { formatCNPJ } from "@/utils/format.ts";
 import { EExpirationStatus } from "@/interfaces/Arquivo";
@@ -47,6 +47,7 @@ const ListaClientes = () => {
     });
     const [dueDateFrom, setDueDateFrom] = useState<string>(() => sessionStorage.getItem('listaClientes_from') || "");
     const [dueDateTo, setDueDateTo] = useState<string>(() => sessionStorage.getItem('listaClientes_to') || "");
+    const [filtroTipo, setFiltroTipo] = useState<string>(() => sessionStorage.getItem('listaClientes_tipo') || "todos");
     const [page, setPage] = useState(() => Number(sessionStorage.getItem('listaClientes_page')) || 1);
 
     useEffect(() => {
@@ -59,8 +60,9 @@ const ListaClientes = () => {
         }
         sessionStorage.setItem('listaClientes_from', dueDateFrom);
         sessionStorage.setItem('listaClientes_to', dueDateTo);
+        sessionStorage.setItem('listaClientes_tipo', filtroTipo);
         sessionStorage.setItem('listaClientes_page', page.toString());
-    }, [searchTerm, filtroStatus, filtroPagamento, dueDateFrom, dueDateTo, page]);
+    }, [searchTerm, filtroStatus, filtroPagamento, dueDateFrom, dueDateTo, filtroTipo, page]);
     const [hasMore, setHasMore] = useState(true);
     const mounted = useRef(false);
 
@@ -84,7 +86,7 @@ const ListaClientes = () => {
 
         const timer = setTimeout(() => {
             if (page === 1) {
-                loadClientes(1, searchTerm, filtroStatus, filtroPagamento, dueDateFrom, dueDateTo);
+                loadClientes(1, searchTerm, filtroStatus, filtroPagamento, dueDateFrom, dueDateTo, filtroTipo);
             } else {
                 setPage(1);
             }
@@ -98,13 +100,13 @@ const ListaClientes = () => {
         if (!mounted.current) return;
 
         if (page === 1) {
-            loadClientes(1, searchTerm, filtroStatus, filtroPagamento, dueDateFrom, dueDateTo);
+            loadClientes(1, searchTerm, filtroStatus, filtroPagamento, dueDateFrom, dueDateTo, filtroTipo);
         } else {
             setPage(1);
         }
-    }, [filtroStatus, filtroPagamento, dueDateFrom, dueDateTo]);
+    }, [filtroStatus, filtroPagamento, dueDateFrom, dueDateTo, filtroTipo]);
 
-    const loadClientes = useCallback(async (pageParam: number, searchParam: string, statusParam: string, paymentParam?: number, fromParam?: string, toParam?: string) => {
+    const loadClientes = useCallback(async (pageParam: number, searchParam: string, statusParam: string, paymentParam?: number, fromParam?: string, toParam?: string, tipoParam?: string) => {
         const effectivePageSize = (statusParam !== "todos" || paymentParam !== undefined) ? 1000 : 10;
         try {
             let expirationStatus: number | undefined = undefined;
@@ -120,7 +122,8 @@ const ListaClientes = () => {
                 expirationStatus: expirationStatus,
                 dueDateFrom: fromParam || undefined,
                 dueDateTo: toParam || undefined,
-                paymentStatus: paymentParam
+                paymentStatus: paymentParam,
+                clientType: tipoParam !== "todos" ? Number(tipoParam) : undefined
             });
 
             if (pageParam > 1 && items.length === 0) {
@@ -150,7 +153,7 @@ const ListaClientes = () => {
     }, [toast]);
 
     useEffect(() => {
-        loadClientes(page, searchTerm, filtroStatus, filtroPagamento, dueDateFrom, dueDateTo);
+        loadClientes(page, searchTerm, filtroStatus, filtroPagamento, dueDateFrom, dueDateTo, filtroTipo);
     }, [page, loadClientes]);
 
     // Set mounted flag
@@ -172,7 +175,7 @@ const ListaClientes = () => {
 
             await deleteClient(clienteId);
             // Reload current page
-            loadClientes(page, searchTerm, filtroStatus, filtroPagamento, dueDateFrom, dueDateTo);
+            loadClientes(page, searchTerm, filtroStatus, filtroPagamento, dueDateFrom, dueDateTo, filtroTipo);
             toast({
                 title: "Cliente excluído",
                 description: "O cliente foi excluído com sucesso.",
@@ -312,10 +315,22 @@ const ListaClientes = () => {
                                 value={dueDateTo}
                                 onChange={(e) => setDueDateTo(e.target.value)}
                                 title="Vencimento e-CAC Até"
-                            />
+                                />
+                        </div>
+                        <div className="md:col-span-1">
+                            <Select value={filtroTipo} onValueChange={setFiltroTipo}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Tipo de Cliente" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="todos">Todos os Tipos</SelectItem>
+                                    <SelectItem value={EClientType.ESocial.toString()}>eSocial</SelectItem>
+                                    <SelectItem value={EClientType.Consulting.toString()}>Assessoria</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
                     </div>
-                    {(searchTerm || filtroStatus !== "todos" || filtroPagamento !== undefined || dueDateFrom || dueDateTo) && (
+                    {(searchTerm || filtroStatus !== "todos" || filtroPagamento !== undefined || dueDateFrom || dueDateTo || filtroTipo !== "todos") && (
                         <div className="flex gap-2 text-sm text-muted-foreground items-center flex-wrap">
                             <span>Filtros ativos:</span>
                             {searchTerm && (
@@ -344,6 +359,7 @@ const ListaClientes = () => {
                                     setFiltroPagamento(undefined);
                                     setDueDateFrom("");
                                     setDueDateTo("");
+                                    setFiltroTipo("todos");
                                 }}
                                 className="text-primary hover:underline ml-2"
                             >
@@ -369,6 +385,7 @@ const ListaClientes = () => {
                                     <TableHead>Parceiro Vinculado</TableHead>
                                     <TableHead>Venc. e-CAC</TableHead>
                                     <TableHead>Contrato</TableHead>
+                                    <TableHead>Tipo</TableHead>
                                     <AdminHeader />
                                     <TableHead>Ações</TableHead>
                                 </TableRow>
@@ -394,6 +411,13 @@ const ListaClientes = () => {
                                                         </Badge>
                                                     );
                                                 })()}
+                                            </TableCell>
+                                            <TableCell>
+                                                {cliente.clientType !== null && (
+                                                    <Badge variant="outline" className="font-normal">
+                                                        {cliente.clientType === EClientType.ESocial ? "eSocial" : "Assessoria"}
+                                                    </Badge>
+                                                )}
                                             </TableCell>
                                             <AdminCell cliente={cliente} />
                                             <TableCell className="text-right">
