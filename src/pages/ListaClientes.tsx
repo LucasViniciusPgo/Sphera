@@ -362,6 +362,7 @@ const ListaClientes = () => {
                         <Table>
                             <TableHeader>
                                 <TableRow>
+                                    <TableHead className="w-[50px]">#</TableHead>
                                     <TableHead>Nome Fantasia</TableHead>
                                     <TableHead>Razão Social</TableHead>
                                     <TableHead>CNPJ</TableHead>
@@ -373,9 +374,12 @@ const ListaClientes = () => {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {filteredClientes.map((cliente) => {
+                                {filteredClientes.map((cliente, index) => {
+                                    const currentSize = (filtroStatus !== "todos" || filtroPagamento !== undefined) ? 1000 : 10;
+                                    const itemNumber = (page - 1) * currentSize + index + 1;
                                     return (
                                         <TableRow key={cliente.id}>
+                                            <TableCell className="text-muted-foreground">{itemNumber}</TableCell>
                                             <TableCell className="font-medium">{cliente.tradeName}</TableCell>
                                             <TableCell>{cliente.legalName}</TableCell>
                                             <TableCell>{formatCNPJ(cliente.cnpj)}</TableCell>
