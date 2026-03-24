@@ -91,7 +91,7 @@ const clienteSchema = z.object({
     observacoes: z.string().max(500, "A observação deve ter no máximo 500 caracteres").optional(),
     parceiroId: z.string().min(1, "Selecione um parceiro"),
     paymentStatus: z.number().default(0),
-    clientType: z.number().nullable().default(null),
+    clientType: z.number({ required_error: "Tipo de cliente é obrigatório" }).nullable().refine((val) => val !== null, { message: "Selecione o tipo de cliente" }),
 });
 
 function buildDateFromDueDay(dueDay: number | null | undefined): string {
