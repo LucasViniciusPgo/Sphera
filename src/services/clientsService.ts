@@ -1,5 +1,10 @@
 import { http } from "@/lib/http";
 import { EExpirationStatus } from "@/interfaces/Arquivo";
+
+export enum EClientType {
+    ESocial = 0,
+    Consulting = 1
+}
 import type { ClienteFormData } from "@/pages/CadastroClientes";
 import { cleanCNPJ, cleanPhone, cleanCEP } from "@/utils/format.ts";
 import {
@@ -40,6 +45,7 @@ export interface ApiClient {
     notes?: string | null;
     documentsCount?: number;
     paymentStatus: number;
+    clientType: EClientType | null;
 }
 
 export interface ClientDetails extends ApiClient {
@@ -70,6 +76,7 @@ export interface CreateClientCommand {
     ecacExpirationDate?: string;
     notes?: string | null;
     paymentStatus: number;
+    clientType: EClientType;
 }
 
 export interface UpdateClientCommand extends CreateClientCommand {
@@ -119,6 +126,7 @@ export async function createClient(data: ClienteFormData) {
         ecacExpirationDate: data.dataVencimentoEcac || undefined,
         notes: data.observacoes || null,
         paymentStatus: data.paymentStatus ?? 0,
+        clientType: data.clientType,
     };
 
     const res = await http.post<any>("Clients", payload);
@@ -161,6 +169,7 @@ export async function updateClient(
         notes: data.observacoes || null,
         status: newStatusBool,
         paymentStatus: data.paymentStatus ?? 0,
+        clientType: data.clientType,
     };
 
     // Update main client data
@@ -256,8 +265,9 @@ export async function getClients(params?: {
     dueDateFrom?: string;
     dueDateTo?: string;
     paymentStatus?: number;
+    clientType?: number;
 }) {
-    const { partnerId, status, cnpj, search, page, pageSize, includePartner, expirationStatus, dueDateFrom, dueDateTo, paymentStatus } =
+    const { partnerId, status, cnpj, search, page, pageSize, includePartner, expirationStatus, dueDateFrom, dueDateTo, paymentStatus, clientType } =
         params || {};
 
     const res = await http.get<ClientDetails[] | { items: ClientDetails[] }>(
@@ -275,6 +285,7 @@ export async function getClients(params?: {
                 DueDateFrom: dueDateFrom,
                 DueDateTo: dueDateTo,
                 PaymentStatus: paymentStatus,
+                ClientType: clientType,
             },
         }
     );
