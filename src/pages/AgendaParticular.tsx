@@ -43,6 +43,7 @@ import {
     ChevronLeft,
     ChevronRight,
     Clock,
+    X,
 } from "lucide-react";
 
 import {
@@ -112,6 +113,7 @@ const AgendaParticular = () => {
     // agora usando sentinelas, nunca string vazia
     const [formClientId, setFormClientId] = useState<string>(NONE_CLIENT);
     const [formUserId, setFormUserId] = useState<string>(NONE_USER);
+    const [formInvitedUserIds, setFormInvitedUserIds] = useState<string[]>([]);
     const [formNotes, setFormNotes] = useState<string>("");
 
     const [clients, setClients] = useState<ClientDetails[]>([]);
@@ -189,6 +191,7 @@ const AgendaParticular = () => {
         setFormDateTime(format(date, "yyyy-MM-dd'T'HH:mm"));
         setFormClientId(NONE_CLIENT);
         setFormUserId(NONE_USER);
+        setFormInvitedUserIds([]);
         setFormNotes("");
         setDialogOpen(true);
     }
@@ -200,8 +203,24 @@ const AgendaParticular = () => {
         );
         setFormClientId(event.clientId ?? NONE_CLIENT);
         setFormUserId(event.userId ?? NONE_USER);
+        setFormInvitedUserIds(event.InvitedUserIds ?? event.invitedUserIds ?? []);
         setFormNotes(event.notes || "");
         setDialogOpen(true);
+    }
+
+    function handleAddInvitedUser(userId: string) {
+        if (!userId) return;
+
+        setFormInvitedUserIds((prev) => {
+            if (prev.includes(userId)) {
+                return prev;
+            }
+            return [...prev, userId];
+        });
+    }
+
+    function handleRemoveInvitedUser(userId: string) {
+        setFormInvitedUserIds((prev) => prev.filter((id) => id !== userId));
     }
 
     async function reloadEvents() {
@@ -216,6 +235,7 @@ const AgendaParticular = () => {
             occurredAt,
             userId: formUserId === NONE_USER ? null : formUserId,
             clientId: formClientId === NONE_CLIENT ? null : formClientId,
+            InvitedUserIds: formInvitedUserIds,
             notes: formNotes || null,
             eventType: 1, // Particular
         };
@@ -269,6 +289,8 @@ const AgendaParticular = () => {
             occurredAt,
             userId: schedule.userId ?? null,
             clientId: schedule.clientId ?? null,
+            InvitedUserIds:
+                schedule.InvitedUserIds ?? schedule.invitedUserIds ?? [],
             notes: schedule.notes ?? null,
             eventType: 1, // Particular
         };
@@ -859,6 +881,49 @@ const AgendaParticular = () => {
                                 placeholder="Nenhum usuário"
                                 initialLabel={formUserId !== NONE_USER ? users.find(u => u.id === formUserId)?.name : "Nenhum usuário"}
                             />
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-xs font-medium text-muted-foreground">
+                                Convidados
+                            </label>
+                            <AsyncSelect
+                                fetcher={async (search) => {
+                                    const res = await getUsers({ search, pageSize: 20, isActive: true });
+                                    return res.items;
+                                }}
+                                value=""
+                                onChange={handleAddInvitedUser}
+                                getLabel={(u: any) => u.name}
+                                getValue={(u: any) => u.id}
+                                placeholder="Adicionar convidado"
+                                clearAfterSelect
+                            />
+
+                            {formInvitedUserIds.length > 0 && (
+                                <div className="flex flex-wrap gap-2">
+                                    {formInvitedUserIds.map((invitedUserId) => {
+                                        const invitedUser = users.find((u) => u.id === invitedUserId);
+
+                                        return (
+                                            <div
+                                                key={invitedUserId}
+                                                className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-sm"
+                                            >
+                                                <span>{invitedUser?.name ?? invitedUserId}</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleRemoveInvitedUser(invitedUserId)}
+                                                    className="text-muted-foreground hover:text-foreground"
+                                                    aria-label="Remover convidado"
+                                                >
+                                                    <X className="h-3 w-3" />
+                                                </button>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
                         </div>
 
                         <div className="space-y-1">
