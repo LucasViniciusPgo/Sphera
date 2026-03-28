@@ -21,6 +21,7 @@ import {
 import { ptBR } from "date-fns/locale";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
     Dialog,
@@ -115,6 +116,8 @@ const AgendaParticular = () => {
     const [formUserId, setFormUserId] = useState<string>(NONE_USER);
     const [formInvitedUserIds, setFormInvitedUserIds] = useState<string[]>([]);
     const [formNotes, setFormNotes] = useState<string>("");
+    const [isEventCreator, setIsEventCreator] = useState(true);
+    const [isEventInvitee, setIsEventInvitee] = useState(false);
 
     const [clients, setClients] = useState<ClientDetails[]>([]);
     const [users, setUsers] = useState<Usuario[]>([]);
@@ -165,14 +168,12 @@ const AgendaParticular = () => {
     }, []);
 
     async function loadEvents() {
-        const currentUserId = localStorage.getItem("currentUserId");
         setLoading(true);
         try {
             const params = {
                 startAt: toApiDateTime(start),
                 endAt: toApiDateTime(end),
                 eventType: 1, // Particular
-                createdBy: currentUserId || undefined,
             };
 
             const data = await getScheduleEvents(params);
@@ -193,10 +194,20 @@ const AgendaParticular = () => {
         setFormUserId(NONE_USER);
         setFormInvitedUserIds([]);
         setFormNotes("");
+        setIsEventCreator(true);
+        setIsEventInvitee(false);
         setDialogOpen(true);
     }
 
     function openEditDialog(event: ScheduleEvent) {
+        const currentUserId = localStorage.getItem("currentUserId");
+        const isCreator = event.createdBy === currentUserId;
+        const isInvitee = !isCreator && (event.InvitedUserIds ?? event.invitedUserIds ?? []).includes(currentUserId || "");
+        
+        if (!isCreator && !isInvitee) {
+            return; // Não é criador nem convidado, não pode abrir
+        }
+        
         setEditingId(event.id);
         setFormDateTime(
             format(parseISO(event.occurredAt), "yyyy-MM-dd'T'HH:mm")
@@ -205,6 +216,8 @@ const AgendaParticular = () => {
         setFormUserId(event.userId ?? NONE_USER);
         setFormInvitedUserIds(event.InvitedUserIds ?? event.invitedUserIds ?? []);
         setFormNotes(event.notes || "");
+        setIsEventCreator(isCreator);
+        setIsEventInvitee(isInvitee);
         setDialogOpen(true);
     }
 
@@ -824,11 +837,16 @@ const AgendaParticular = () => {
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>
-                            {editingId
-                                ? "Editar agendamento"
-                                : "Novo agendamento"}
-                        </DialogTitle>
+                        <div className="flex items-center gap-2">
+                            <DialogTitle>
+                                {editingId
+                                    ? "Editar agendamento"
+                                    : "Novo agendamento"}
+                            </DialogTitle>
+                            {editingId && isEventInvitee && (
+                                <Badge variant="secondary">Convidado</Badge>
+                            )}
+                        </div>
                     </DialogHeader>
 
                     <div className="space-y-4 py-2">
@@ -842,6 +860,7 @@ const AgendaParticular = () => {
                                 onChange={(e) =>
                                     setFormDateTime(e.target.value)
                                 }
+                                disabled={isEventInvitee}
                             />
                         </div>
 
@@ -861,6 +880,7 @@ const AgendaParticular = () => {
                                 getValue={(c: any) => c.id}
                                 placeholder="Nenhum cliente"
                                 initialLabel={formClientId !== NONE_CLIENT ? clients.find(c => c.id === formClientId)?.tradeName : "Nenhum cliente"}
+                                disabled={isEventInvitee}
                             />
                         </div>
 
@@ -880,51 +900,75 @@ const AgendaParticular = () => {
                                 getValue={(u: any) => u.id}
                                 placeholder="Nenhum usuário"
                                 initialLabel={formUserId !== NONE_USER ? users.find(u => u.id === formUserId)?.name : "Nenhum usuário"}
+                                disabled={isEventInvitee}
                             />
                         </div>
 
-                        <div className="space-y-2">
-                            <label className="text-xs font-medium text-muted-foreground">
-                                Convidados
-                            </label>
-                            <AsyncSelect
-                                fetcher={async (search) => {
-                                    const res = await getUsers({ search, pageSize: 20, isActive: true });
-                                    return res.items;
-                                }}
-                                value=""
-                                onChange={handleAddInvitedUser}
-                                getLabel={(u: any) => u.name}
-                                getValue={(u: any) => u.id}
-                                placeholder="Adicionar convidado"
-                                clearAfterSelect
-                            />
+                        {!isEventInvitee && (
+                            <div className="space-y-2">
+                                <label className="text-xs font-medium text-muted-foreground">
+                                    Convidados
+                                </label>
+                                <AsyncSelect
+                                    fetcher={async (search) => {
+                                        const res = await getUsers({ search, pageSize: 20, isActive: true });
+                                        return res.items;
+                                    }}
+                                    value=""
+                                    onChange={handleAddInvitedUser}
+                                    getLabel={(u: any) => u.name}
+                                    getValue={(u: any) => u.id}
+                                    placeholder="Adicionar convidado"
+                                    clearAfterSelect
+                                />
 
-                            {formInvitedUserIds.length > 0 && (
+                                {formInvitedUserIds.length > 0 && (
+                                    <div className="flex flex-wrap gap-2">
+                                        {formInvitedUserIds.map((invitedUserId) => {
+                                            const invitedUser = users.find((u) => u.id === invitedUserId);
+
+                                            return (
+                                                <div
+                                                    key={invitedUserId}
+                                                    className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-sm"
+                                                >
+                                                    <span>{invitedUser?.name ?? invitedUserId}</span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleRemoveInvitedUser(invitedUserId)}
+                                                        className="text-muted-foreground hover:text-foreground"
+                                                        aria-label="Remover convidado"
+                                                    >
+                                                        <X className="h-3 w-3" />
+                                                    </button>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {isEventInvitee && formInvitedUserIds.length > 0 && (
+                            <div className="space-y-2">
+                                <label className="text-xs font-medium text-muted-foreground">
+                                    Convidados
+                                </label>
                                 <div className="flex flex-wrap gap-2">
                                     {formInvitedUserIds.map((invitedUserId) => {
                                         const invitedUser = users.find((u) => u.id === invitedUserId);
-
                                         return (
                                             <div
                                                 key={invitedUserId}
                                                 className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-sm"
                                             >
                                                 <span>{invitedUser?.name ?? invitedUserId}</span>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleRemoveInvitedUser(invitedUserId)}
-                                                    className="text-muted-foreground hover:text-foreground"
-                                                    aria-label="Remover convidado"
-                                                >
-                                                    <X className="h-3 w-3" />
-                                                </button>
                                             </div>
                                         );
                                     })}
                                 </div>
-                            )}
-                        </div>
+                            </div>
+                        )}
 
                         <div className="space-y-1">
                             <label className="text-xs font-medium text-muted-foreground">
@@ -936,12 +980,13 @@ const AgendaParticular = () => {
                                     setFormNotes(e.target.value)
                                 }
                                 rows={3}
+                                disabled={isEventInvitee}
                             />
                         </div>
                     </div>
 
                     <DialogFooter className="flex items-center justify-between gap-2">
-                        {editingId && (
+                        {editingId && isEventCreator && (
                             <Button
                                 variant="destructive"
                                 type="button"
@@ -963,13 +1008,15 @@ const AgendaParticular = () => {
                             >
                                 Cancelar
                             </Button>
-                            <Button
-                                type="button"
-                                onClick={handleSubmit}
-                                disabled={loading}
-                            >
-                                {editingId ? "Salvar" : "Agendar"}
-                            </Button>
+                            {isEventCreator && (
+                                <Button
+                                    type="button"
+                                    onClick={handleSubmit}
+                                    disabled={loading}
+                                >
+                                    {editingId ? "Salvar" : "Agendar"}
+                                </Button>
+                            )}
                         </div>
                     </DialogFooter>
                 </DialogContent>
