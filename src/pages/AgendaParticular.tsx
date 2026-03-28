@@ -168,6 +168,7 @@ const AgendaParticular = () => {
     }, []);
 
     async function loadEvents() {
+        const currentUserId = localStorage.getItem("currentUserId");
         setLoading(true);
         try {
             const params = {
@@ -177,7 +178,15 @@ const AgendaParticular = () => {
             };
 
             const data = await getScheduleEvents(params);
-            setEvents(data);
+            
+            // Filtrar apenas eventos que o usuário criou ou foi convidado
+            const filteredData = data.filter((event) => {
+                const isCreator = event.createdBy === currentUserId;
+                const isInvitee = (event.InvitedUserIds ?? event.invitedUserIds ?? []).includes(currentUserId || "");
+                return isCreator || isInvitee;
+            });
+            
+            setEvents(filteredData);
         } finally {
             setLoading(false);
         }
