@@ -45,6 +45,7 @@ import {
     ChevronRight,
     Clock,
     X,
+    Lock,
 } from "lucide-react";
 
 import {
@@ -105,6 +106,7 @@ function toApiDateTime(date: Date) {
 const AgendaParticular = () => {
     const [view, setView] = useState<CalendarView>("month");
     const [currentDate, setCurrentDate] = useState<Date>(() => new Date());
+    const currentUserId = useMemo(() => localStorage.getItem("currentUserId"), []);
     const [events, setEvents] = useState<ScheduleEvent[]>([]);
     const [loading, setLoading] = useState(false);
     const [dialogOpen, setDialogOpen] = useState(false);
@@ -168,7 +170,6 @@ const AgendaParticular = () => {
     }, []);
 
     async function loadEvents() {
-        const currentUserId = localStorage.getItem("currentUserId");
         setLoading(true);
         try {
             const params = {
@@ -209,7 +210,6 @@ const AgendaParticular = () => {
     }
 
     function openEditDialog(event: ScheduleEvent) {
-        const currentUserId = localStorage.getItem("currentUserId");
         const isCreator = event.createdBy === currentUserId;
         const isInvitee = !isCreator && (event.InvitedUserIds ?? event.invitedUserIds ?? []).includes(currentUserId || "");
         
@@ -303,7 +303,7 @@ const AgendaParticular = () => {
 
     async function handleMoveEvent(eventId: string, newDate: Date) {
         const schedule = events.find((ev) => ev.id === eventId);
-        if (!schedule) return;
+        if (!schedule || schedule.createdBy !== currentUserId) return;
 
         const occurredAt = toApiDateTime(newDate);
 
@@ -473,23 +473,34 @@ const AgendaParticular = () => {
                                                                 e.stopPropagation();
                                                                 openEditDialog(event);
                                                             }}
-                                                            draggable
+                                                            draggable={event.createdBy === currentUserId}
                                                             onDragStart={(e) =>
                                                                 handleEventDragStart(e, event)
                                                             }
-                                                            className="w-full rounded-md bg-primary/10 border border-primary/50 px-1 py-0.5 text-[0.7rem] text-left overflow-hidden hover:bg-primary/20"
+                                                            className={`w-full rounded-md border px-1 py-0.5 text-[0.7rem] text-left overflow-hidden ${
+                                                                event.createdBy === currentUserId 
+                                                                ? "bg-primary/10 border-primary/50 hover:bg-primary/20" 
+                                                                : "bg-muted/30 border-muted-foreground/30 opacity-80 cursor-default"
+                                                            }`}
                                                         >
-                                                            {client && (
-                                                                <div className="font-medium truncate">
-                                                                    {client.legalName}
-                                                                </div>
-                                                            )}
+                                                            <div className="flex items-center justify-between gap-1">
+                                                                <div className="flex-1 truncate">
+                                                                    {client && (
+                                                                        <div className="font-medium truncate">
+                                                                            {client.legalName}
+                                                                        </div>
+                                                                    )}
 
-                                                            {user && (
-                                                                <div className="font-medium truncate">
-                                                                    {user.name}
+                                                                    {user && (
+                                                                        <div className="font-medium truncate">
+                                                                            {user.name}
+                                                                        </div>
+                                                                    )}
                                                                 </div>
-                                                            )}
+                                                                {event.createdBy !== currentUserId && (
+                                                                    <Lock className="h-3 w-3 text-muted-foreground/60 flex-shrink-0" />
+                                                                )}
+                                                            </div>
 
                                                             {event.notes && (
                                                                 <div className="truncate opacity-80">
@@ -579,23 +590,34 @@ const AgendaParticular = () => {
                                                             e.stopPropagation();
                                                             openEditDialog(event);
                                                         }}
-                                                        draggable
+                                                        draggable={event.createdBy === currentUserId}
                                                         onDragStart={(e) =>
                                                             handleEventDragStart(e, event)
                                                         }
-                                                        className="w-full rounded-md bg-primary/10 border border-primary/50 px-1 py-0.5 text-[0.7rem] text-left overflow-hidden hover:bg-primary/20"
+                                                        className={`w-full rounded-md border px-1 py-0.5 text-[0.7rem] text-left overflow-hidden ${
+                                                            event.createdBy === currentUserId 
+                                                            ? "bg-primary/10 border-primary/50 hover:bg-primary/20" 
+                                                            : "bg-muted/30 border-muted-foreground/30 opacity-80 cursor-default"
+                                                        }`}
                                                     >
-                                                        {client && (
-                                                            <div className="font-medium truncate">
-                                                                {client.legalName}
-                                                            </div>
-                                                        )}
+                                                        <div className="flex items-center justify-between gap-1">
+                                                            <div className="flex-1 truncate">
+                                                                {client && (
+                                                                    <div className="font-medium truncate">
+                                                                        {client.legalName}
+                                                                    </div>
+                                                                )}
 
-                                                        {user && (
-                                                            <div className="font-medium truncate">
-                                                                {user.name}
+                                                                {user && (
+                                                                    <div className="font-medium truncate">
+                                                                        {user.name}
+                                                                    </div>
+                                                                )}
                                                             </div>
-                                                        )}
+                                                            {event.createdBy !== currentUserId && (
+                                                                <Lock className="h-3 w-3 text-muted-foreground/60 flex-shrink-0" />
+                                                            )}
+                                                        </div>
 
                                                         {event.notes && (
                                                             <div className="truncate opacity-80">
@@ -702,30 +724,41 @@ const AgendaParticular = () => {
                                             <button
                                                 key={event.id}
                                                 type="button"
-                                                className="w-full text-left truncate rounded px-1 py-0.5 text-[0.7rem] bg-primary/10 hover:bg-primary/20 border border-primary/40"
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     openEditDialog(event);
                                                 }}
-                                                draggable
+                                                draggable={event.createdBy === currentUserId}
                                                 onDragStart={(e) =>
                                                     handleEventDragStart(e, event)
                                                 }
+                                                className={`w-full text-left truncate rounded px-1 py-0.5 text-[0.7rem] border ${
+                                                    event.createdBy === currentUserId 
+                                                    ? "bg-primary/10 border-primary/40 hover:bg-primary/20" 
+                                                    : "bg-muted/30 border-muted-foreground/30 opacity-80 cursor-default"
+                                                }`}
                                             >
-                                                <span className="font-semibold">
-                                                    {timeLabel}{" "}
-                                                </span>
-                                                {client && (
-                                                    <span className="truncate inline-block max-w-[80%] align-middle">
-                                                        {client.legalName}
-                                                    </span>
-                                                )}
+                                                <div className="flex items-center justify-between gap-1">
+                                                    <div className="flex-1 truncate">
+                                                        <span className="font-semibold">
+                                                            {timeLabel}{" "}
+                                                        </span>
+                                                        {client && (
+                                                            <span className="truncate inline-block max-w-[80%] align-middle">
+                                                                {client.legalName}
+                                                            </span>
+                                                        )}
 
-                                                {user && (
-                                                    <div className="font-medium truncate">
-                                                        {user.name}
+                                                        {user && (
+                                                            <div className="font-medium truncate">
+                                                                {user.name}
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                )}
+                                                    {event.createdBy !== currentUserId && (
+                                                        <Lock className="h-3 w-3 text-muted-foreground/60 flex-shrink-0" />
+                                                    )}
+                                                </div>
 
                                                 {event.notes && (
                                                     <div className="truncate opacity-80">
