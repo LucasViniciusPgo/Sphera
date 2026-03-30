@@ -5,6 +5,8 @@ export interface ScheduleEvent {
     occurredAt: string;
     userId?: string;
     clientId?: string;
+    invitedUserIds?: string[];
+    InvitedUserIds?: string[];
     notes?: string | null;
     eventType: number;
     createdAt: string;
@@ -17,6 +19,7 @@ export interface CreateScheduleEventCommand {
     occurredAt: string;
     userId?: string;
     clientId?: string;
+    InvitedUserIds?: string[];
     notes?: string | null;
     eventType: number;
 }

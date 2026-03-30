@@ -21,6 +21,7 @@ import {
 import { ptBR } from "date-fns/locale";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
     Dialog,
@@ -43,6 +44,8 @@ import {
     ChevronLeft,
     ChevronRight,
     Clock,
+    X,
+    Lock,
 } from "lucide-react";
 
 import {
@@ -103,6 +106,7 @@ function toApiDateTime(date: Date) {
 const AgendaParticular = () => {
     const [view, setView] = useState<CalendarView>("month");
     const [currentDate, setCurrentDate] = useState<Date>(() => new Date());
+    const currentUserId = useMemo(() => localStorage.getItem("currentUserId"), []);
     const [events, setEvents] = useState<ScheduleEvent[]>([]);
     const [loading, setLoading] = useState(false);
     const [dialogOpen, setDialogOpen] = useState(false);
@@ -112,7 +116,10 @@ const AgendaParticular = () => {
     // agora usando sentinelas, nunca string vazia
     const [formClientId, setFormClientId] = useState<string>(NONE_CLIENT);
     const [formUserId, setFormUserId] = useState<string>(NONE_USER);
+    const [formInvitedUserIds, setFormInvitedUserIds] = useState<string[]>([]);
     const [formNotes, setFormNotes] = useState<string>("");
+    const [isEventCreator, setIsEventCreator] = useState(true);
+    const [isEventInvitee, setIsEventInvitee] = useState(false);
 
     const [clients, setClients] = useState<ClientDetails[]>([]);
     const [users, setUsers] = useState<Usuario[]>([]);
@@ -163,18 +170,24 @@ const AgendaParticular = () => {
     }, []);
 
     async function loadEvents() {
-        const currentUserId = localStorage.getItem("currentUserId");
         setLoading(true);
         try {
             const params = {
                 startAt: toApiDateTime(start),
                 endAt: toApiDateTime(end),
                 eventType: 1, // Particular
-                createdBy: currentUserId || undefined,
             };
 
             const data = await getScheduleEvents(params);
-            setEvents(data);
+            
+            // Filtrar apenas eventos que o usuário criou ou foi convidado
+            const filteredData = data.filter((event) => {
+                const isCreator = event.createdBy === currentUserId;
+                const isInvitee = (event.InvitedUserIds ?? event.invitedUserIds ?? []).includes(currentUserId || "");
+                return isCreator || isInvitee;
+            });
+            
+            setEvents(filteredData);
         } finally {
             setLoading(false);
         }
@@ -189,19 +202,47 @@ const AgendaParticular = () => {
         setFormDateTime(format(date, "yyyy-MM-dd'T'HH:mm"));
         setFormClientId(NONE_CLIENT);
         setFormUserId(NONE_USER);
+        setFormInvitedUserIds([]);
         setFormNotes("");
+        setIsEventCreator(true);
+        setIsEventInvitee(false);
         setDialogOpen(true);
     }
 
     function openEditDialog(event: ScheduleEvent) {
+        const isCreator = event.createdBy === currentUserId;
+        const isInvitee = !isCreator && (event.InvitedUserIds ?? event.invitedUserIds ?? []).includes(currentUserId || "");
+        
+        if (!isCreator && !isInvitee) {
+            return; // Não é criador nem convidado, não pode abrir
+        }
+        
         setEditingId(event.id);
         setFormDateTime(
             format(parseISO(event.occurredAt), "yyyy-MM-dd'T'HH:mm")
         );
         setFormClientId(event.clientId ?? NONE_CLIENT);
         setFormUserId(event.userId ?? NONE_USER);
+        setFormInvitedUserIds(event.InvitedUserIds ?? event.invitedUserIds ?? []);
         setFormNotes(event.notes || "");
+        setIsEventCreator(isCreator);
+        setIsEventInvitee(isInvitee);
         setDialogOpen(true);
+    }
+
+    function handleAddInvitedUser(userId: string) {
+        if (!userId) return;
+
+        setFormInvitedUserIds((prev) => {
+            if (prev.includes(userId)) {
+                return prev;
+            }
+            return [...prev, userId];
+        });
+    }
+
+    function handleRemoveInvitedUser(userId: string) {
+        setFormInvitedUserIds((prev) => prev.filter((id) => id !== userId));
     }
 
     async function reloadEvents() {
@@ -216,6 +257,7 @@ const AgendaParticular = () => {
             occurredAt,
             userId: formUserId === NONE_USER ? null : formUserId,
             clientId: formClientId === NONE_CLIENT ? null : formClientId,
+            InvitedUserIds: formInvitedUserIds,
             notes: formNotes || null,
             eventType: 1, // Particular
         };
@@ -261,7 +303,7 @@ const AgendaParticular = () => {
 
     async function handleMoveEvent(eventId: string, newDate: Date) {
         const schedule = events.find((ev) => ev.id === eventId);
-        if (!schedule) return;
+        if (!schedule || schedule.createdBy !== currentUserId) return;
 
         const occurredAt = toApiDateTime(newDate);
 
@@ -269,6 +311,8 @@ const AgendaParticular = () => {
             occurredAt,
             userId: schedule.userId ?? null,
             clientId: schedule.clientId ?? null,
+            InvitedUserIds:
+                schedule.InvitedUserIds ?? schedule.invitedUserIds ?? [],
             notes: schedule.notes ?? null,
             eventType: 1, // Particular
         };
@@ -429,23 +473,34 @@ const AgendaParticular = () => {
                                                                 e.stopPropagation();
                                                                 openEditDialog(event);
                                                             }}
-                                                            draggable
+                                                            draggable={event.createdBy === currentUserId}
                                                             onDragStart={(e) =>
                                                                 handleEventDragStart(e, event)
                                                             }
-                                                            className="w-full rounded-md bg-primary/10 border border-primary/50 px-1 py-0.5 text-[0.7rem] text-left overflow-hidden hover:bg-primary/20"
+                                                            className={`w-full rounded-md border px-1 py-0.5 text-[0.7rem] text-left overflow-hidden ${
+                                                                event.createdBy === currentUserId 
+                                                                ? "bg-primary/10 border-primary/50 hover:bg-primary/20" 
+                                                                : "bg-muted/30 border-muted-foreground/30 opacity-80 cursor-default"
+                                                            }`}
                                                         >
-                                                            {client && (
-                                                                <div className="font-medium truncate">
-                                                                    {client.legalName}
-                                                                </div>
-                                                            )}
+                                                            <div className="flex items-center justify-between gap-1">
+                                                                <div className="flex-1 truncate">
+                                                                    {client && (
+                                                                        <div className="font-medium truncate">
+                                                                            {client.legalName}
+                                                                        </div>
+                                                                    )}
 
-                                                            {user && (
-                                                                <div className="font-medium truncate">
-                                                                    {user.name}
+                                                                    {user && (
+                                                                        <div className="font-medium truncate">
+                                                                            {user.name}
+                                                                        </div>
+                                                                    )}
                                                                 </div>
-                                                            )}
+                                                                {event.createdBy !== currentUserId && (
+                                                                    <Lock className="h-3 w-3 text-muted-foreground/60 flex-shrink-0" />
+                                                                )}
+                                                            </div>
 
                                                             {event.notes && (
                                                                 <div className="truncate opacity-80">
@@ -535,23 +590,34 @@ const AgendaParticular = () => {
                                                             e.stopPropagation();
                                                             openEditDialog(event);
                                                         }}
-                                                        draggable
+                                                        draggable={event.createdBy === currentUserId}
                                                         onDragStart={(e) =>
                                                             handleEventDragStart(e, event)
                                                         }
-                                                        className="w-full rounded-md bg-primary/10 border border-primary/50 px-1 py-0.5 text-[0.7rem] text-left overflow-hidden hover:bg-primary/20"
+                                                        className={`w-full rounded-md border px-1 py-0.5 text-[0.7rem] text-left overflow-hidden ${
+                                                            event.createdBy === currentUserId 
+                                                            ? "bg-primary/10 border-primary/50 hover:bg-primary/20" 
+                                                            : "bg-muted/30 border-muted-foreground/30 opacity-80 cursor-default"
+                                                        }`}
                                                     >
-                                                        {client && (
-                                                            <div className="font-medium truncate">
-                                                                {client.legalName}
-                                                            </div>
-                                                        )}
+                                                        <div className="flex items-center justify-between gap-1">
+                                                            <div className="flex-1 truncate">
+                                                                {client && (
+                                                                    <div className="font-medium truncate">
+                                                                        {client.legalName}
+                                                                    </div>
+                                                                )}
 
-                                                        {user && (
-                                                            <div className="font-medium truncate">
-                                                                {user.name}
+                                                                {user && (
+                                                                    <div className="font-medium truncate">
+                                                                        {user.name}
+                                                                    </div>
+                                                                )}
                                                             </div>
-                                                        )}
+                                                            {event.createdBy !== currentUserId && (
+                                                                <Lock className="h-3 w-3 text-muted-foreground/60 flex-shrink-0" />
+                                                            )}
+                                                        </div>
 
                                                         {event.notes && (
                                                             <div className="truncate opacity-80">
@@ -658,30 +724,41 @@ const AgendaParticular = () => {
                                             <button
                                                 key={event.id}
                                                 type="button"
-                                                className="w-full text-left truncate rounded px-1 py-0.5 text-[0.7rem] bg-primary/10 hover:bg-primary/20 border border-primary/40"
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     openEditDialog(event);
                                                 }}
-                                                draggable
+                                                draggable={event.createdBy === currentUserId}
                                                 onDragStart={(e) =>
                                                     handleEventDragStart(e, event)
                                                 }
+                                                className={`w-full text-left truncate rounded px-1 py-0.5 text-[0.7rem] border ${
+                                                    event.createdBy === currentUserId 
+                                                    ? "bg-primary/10 border-primary/40 hover:bg-primary/20" 
+                                                    : "bg-muted/30 border-muted-foreground/30 opacity-80 cursor-default"
+                                                }`}
                                             >
-                                                <span className="font-semibold">
-                                                    {timeLabel}{" "}
-                                                </span>
-                                                {client && (
-                                                    <span className="truncate inline-block max-w-[80%] align-middle">
-                                                        {client.legalName}
-                                                    </span>
-                                                )}
+                                                <div className="flex items-center justify-between gap-1">
+                                                    <div className="flex-1 truncate">
+                                                        <span className="font-semibold">
+                                                            {timeLabel}{" "}
+                                                        </span>
+                                                        {client && (
+                                                            <span className="truncate inline-block max-w-[80%] align-middle">
+                                                                {client.legalName}
+                                                            </span>
+                                                        )}
 
-                                                {user && (
-                                                    <div className="font-medium truncate">
-                                                        {user.name}
+                                                        {user && (
+                                                            <div className="font-medium truncate">
+                                                                {user.name}
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                )}
+                                                    {event.createdBy !== currentUserId && (
+                                                        <Lock className="h-3 w-3 text-muted-foreground/60 flex-shrink-0" />
+                                                    )}
+                                                </div>
 
                                                 {event.notes && (
                                                     <div className="truncate opacity-80">
@@ -802,11 +879,16 @@ const AgendaParticular = () => {
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>
-                            {editingId
-                                ? "Editar agendamento"
-                                : "Novo agendamento"}
-                        </DialogTitle>
+                        <div className="flex items-center gap-2">
+                            <DialogTitle>
+                                {editingId
+                                    ? "Editar agendamento"
+                                    : "Novo agendamento"}
+                            </DialogTitle>
+                            {editingId && isEventInvitee && (
+                                <Badge variant="secondary">Convidado</Badge>
+                            )}
+                        </div>
                     </DialogHeader>
 
                     <div className="space-y-4 py-2">
@@ -820,6 +902,7 @@ const AgendaParticular = () => {
                                 onChange={(e) =>
                                     setFormDateTime(e.target.value)
                                 }
+                                disabled={isEventInvitee}
                             />
                         </div>
 
@@ -839,6 +922,7 @@ const AgendaParticular = () => {
                                 getValue={(c: any) => c.id}
                                 placeholder="Nenhum cliente"
                                 initialLabel={formClientId !== NONE_CLIENT ? clients.find(c => c.id === formClientId)?.tradeName : "Nenhum cliente"}
+                                disabled={isEventInvitee}
                             />
                         </div>
 
@@ -858,8 +942,75 @@ const AgendaParticular = () => {
                                 getValue={(u: any) => u.id}
                                 placeholder="Nenhum usuário"
                                 initialLabel={formUserId !== NONE_USER ? users.find(u => u.id === formUserId)?.name : "Nenhum usuário"}
+                                disabled={isEventInvitee}
                             />
                         </div>
+
+                        {!isEventInvitee && (
+                            <div className="space-y-2">
+                                <label className="text-xs font-medium text-muted-foreground">
+                                    Convidados
+                                </label>
+                                <AsyncSelect
+                                    fetcher={async (search) => {
+                                        const res = await getUsers({ search, pageSize: 20, isActive: true });
+                                        return res.items;
+                                    }}
+                                    value=""
+                                    onChange={handleAddInvitedUser}
+                                    getLabel={(u: any) => u.name}
+                                    getValue={(u: any) => u.id}
+                                    placeholder="Adicionar convidado"
+                                    clearAfterSelect
+                                />
+
+                                {formInvitedUserIds.length > 0 && (
+                                    <div className="flex flex-wrap gap-2">
+                                        {formInvitedUserIds.map((invitedUserId) => {
+                                            const invitedUser = users.find((u) => u.id === invitedUserId);
+
+                                            return (
+                                                <div
+                                                    key={invitedUserId}
+                                                    className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-sm"
+                                                >
+                                                    <span>{invitedUser?.name ?? invitedUserId}</span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleRemoveInvitedUser(invitedUserId)}
+                                                        className="text-muted-foreground hover:text-foreground"
+                                                        aria-label="Remover convidado"
+                                                    >
+                                                        <X className="h-3 w-3" />
+                                                    </button>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {isEventInvitee && formInvitedUserIds.length > 0 && (
+                            <div className="space-y-2">
+                                <label className="text-xs font-medium text-muted-foreground">
+                                    Convidados
+                                </label>
+                                <div className="flex flex-wrap gap-2">
+                                    {formInvitedUserIds.map((invitedUserId) => {
+                                        const invitedUser = users.find((u) => u.id === invitedUserId);
+                                        return (
+                                            <div
+                                                key={invitedUserId}
+                                                className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-sm"
+                                            >
+                                                <span>{invitedUser?.name ?? invitedUserId}</span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
 
                         <div className="space-y-1">
                             <label className="text-xs font-medium text-muted-foreground">
@@ -871,12 +1022,13 @@ const AgendaParticular = () => {
                                     setFormNotes(e.target.value)
                                 }
                                 rows={3}
+                                disabled={isEventInvitee}
                             />
                         </div>
                     </div>
 
                     <DialogFooter className="flex items-center justify-between gap-2">
-                        {editingId && (
+                        {editingId && isEventCreator && (
                             <Button
                                 variant="destructive"
                                 type="button"
@@ -898,13 +1050,15 @@ const AgendaParticular = () => {
                             >
                                 Cancelar
                             </Button>
-                            <Button
-                                type="button"
-                                onClick={handleSubmit}
-                                disabled={loading}
-                            >
-                                {editingId ? "Salvar" : "Agendar"}
-                            </Button>
+                            {isEventCreator && (
+                                <Button
+                                    type="button"
+                                    onClick={handleSubmit}
+                                    disabled={loading}
+                                >
+                                    {editingId ? "Salvar" : "Agendar"}
+                                </Button>
+                            )}
                         </div>
                     </DialogFooter>
                 </DialogContent>

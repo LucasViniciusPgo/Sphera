@@ -31,6 +31,7 @@ interface AsyncSelectProps<T> {
     emptyMessage?: string
     className?: string
     disabled?: boolean
+    clearAfterSelect?: boolean
 }
 
 export function AsyncSelect<T>({
@@ -46,6 +47,7 @@ export function AsyncSelect<T>({
     emptyMessage = "Nenhum resultado encontrado.",
     className,
     disabled = false,
+    clearAfterSelect = false,
 }: AsyncSelectProps<T>) {
     const [open, setOpen] = React.useState(false)
     const [options, setOptions] = React.useState<T[]>([])
@@ -104,7 +106,12 @@ export function AsyncSelect<T>({
         if (onSelectObject) {
             onSelectObject(item)
         }
-        setSelectedLabel(label)
+        if (clearAfterSelect) {
+            setSelectedLabel("")
+            setSearch("")
+        } else {
+            setSelectedLabel(label)
+        }
         setOpen(false)
     }
 
